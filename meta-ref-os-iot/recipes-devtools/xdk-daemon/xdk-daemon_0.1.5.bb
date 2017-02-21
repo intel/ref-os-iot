@@ -81,6 +81,8 @@ do_install () {
     install -m 0644 ${S}/xdk-daemon-avahi.service ${D}${systemd_unitdir}/system/xdk-daemon.service
 
     install -d ${D}${bindir}
+
+    chown -R root:root ${D}
 }
 
 inherit systemd
