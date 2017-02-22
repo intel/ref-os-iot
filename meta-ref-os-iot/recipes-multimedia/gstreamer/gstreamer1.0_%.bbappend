@@ -13,3 +13,5 @@ EXTRA_OECONF_remove = " \
 # how to do this properly
 SRC_URI_remove = "file://deterministic-unwind.patch"
 
+EXTRA_OECONF_remove = " --without-unwind "
+
