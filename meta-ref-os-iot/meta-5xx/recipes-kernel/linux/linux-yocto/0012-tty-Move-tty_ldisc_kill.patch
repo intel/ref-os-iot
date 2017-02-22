@@ -1,0 +1,68 @@
+From ae7e5917921acd1277ea7020e32a4261f24ea233 Mon Sep 17 00:00:00 2001
+From: Peter Hurley <peter@hurleysoftware.com>
+Date: Sun, 10 Jan 2016 22:41:03 -0800
+Subject: [PATCH 12/15] tty: Move tty_ldisc_kill()
+
+In preparation for destroying the line discipline instance on hangup,
+move tty_ldisc_kill() to eliminate needless forward declarations.
+No functional change.
+
+Signed-off-by: Peter Hurley <peter@hurleysoftware.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/tty/tty_ldisc.c | 32 +++++++++++++++++++-------------
+ 1 file changed, 19 insertions(+), 13 deletions(-)
+
+diff --git a/drivers/tty/tty_ldisc.c b/drivers/tty/tty_ldisc.c
+index ed476cb..483b2bd 100644
+--- a/drivers/tty/tty_ldisc.c
++++ b/drivers/tty/tty_ldisc.c
+@@ -603,6 +603,25 @@ err:
+ }
+ 
+ /**
++ *	tty_ldisc_kill	-	teardown ldisc
++ *	@tty: tty being released
++ *
++ *	Perform final close of the ldisc and reset tty->ldisc
++ */
++static void tty_ldisc_kill(struct tty_struct *tty)
++{
++	if (!tty->ldisc)
++		return;
++	/*
++	 * Now kill off the ldisc
++	 */
++	tty_ldisc_close(tty, tty->ldisc);
++	tty_ldisc_put(tty->ldisc);
++	/* Force an oops if we mess this up */
++	tty->ldisc = NULL;
++}
++
++/**
+  *	tty_reset_termios	-	reset terminal state
+  *	@tty: tty to reset
+  *
+@@ -749,19 +768,6 @@ int tty_ldisc_setup(struct tty_struct *tty, struct tty_struct *o_tty)
+ 	return 0;
+ }
+ 
+-static void tty_ldisc_kill(struct tty_struct *tty)
+-{
+-	if (!tty->ldisc)
+-		return;
+-	/*
+-	 * Now kill off the ldisc
+-	 */
+-	tty_ldisc_close(tty, tty->ldisc);
+-	tty_ldisc_put(tty->ldisc);
+-	/* Force an oops if we mess this up */
+-	tty->ldisc = NULL;
+-}
+-
+ /**
+  *	tty_ldisc_release		-	release line discipline
+  *	@tty: tty being shut down (or one end of pty pair)
+-- 
+2.7.4
+

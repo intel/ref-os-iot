@@ -1,0 +1,142 @@
+From 365cb6f2d1f4da65eb86873fc6732352aa632ad3 Mon Sep 17 00:00:00 2001
+From: Peter Hurley <peter@hurleysoftware.com>
+Date: Sun, 10 Jan 2016 22:41:04 -0800
+Subject: [PATCH 13/15] tty: Use 'disc' for line discipline index name
+
+tty->ldisc is a ptr to struct tty_ldisc, but unfortunately 'ldisc' is
+also used as a parameter or local name to refer to the line discipline
+index value (ie, N_TTY, N_GSM, etc.); instead prefer the name used
+by the line discipline registration/ref counting functions.
+
+Signed-off-by: Peter Hurley <peter@hurleysoftware.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/tty/tty_io.c    |  6 +++---
+ drivers/tty/tty_ldisc.c | 22 +++++++++++-----------
+ include/linux/tty.h     |  2 +-
+ 3 files changed, 15 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/tty/tty_io.c b/drivers/tty/tty_io.c
+index 053dc4e..8bc059f 100644
+--- a/drivers/tty/tty_io.c
++++ b/drivers/tty/tty_io.c
+@@ -2660,13 +2660,13 @@ static int tiocgsid(struct tty_struct *tty, struct tty_struct *real_tty, pid_t _
+ 
+ static int tiocsetd(struct tty_struct *tty, int __user *p)
+ {
+-	int ldisc;
++	int disc;
+ 	int ret;
+ 
+-	if (get_user(ldisc, p))
++	if (get_user(disc, p))
+ 		return -EFAULT;
+ 
+-	ret = tty_set_ldisc(tty, ldisc);
++	ret = tty_set_ldisc(tty, disc);
+ 
+ 	return ret;
+ }
+diff --git a/drivers/tty/tty_ldisc.c b/drivers/tty/tty_ldisc.c
+index 483b2bd..c5582f9 100644
+--- a/drivers/tty/tty_ldisc.c
++++ b/drivers/tty/tty_ldisc.c
+@@ -419,7 +419,7 @@ EXPORT_SYMBOL_GPL(tty_ldisc_flush);
+ /**
+  *	tty_set_termios_ldisc		-	set ldisc field
+  *	@tty: tty structure
+- *	@num: line discipline number
++ *	@disc: line discipline number
+  *
+  *	This is probably overkill for real world processors but
+  *	they are not on hot paths so a little discipline won't do
+@@ -432,10 +432,10 @@ EXPORT_SYMBOL_GPL(tty_ldisc_flush);
+  *	Locking: takes termios_rwsem
+  */
+ 
+-static void tty_set_termios_ldisc(struct tty_struct *tty, int num)
++static void tty_set_termios_ldisc(struct tty_struct *tty, int disc)
+ {
+ 	down_write(&tty->termios_rwsem);
+-	tty->termios.c_line = num;
++	tty->termios.c_line = disc;
+ 	up_write(&tty->termios_rwsem);
+ 
+ 	tty->disc_data = NULL;
+@@ -533,12 +533,12 @@ static void tty_ldisc_restore(struct tty_struct *tty, struct tty_ldisc *old)
+  *	the close of one side of a tty/pty pair, and eventually hangup.
+  */
+ 
+-int tty_set_ldisc(struct tty_struct *tty, int ldisc)
++int tty_set_ldisc(struct tty_struct *tty, int disc)
+ {
+ 	int retval;
+ 	struct tty_ldisc *old_ldisc, *new_ldisc;
+ 
+-	new_ldisc = tty_ldisc_get(tty, ldisc);
++	new_ldisc = tty_ldisc_get(tty, disc);
+ 	if (IS_ERR(new_ldisc))
+ 		return PTR_ERR(new_ldisc);
+ 
+@@ -553,7 +553,7 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
+ 	}
+ 
+ 	/* Check the no-op case */
+-	if (tty->ldisc->ops->num == ldisc)
++	if (tty->ldisc->ops->num == disc)
+ 		goto out;
+ 
+ 	if (test_bit(TTY_HUPPED, &tty->flags)) {
+@@ -569,7 +569,7 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
+ 
+ 	/* Now set up the new line discipline. */
+ 	tty->ldisc = new_ldisc;
+-	tty_set_termios_ldisc(tty, ldisc);
++	tty_set_termios_ldisc(tty, disc);
+ 
+ 	retval = tty_ldisc_open(tty, new_ldisc);
+ 	if (retval < 0) {
+@@ -641,15 +641,15 @@ static void tty_reset_termios(struct tty_struct *tty)
+ /**
+  *	tty_ldisc_reinit	-	reinitialise the tty ldisc
+  *	@tty: tty to reinit
+- *	@ldisc: line discipline to reinitialize
++ *	@disc: line discipline to reinitialize
+  *
+  *	Switch the tty to a line discipline and leave the ldisc
+  *	state closed
+  */
+ 
+-static int tty_ldisc_reinit(struct tty_struct *tty, int ldisc)
++static int tty_ldisc_reinit(struct tty_struct *tty, int disc)
+ {
+-	struct tty_ldisc *ld = tty_ldisc_get(tty, ldisc);
++	struct tty_ldisc *ld = tty_ldisc_get(tty, disc);
+ 
+ 	if (IS_ERR(ld))
+ 		return -1;
+@@ -660,7 +660,7 @@ static int tty_ldisc_reinit(struct tty_struct *tty, int ldisc)
+ 	 *	Switch the line discipline back
+ 	 */
+ 	tty->ldisc = ld;
+-	tty_set_termios_ldisc(tty, ldisc);
++	tty_set_termios_ldisc(tty, disc);
+ 
+ 	return 0;
+ }
+diff --git a/include/linux/tty.h b/include/linux/tty.h
+index 83b264c..c35f713 100644
+--- a/include/linux/tty.h
++++ b/include/linux/tty.h
+@@ -580,7 +580,7 @@ static inline int tty_port_users(struct tty_port *port)
+ 
+ extern int tty_register_ldisc(int disc, struct tty_ldisc_ops *new_ldisc);
+ extern int tty_unregister_ldisc(int disc);
+-extern int tty_set_ldisc(struct tty_struct *tty, int ldisc);
++extern int tty_set_ldisc(struct tty_struct *tty, int disc);
+ extern int tty_ldisc_setup(struct tty_struct *tty, struct tty_struct *o_tty);
+ extern void tty_ldisc_release(struct tty_struct *tty);
+ extern void tty_ldisc_init(struct tty_struct *tty);
+-- 
+2.7.4
+

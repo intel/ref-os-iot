@@ -1,0 +1,12 @@
+# This file lists USB devices which do not work properly when
+# USB autosuspend is enabled.
+#
+# Comments are ignored, blacklisted devices are identified
+# with four-digit vendor:product IDs as listed by lsusb.
+# Not spaces allowed before the ID pair. It may be followed by
+# spaces and further comments.
+#
+# For example, to blacklist the following device, uncomment the line:
+#dead:beef # fictional device with vendor ID dead and product ID beef
+#
+# Read-only file. To add devices locally, create /etc/udev/usb-autosuspend-blacklist

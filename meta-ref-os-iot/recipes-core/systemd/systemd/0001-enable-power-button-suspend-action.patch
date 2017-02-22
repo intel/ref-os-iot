@@ -1,0 +1,27 @@
+From e5d601ce16f60cbc4bae24acb76b7bf531537f22 Mon Sep 17 00:00:00 2001
+From: Jari Nippula <jari.nippula@intel.com>
+Date: Thu, 15 Dec 2016 15:29:00 +0200
+Subject: [PATCH] enable power button suspend action
+
+Change-Id: I8f4eb4a5013a115575f63564705dba0a15ed18dc
+Signed-off-by: Jari Nippula <jari.nippula@intel.com>
+---
+ src/login/logind.conf.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/login/logind.conf.in b/src/login/logind.conf.in
+index 32c0844..d4357b4 100644
+--- a/src/login/logind.conf.in
++++ b/src/login/logind.conf.in
+@@ -18,7 +18,7 @@
+ #KillOnlyUsers=
+ #KillExcludeUsers=root
+ #InhibitDelayMaxSec=5
+-#HandlePowerKey=poweroff
++HandlePowerKey=ignore
+ #HandleSuspendKey=suspend
+ #HandleHibernateKey=hibernate
+ #HandleLidSwitch=suspend
+-- 
+2.7.4
+

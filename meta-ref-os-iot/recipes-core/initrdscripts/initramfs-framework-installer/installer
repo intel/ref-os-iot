@@ -1,0 +1,239 @@
+#!/bin/sh
+
+# Installer module for initramfs-framework
+
+# The settings can be changed by placing files onto the EFI boot partition manually
+SETTINGS_INTERACTIVE="yes"
+SETTINGS_COPY_SSH_KEYS="no"
+
+# DST_DISK is evaluated in find_emmc_disk() and contains the device to install OS onto
+DST_DISK=
+# rootfs partition of the installation media
+SRC_PARTITION="/dev/disk/by-partuuid/`echo $bootparam_root | cut -d'=' -f2`"
+
+installer_enabled() {
+    if [ -n "$bootparam_installer" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+installer_run() {
+    set -e
+    trap 'installer_failed $?' EXIT
+    read_settings
+
+    # Wait until kernel spits out all pending messages
+    sleep 2
+
+    if [ "xno" = "x${SETTINGS_INTERACTIVE}" ]; then
+        install_onto_emmc
+        set +e
+        return 0
+    fi
+
+    echo "Welcome to Reference Linux OS for IoT installer!"
+    echo ""
+    echo "-----------------------------------------------------------------------------"
+    echo "| THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,            |"
+    echo "| EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES            |"
+    echo "| OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  |"
+    echo "| IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY       |"
+    echo "| CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,       |"
+    echo "| TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE |"
+    echo "| OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                              |"
+    echo "-----------------------------------------------------------------------------"
+    echo ""
+    echo -n "Would you like to install the system onto eMMC [y/N]: "
+    read -t 15 -n 1 answer || echo "Got no answer."
+    echo ""
+    [ "$answer" = "" ] && answer="n"
+    if [ "$answer" != "Y" -a "$answer" != "y" ]; then
+        echo "Installation aborted! Boot to live system..."
+    else
+        install_onto_emmc
+    fi
+    set +e
+}
+
+installer_failed () {
+    set +x
+    # Reset to default trap
+    trap - EXIT
+
+    if [ "0$1" -eq "0" ]; then
+        exit 0
+    fi
+
+    echo "Installation failed"
+    while true; do
+        echo "[R]eboot/[S]hell?"
+        read answer
+        case $answer in
+            [rR]) echo b > /proc/sysrq-trigger;;
+            [sS]) while true; do /bin/sh; done
+        esac
+    done
+}
+
+populate_rootfs() {
+    local gdisk_pnum=$1
+    local uuid=$2
+    local tmpdst=`mktemp -d tmp_dst_part${gdisk_pnum}.XXXXXX`
+
+    # Assume that there's only one ext4 partition and it contains root fs (/)
+    dd if=/dev/zero of=${DST_DISK}p${gdisk_pnum} bs=1024 count=1024
+    mkfs.ext4 -q -v -F -U "${uuid}" ${DST_DISK}p${gdisk_pnum}
+    mount -t ext4 ${DST_DISK}p${gdisk_pnum} $tmpdst
+    # Ignore errors about setting security.ima xattrs for files in /etc and /home
+    rsync -aAX /rootfs/ $tmpdst/ 2>&1 | grep -v security.ima || true
+
+    if [ "xyes" = "x${SETTINGS_COPY_SSH_KEYS}" ]; then
+	mkdir -p $tmpdst/home/root/.ssh
+	rm -f $tmpdst/home/root/.ssh/authorized_keys
+	cp /authorized_keys $tmpdst/home/root/.ssh/authorized_keys
+    fi
+
+    sync
+    umount $tmpdst
+    rm -r $tmpdst
+}
+
+populate_vfat() {
+    local gdisk_pnum=$1
+    local tmpdst=`mktemp -d -p / tmp_dst_part${gdisk_pnum}.XXXXXX`
+
+    mkdosfs ${DST_DISK}p${gdisk_pnum}
+    mount ${DST_DISK}p${gdisk_pnum} $tmpdst
+    cp -a /rootfs/boot/EFI_internal_storage $tmpdst/EFI
+    sync
+    umount $tmpdst
+    rm -r $tmpdst
+}
+
+install_onto_emmc() {
+    echo "Installing..."
+    set -x
+    local pnum=0
+    local gdisk_pnum=1
+    mount -t $bootparam_rootfstype -o ro $SRC_PARTITION /rootfs
+
+    if [ -s /rootfs/etc/machine-id ]; then
+        set +x
+        echo "The USB-stick has been booted at least once and looks tainted. Installer skipped!"
+        echo "Press any key to boot from the USB-stick"
+        read -s -n 1 answer
+        return 0
+    fi
+
+    find_emmc_disk
+
+    . /rootfs/boot/emmc-partitions-data
+
+    # Clear all partition data on disk
+    sgdisk -o ${DST_DISK} || echo "WARNING: sgdisk has returned $? - damaged disk?"
+
+    while [ "$pnum" -lt "$PART_COUNT" ]; do
+        eval local size="\$PART_${pnum}_SIZE"
+        eval local uuid="\$PART_${pnum}_UUID"
+        eval local type_id="\$PART_${pnum}_TYPE"
+        eval local lname="\$PART_${pnum}_NAME"
+        eval local fs="\$PART_${pnum}_FS"
+
+	if [ "$gdisk_pnum" -eq "$PART_COUNT" ]; then
+            # Make the last partition take the rest of the space
+            sgdisk -n "$gdisk_pnum:+0:-1s" -c "$gdisk_pnum:$lname" \
+                   -t "$gdisk_pnum:$type_id" -u "${gdisk_pnum}:${uuid}" -- "$DST_DISK"
+        else
+            sgdisk -n "$gdisk_pnum:+0:+${size}M" -c "$gdisk_pnum:$lname" \
+                   -t "$gdisk_pnum:$type_id" -u "${gdisk_pnum}:${uuid}" -- "$DST_DISK"
+        fi
+
+        if [ "$gdisk_pnum" -eq "1" ]; then
+            # Set bootable flag on the first partition
+            sgdisk -A "${gdisk_pnum}:set:2" -- "${DST_DISK}"
+        fi
+
+        if [ "x$lname" = "xrootfs" ]; then
+            populate_rootfs ${gdisk_pnum} ${uuid}
+        else
+            populate_$fs ${gdisk_pnum}
+        fi
+
+        pnum="$(($pnum + 1))"
+        gdisk_pnum="$(($gdisk_pnum + 1))"
+    done
+
+    set +x
+    echo "Done."
+    echo "Press any key to reboot"
+    read -s -n 1 answer
+    # Do reboot
+    echo b > /proc/sysrq-trigger
+}
+
+read_settings() {
+    local fat_part=
+    local disk=
+
+    while [ ! -b $SRC_PARTITION ]; do
+        echo "Waiting for installation media is fully initialized..."
+        sleep 1
+    done
+
+    # USB and SD disks use different naming schemes for their partitions,
+    # therefore we have to check both schemes.
+    local canonical_part=`readlink -f $SRC_PARTITION`
+    if [ `echo $canonical_part | grep mmcblk | wc -l` -eq "0" ]; then
+        disk=`echo $canonical_part | cut -b -8`
+        fat_part="${disk}`sgdisk -p ${disk} | grep EF00 | awk '{print $1}'`"
+    else
+        disk=`echo $canonical_part | cut -b -12`
+        fat_part="${disk}p`sgdisk -p ${disk} | grep EF00 | awk '{print $1}'`"
+    fi
+
+    if [ -n $fat_part ]; then
+        local boot_mnt=`mktemp -d -p / tmp_efiboot_part.XXXXXX`
+
+        mount $fat_part $boot_mnt
+
+        if [ -f $boot_mnt/non-interactive-install.txt -o -f $boot_mnt/non-interactive-install ]; then
+            SETTINGS_INTERACTIVE="no"
+        fi
+
+	if [ -f $boot_mnt/authorized_keys ]; then
+	    SETTINGS_COPY_SSH_KEYS="yes"
+	    cp $boot_mnt/authorized_keys /authorized_keys
+	fi
+
+        umount $boot_mnt
+        rm -r $boot_mnt
+    fi
+}
+
+find_emmc_disk() {
+    # MMC devices are numbered in the order they get initialized which is effectively random.
+    # As per JEDEC 4.5 spec for eMMC devices there are partitions specific to eMMC devices,
+    # i.e. a Replay Protected Memory Block (RPMB). We detect an eMMC disk by checking if
+    # it has a RPMB partition.
+    local mmc_prefix="/dev/mmcblk"
+    local rpmb_suffix="rpmb"
+    local disk=
+    local rpmb_part=
+
+    for i in `seq 0 10`; do
+        disk="${mmc_prefix}${i}"
+        rpmb_part="${disk}${rpmb_suffix}"
+        if [ -b ${rpmb_part} ]; then
+            echo "Here's the eMMC: ${disk}"
+            DST_DISK=$disk
+	    return 0
+        fi
+    done
+
+    if [ -z $DST_DISK ]; then
+        echo "ERROR: no eMMC found!"
+        exit 1
+    fi
+}

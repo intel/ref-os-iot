@@ -1,0 +1,255 @@
+From 0be28f7e2292e81667a6e502e53ee01de81350ae Mon Sep 17 00:00:00 2001
+From: Peter Hurley <peter@hurleysoftware.com>
+Date: Sun, 10 Jan 2016 22:40:54 -0800
+Subject: [PATCH 05/15] tty: Remove chars_in_buffer() line discipline method
+
+The chars_in_buffer() line discipline method serves no functional
+purpose, other than as a (dubious) debugging aid for mostly bit-rotting
+drivers. Despite being documented as an optional method, every caller
+is unconditionally executed (although conditionally compiled).
+Furthermore, direct tty->ldisc access without an ldisc ref is unsafe.
+Lastly, N_TTY's chars_in_buffer() has warned of removal since 3.12.
+
+Signed-off-by: Peter Hurley <peter@hurleysoftware.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ Documentation/serial/tty.txt |  3 ---
+ drivers/tty/amiserial.c      |  6 ++----
+ drivers/tty/cyclades.c       |  8 ++++----
+ drivers/tty/n_gsm.c          | 16 ----------------
+ drivers/tty/n_tty.c          | 23 -----------------------
+ drivers/tty/rocket.c         |  6 ++----
+ drivers/tty/serial/crisv10.c | 12 +++++-------
+ include/linux/tty_ldisc.h    |  7 -------
+ 8 files changed, 13 insertions(+), 68 deletions(-)
+
+diff --git a/Documentation/serial/tty.txt b/Documentation/serial/tty.txt
+index e2dea3d..b487809 100644
+--- a/Documentation/serial/tty.txt
++++ b/Documentation/serial/tty.txt
+@@ -72,9 +72,6 @@ flush_buffer()	-	(optional) May be called at any point between
+ 			open and close, and instructs the line discipline
+ 			to empty its input buffer.
+ 
+-chars_in_buffer() -	(optional) Report the number of bytes in the input
+-			buffer.
+-
+ set_termios()	-	(optional) Called on termios structure changes.
+ 			The caller passes the old termios data and the
+ 			current data is in the tty. Called under the
+diff --git a/drivers/tty/amiserial.c b/drivers/tty/amiserial.c
+index e53d9a5..8d2d0f9 100644
+--- a/drivers/tty/amiserial.c
++++ b/drivers/tty/amiserial.c
+@@ -966,8 +966,7 @@ static void rs_throttle(struct tty_struct * tty)
+ 	struct serial_state *info = tty->driver_data;
+ 	unsigned long flags;
+ #ifdef SERIAL_DEBUG_THROTTLE
+-	printk("throttle %s: %d....\n", tty_name(tty),
+-	       tty->ldisc.chars_in_buffer(tty));
++	printk("throttle %s ....\n", tty_name(tty));
+ #endif
+ 
+ 	if (serial_paranoia_check(info, tty->name, "rs_throttle"))
+@@ -989,8 +988,7 @@ static void rs_unthrottle(struct tty_struct * tty)
+ 	struct serial_state *info = tty->driver_data;
+ 	unsigned long flags;
+ #ifdef SERIAL_DEBUG_THROTTLE
+-	printk("unthrottle %s: %d....\n", tty_name(tty),
+-	       tty->ldisc.chars_in_buffer(tty));
++	printk("unthrottle %s ....\n", tty_name(tty));
+ #endif
+ 
+ 	if (serial_paranoia_check(info, tty->name, "rs_unthrottle"))
+diff --git a/drivers/tty/cyclades.c b/drivers/tty/cyclades.c
+index d4a1331..ee94ece 100644
+--- a/drivers/tty/cyclades.c
++++ b/drivers/tty/cyclades.c
+@@ -2852,8 +2852,8 @@ static void cy_throttle(struct tty_struct *tty)
+ 	unsigned long flags;
+ 
+ #ifdef CY_DEBUG_THROTTLE
+-	printk(KERN_DEBUG "cyc:throttle %s: %ld...ttyC%d\n", tty_name(tty),
+-			tty->ldisc.chars_in_buffer(tty), info->line);
++	printk(KERN_DEBUG "cyc:throttle %s ...ttyC%d\n", tty_name(tty),
++			 info->line);
+ #endif
+ 
+ 	if (serial_paranoia_check(info, tty->name, "cy_throttle"))
+@@ -2891,8 +2891,8 @@ static void cy_unthrottle(struct tty_struct *tty)
+ 	unsigned long flags;
+ 
+ #ifdef CY_DEBUG_THROTTLE
+-	printk(KERN_DEBUG "cyc:unthrottle %s: %ld...ttyC%d\n",
+-		tty_name(tty), tty_chars_in_buffer(tty), info->line);
++	printk(KERN_DEBUG "cyc:unthrottle %s ...ttyC%d\n",
++		tty_name(tty), info->line);
+ #endif
+ 
+ 	if (serial_paranoia_check(info, tty->name, "cy_unthrottle"))
+diff --git a/drivers/tty/n_gsm.c b/drivers/tty/n_gsm.c
+index 9aff371..2bf355c 100644
+--- a/drivers/tty/n_gsm.c
++++ b/drivers/tty/n_gsm.c
+@@ -2306,21 +2306,6 @@ static void gsmld_receive_buf(struct tty_struct *tty, const unsigned char *cp,
+ }
+ 
+ /**
+- *	gsmld_chars_in_buffer	-	report available bytes
+- *	@tty: tty device
+- *
+- *	Report the number of characters buffered to be delivered to user
+- *	at this instant in time.
+- *
+- *	Locking: gsm lock
+- */
+-
+-static ssize_t gsmld_chars_in_buffer(struct tty_struct *tty)
+-{
+-	return 0;
+-}
+-
+-/**
+  *	gsmld_flush_buffer	-	clean input queue
+  *	@tty:	terminal device
+  *
+@@ -2832,7 +2817,6 @@ static struct tty_ldisc_ops tty_ldisc_packet = {
+ 	.open            = gsmld_open,
+ 	.close           = gsmld_close,
+ 	.flush_buffer    = gsmld_flush_buffer,
+-	.chars_in_buffer = gsmld_chars_in_buffer,
+ 	.read            = gsmld_read,
+ 	.write           = gsmld_write,
+ 	.ioctl           = gsmld_ioctl,
+diff --git a/drivers/tty/n_tty.c b/drivers/tty/n_tty.c
+index 84e71bd..bd2f66b 100644
+--- a/drivers/tty/n_tty.c
++++ b/drivers/tty/n_tty.c
+@@ -370,28 +370,6 @@ static void n_tty_flush_buffer(struct tty_struct *tty)
+ }
+ 
+ /**
+- *	n_tty_chars_in_buffer	-	report available bytes
+- *	@tty: tty device
+- *
+- *	Report the number of characters buffered to be delivered to user
+- *	at this instant in time.
+- *
+- *	Locking: exclusive termios_rwsem
+- */
+-
+-static ssize_t n_tty_chars_in_buffer(struct tty_struct *tty)
+-{
+-	ssize_t n;
+-
+-	WARN_ONCE(1, "%s is deprecated and scheduled for removal.", __func__);
+-
+-	down_write(&tty->termios_rwsem);
+-	n = chars_in_buffer(tty);
+-	up_write(&tty->termios_rwsem);
+-	return n;
+-}
+-
+-/**
+  *	is_utf8_continuation	-	utf8 multibyte check
+  *	@c: byte to check
+  *
+@@ -2522,7 +2500,6 @@ struct tty_ldisc_ops tty_ldisc_N_TTY = {
+ 	.open            = n_tty_open,
+ 	.close           = n_tty_close,
+ 	.flush_buffer    = n_tty_flush_buffer,
+-	.chars_in_buffer = n_tty_chars_in_buffer,
+ 	.read            = n_tty_read,
+ 	.write           = n_tty_write,
+ 	.ioctl           = n_tty_ioctl,
+diff --git a/drivers/tty/rocket.c b/drivers/tty/rocket.c
+index 802eac7..f624b93 100644
+--- a/drivers/tty/rocket.c
++++ b/drivers/tty/rocket.c
+@@ -1360,8 +1360,7 @@ static void rp_throttle(struct tty_struct *tty)
+ 	struct r_port *info = tty->driver_data;
+ 
+ #ifdef ROCKET_DEBUG_THROTTLE
+-	printk(KERN_INFO "throttle %s: %d....\n", tty->name,
+-	       tty->ldisc.chars_in_buffer(tty));
++	printk(KERN_INFO "throttle %s ....\n", tty->name);
+ #endif
+ 
+ 	if (rocket_paranoia_check(info, "rp_throttle"))
+@@ -1377,8 +1376,7 @@ static void rp_unthrottle(struct tty_struct *tty)
+ {
+ 	struct r_port *info = tty->driver_data;
+ #ifdef ROCKET_DEBUG_THROTTLE
+-	printk(KERN_INFO "unthrottle %s: %d....\n", tty->name,
+-	       tty->ldisc.chars_in_buffer(tty));
++	printk(KERN_INFO "unthrottle %s ....\n", tty->name);
+ #endif
+ 
+ 	if (rocket_paranoia_check(info, "rp_unthrottle"))
+diff --git a/drivers/tty/serial/crisv10.c b/drivers/tty/serial/crisv10.c
+index f13f2eb..e98aef7 100644
+--- a/drivers/tty/serial/crisv10.c
++++ b/drivers/tty/serial/crisv10.c
+@@ -2968,7 +2968,7 @@ static int rs_raw_write(struct tty_struct *tty,
+ 
+ 	local_save_flags(flags);
+ 	DFLOW(DEBUG_LOG(info->line, "write count %i ", count));
+-	DFLOW(DEBUG_LOG(info->line, "ldisc %i\n", tty->ldisc.chars_in_buffer(tty)));
++	DFLOW(DEBUG_LOG(info->line, "ldisc\n"));
+ 
+ 
+ 	/* The local_irq_disable/restore_flags pairs below are needed
+@@ -3161,10 +3161,9 @@ rs_throttle(struct tty_struct * tty)
+ {
+ 	struct e100_serial *info = (struct e100_serial *)tty->driver_data;
+ #ifdef SERIAL_DEBUG_THROTTLE
+-	printk("throttle %s: %lu....\n", tty_name(tty),
+-	       (unsigned long)tty->ldisc.chars_in_buffer(tty));
++	printk("throttle %s ....\n", tty_name(tty));
+ #endif
+-	DFLOW(DEBUG_LOG(info->line,"rs_throttle %lu\n", tty->ldisc.chars_in_buffer(tty)));
++	DFLOW(DEBUG_LOG(info->line,"rs_throttle\n"));
+ 
+ 	/* Do RTS before XOFF since XOFF might take some time */
+ 	if (tty->termios.c_cflag & CRTSCTS) {
+@@ -3181,10 +3180,9 @@ rs_unthrottle(struct tty_struct * tty)
+ {
+ 	struct e100_serial *info = (struct e100_serial *)tty->driver_data;
+ #ifdef SERIAL_DEBUG_THROTTLE
+-	printk("unthrottle %s: %lu....\n", tty_name(tty),
+-	       (unsigned long)tty->ldisc.chars_in_buffer(tty));
++	printk("unthrottle %s ....\n", tty_name(tty));
+ #endif
+-	DFLOW(DEBUG_LOG(info->line,"rs_unthrottle ldisc %d\n", tty->ldisc.chars_in_buffer(tty)));
++	DFLOW(DEBUG_LOG(info->line,"rs_unthrottle ldisc\n"));
+ 	DFLOW(DEBUG_LOG(info->line,"rs_unthrottle flip.count: %i\n", tty->flip.count));
+ 	/* Do RTS before XOFF since XOFF might take some time */
+ 	if (tty->termios.c_cflag & CRTSCTS) {
+diff --git a/include/linux/tty_ldisc.h b/include/linux/tty_ldisc.h
+index 00c9d68..6101ab8 100644
+--- a/include/linux/tty_ldisc.h
++++ b/include/linux/tty_ldisc.h
+@@ -25,12 +25,6 @@
+  *	buffers of any input characters it may have queued to be
+  *	delivered to the user mode process.
+  *
+- * ssize_t (*chars_in_buffer)(struct tty_struct *tty);
+- *
+- *	This function returns the number of input characters the line
+- *	discipline may have queued up to be delivered to the user mode
+- *	process.
+- *
+  * ssize_t (*read)(struct tty_struct * tty, struct file * file,
+  *		   unsigned char * buf, size_t nr);
+  *
+@@ -188,7 +182,6 @@ struct tty_ldisc_ops {
+ 	int	(*open)(struct tty_struct *);
+ 	void	(*close)(struct tty_struct *);
+ 	void	(*flush_buffer)(struct tty_struct *tty);
+-	ssize_t	(*chars_in_buffer)(struct tty_struct *tty);
+ 	ssize_t	(*read)(struct tty_struct *tty, struct file *file,
+ 			unsigned char __user *buf, size_t nr);
+ 	ssize_t	(*write)(struct tty_struct *tty, struct file *file,
+-- 
+2.7.4
+

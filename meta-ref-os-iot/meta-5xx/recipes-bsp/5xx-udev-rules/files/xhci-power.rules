@@ -1,0 +1,1 @@
+ACTION=="add", KERNEL=="0000:00:15.0", SUBSYSTEM=="pci", ATTR{power/control}="auto"

@@ -1,0 +1,27 @@
+From e5e80020abd18345a53863c9546333cf4f669f96 Mon Sep 17 00:00:00 2001
+From: Jari Nippula <jari.nippula@intel.com>
+Date: Fri, 17 Feb 2017 10:39:34 +0200
+Subject: [PATCH 1/2] Enable autosuspend after dwc3_resume
+
+dwc3 autosuspend is disabled after waking up from 'freeze'
+
+Signed-off-by: Jari Nippula <jari.nippula@intel.com>
+---
+ drivers/usb/dwc3/core.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/usb/dwc3/core.c b/drivers/usb/dwc3/core.c
+index be9a75c..5dceacb 100644
+--- a/drivers/usb/dwc3/core.c
++++ b/drivers/usb/dwc3/core.c
+@@ -1282,6 +1282,7 @@ static int dwc3_resume(struct device *dev)
+ 	pm_runtime_disable(dev);
+ 	pm_runtime_set_active(dev);
+ 	pm_runtime_enable(dev);
++	pm_runtime_put(dev);
+ 
+ 	return 0;
+ }
+-- 
+2.7.4
+

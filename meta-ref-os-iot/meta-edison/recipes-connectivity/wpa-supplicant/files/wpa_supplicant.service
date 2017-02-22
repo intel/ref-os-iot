@@ -1,0 +1,25 @@
+[Unit]
+Description=WPA supplicant service For Edison
+Before=network.target
+Wants=network.target
+Requires=sys-subsystem-net-devices-wlan0.device
+After=sys-subsystem-net-devices-wlan0.device
+
+[Service]
+Type=dbus
+BusName=fi.w1.wpa_supplicant1
+
+# start wpa_supplicant service :
+#    - the second interface p2p-dev-wlan0 is automatically created at startup
+#    - the file wpa_supplicant is common to both interfaces wlan0 and p2p-dev-wlan0
+ExecStart=/usr/sbin/wpa_supplicant -u -Dnl80211 -iwlan0  -c/etc/wpa_supplicant/wpa_supplicant.conf
+
+# start wpa_supplicant_event service after the start of wpa_supplicant service
+ExecStartPost=/bin/systemctl start wpa_supplicant_wlan0_event ; /bin/systemctl start wpa_supplicant_p2p_event
+
+# stop wpa_supplicant_event service after the stop of wpa_supplicant service
+ExecStopPost=/bin/systemctl stop wpa_supplicant_wlan0_event ; /bin/systemctl stop wpa_supplicant_p2p_event
+
+[Install]
+WantedBy=multi-user.target
+Alias=dbus-fi.w1.wpa_supplicant1

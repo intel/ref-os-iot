@@ -1,0 +1,5 @@
+ACTION=="add", SUBSYSTEMS=="pci", ATTR{vendor}=="0x8086", ATTR{device}=="0x1a84", RUN+="/sbin/sysfs-control.sh /sys/$env{DEVPATH}/power/control auto"
+ACTION=="add", SUBSYSTEMS=="pci", ATTR{vendor}=="0x8086", ATTR{device}=="0x1aa8", RUN+="/sbin/sysfs-control.sh /sys/$env{DEVPATH}/power/control auto"
+ACTION=="add", SUBSYSTEMS=="pci", ATTR{vendor}=="0x8086", ATTR{device}=="0x1a98", RUN+="/sbin/sysfs-control.sh /sys/$env{DEVPATH}/power/control auto"
+ACTION=="add", SUBSYSTEMS=="pci", ATTR{vendor}=="0x8086", ATTR{device}=="0x1a9a", RUN+="/sbin/sysfs-control.sh /sys/$env{DEVPATH}/power/control auto"
+

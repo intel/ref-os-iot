@@ -1,0 +1,37 @@
+From 5461856cc868c936328bbd332ca47bf81f5bce32 Mon Sep 17 00:00:00 2001
+From: Peter Hurley <peter@hurleysoftware.com>
+Date: Sun, 10 Jan 2016 22:40:53 -0800
+Subject: [PATCH 04/15] NFC: nci: Remove dead code
+
+The N_NCI ldisc does not define a flush_buffer() ldisc method, so
+the check when opening the ldisc is always false.
+
+Signed-off-by: Peter Hurley <peter@hurleysoftware.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ net/nfc/nci/uart.c | 9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
+
+diff --git a/net/nfc/nci/uart.c b/net/nfc/nci/uart.c
+index 21d8875..c468eab 100644
+--- a/net/nfc/nci/uart.c
++++ b/net/nfc/nci/uart.c
+@@ -171,14 +171,7 @@ static int nci_uart_tty_open(struct tty_struct *tty)
+ 	tty->disc_data = NULL;
+ 	tty->receive_room = 65536;
+ 
+-	/* Flush any pending characters in the driver and line discipline. */
+-
+-	/* FIXME: why is this needed. Note don't use ldisc_ref here as the
+-	 * open path is before the ldisc is referencable.
+-	 */
+-
+-	if (tty->ldisc->ops->flush_buffer)
+-		tty->ldisc->ops->flush_buffer(tty);
++	/* Flush any pending characters in the driver */
+ 	tty_driver_flush_buffer(tty);
+ 
+ 	return 0;
+-- 
+2.7.4
+

@@ -1,0 +1,80 @@
+From d471e16d0ca33601612362def33f8dc908ddb872 Mon Sep 17 00:00:00 2001
+From: Peter Hurley <peter@hurleysoftware.com>
+Date: Sun, 10 Jan 2016 22:41:02 -0800
+Subject: [PATCH 11/15] tty: Handle NULL tty->ldisc
+
+In preparation of destroying line discipline on hangup, fix
+ldisc core operations to properly handle when the tty's ldisc is
+NULL.
+
+Signed-off-by: Peter Hurley <peter@hurleysoftware.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/tty/tty_ldisc.c | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/tty/tty_ldisc.c b/drivers/tty/tty_ldisc.c
+index 9a2edbf..ed476cb 100644
+--- a/drivers/tty/tty_ldisc.c
++++ b/drivers/tty/tty_ldisc.c
+@@ -269,7 +269,8 @@ const struct file_operations tty_ldiscs_proc_fops = {
+ struct tty_ldisc *tty_ldisc_ref_wait(struct tty_struct *tty)
+ {
+ 	ldsem_down_read(&tty->ldisc_sem, MAX_SCHEDULE_TIMEOUT);
+-	WARN_ON(!tty->ldisc);
++	if (!tty->ldisc)
++		ldsem_up_read(&tty->ldisc_sem);
+ 	return tty->ldisc;
+ }
+ EXPORT_SYMBOL_GPL(tty_ldisc_ref_wait);
+@@ -462,7 +463,7 @@ static int tty_ldisc_open(struct tty_struct *tty, struct tty_ldisc *ld)
+ 		if (ret)
+ 			clear_bit(TTY_LDISC_OPEN, &tty->flags);
+ 
+-		tty_ldisc_debug(tty, "%p: opened\n", tty->ldisc);
++		tty_ldisc_debug(tty, "%p: opened\n", ld);
+ 		return ret;
+ 	}
+ 	return 0;
+@@ -483,7 +484,7 @@ static void tty_ldisc_close(struct tty_struct *tty, struct tty_ldisc *ld)
+ 	clear_bit(TTY_LDISC_OPEN, &tty->flags);
+ 	if (ld->ops->close)
+ 		ld->ops->close(tty);
+-	tty_ldisc_debug(tty, "%p: closed\n", tty->ldisc);
++	tty_ldisc_debug(tty, "%p: closed\n", ld);
+ }
+ 
+ /**
+@@ -546,6 +547,11 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
+ 	if (retval)
+ 		goto err;
+ 
++	if (!tty->ldisc) {
++		retval = -EIO;
++		goto out;
++	}
++
+ 	/* Check the no-op case */
+ 	if (tty->ldisc->ops->num == ldisc)
+ 		goto out;
+@@ -661,7 +667,7 @@ void tty_ldisc_hangup(struct tty_struct *tty)
+ 	int reset = tty->driver->flags & TTY_DRIVER_RESET_TERMIOS;
+ 	int err = 0;
+ 
+-	tty_ldisc_debug(tty, "%p: closing\n", tty->ldisc);
++	tty_ldisc_debug(tty, "%p: hangup\n", tty->ldisc);
+ 
+ 	ld = tty_ldisc_ref(tty);
+ 	if (ld != NULL) {
+@@ -745,6 +751,8 @@ int tty_ldisc_setup(struct tty_struct *tty, struct tty_struct *o_tty)
+ 
+ static void tty_ldisc_kill(struct tty_struct *tty)
+ {
++	if (!tty->ldisc)
++		return;
+ 	/*
+ 	 * Now kill off the ldisc
+ 	 */
+-- 
+2.7.4
+

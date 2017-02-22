@@ -1,0 +1,28 @@
+From 7eb813bc5bdbfc1091e32fb736666817ff58750c Mon Sep 17 00:00:00 2001
+From: Tuomas Katila <tuomas.katila@intel.com>
+Date: Fri, 9 Dec 2016 11:35:57 +0200
+Subject: [PATCH] disable testing, do_compile fails because proxy isn't
+ whitelisted in do_compile
+
+Signed-off-by: Tuomas Katila <tuomas.katila@intel.com>
+---
+ setup.py | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/setup.py b/setup.py
+index 0f6950c..4a41dae 100644
+--- a/setup.py
++++ b/setup.py
+@@ -9,9 +9,6 @@ setup(
+     packages=['rosdep2', 'rosdep2.platforms'],
+     package_dir={'': 'src'},
+     install_requires=['catkin_pkg', 'rospkg >= 1.0.37', 'rosdistro >= 0.4.0', 'PyYAML >= 3.1'],
+-    setup_requires=['nose >= 1.0'],
+-    test_suite='nose.collector',
+-    test_requires=['mock'],
+     scripts=['scripts/rosdep', 'scripts/rosdep-source'],
+     author="Tully Foote, Ken Conley",
+     author_email="tfoote@osrfoundation.org",
+-- 
+2.9.2
+

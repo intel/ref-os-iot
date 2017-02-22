@@ -1,0 +1,24 @@
+[submodule "meta-qt5"]
+	path = meta-ref-os-iot/meta-common/meta-qt5
+	url = git://github.com/meta-qt5/meta-qt5.git
+[submodule "meta-ros"]
+	path = meta-ref-os-iot/meta-common/meta-ros
+	url = git://github.com/bmwcarit/meta-ros.git
+[submodule "meta-java"]
+	path = meta-ref-os-iot/meta-common/meta-java
+	url = http://git.yoctoproject.org/git/meta-java
+[submodule "meta-intel-realsense"]
+	path = meta-ref-os-iot/meta-common/meta-intel-realsense
+	url = git://github.com/IntelRealSense/meta-intel-realsense.git
+[submodule "meta-clang"]
+	path = meta-ref-os-iot/meta-common/meta-clang
+	url = git://github.com/kraj/meta-clang.git
+[submodule "meta-batman"]
+	path = meta-ref-os-iot/meta-common/meta-batman
+	url = git://github.com/jhaws1982/meta-batman.git
+[submodule "meta-intel-camera"]
+	path = meta-ref-os-iot/meta-common/meta-intel-camera
+	url = git://github.com/01org/meta-intel-camera.git
+[submodule "intel-iot-refkit"]
+	path = intel-iot-refkit
+	url = git://git.yoctoproject.org/intel-iot-refkit.git

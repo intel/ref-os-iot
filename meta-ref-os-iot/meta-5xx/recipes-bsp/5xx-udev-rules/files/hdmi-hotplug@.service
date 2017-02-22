@@ -1,0 +1,6 @@
+[Unit]
+Description=Handle HDMI hotplug events
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/hdmi-hotplug.sh %I

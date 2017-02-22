@@ -1,0 +1,139 @@
+From 8d6c5c886cb0390875cbec3b2039d81c35edc9da Mon Sep 17 00:00:00 2001
+From: Jari Nippula <jari.nippula@intel.com>
+Date: Tue, 21 Feb 2017 11:32:17 +0200
+Subject: [PATCH] Workaround for dwc3 suspend issue
+
+Disable HOST mode from type-c altogether to protect DEVICE
+mode and system suspend functionality
+
+Signed-off-by: Jari Nippula <jari.nippula@intel.com>
+---
+ drivers/usb/typec/typec_wcove.c | 61 +++++++++++++++++++++++++----------------
+ 1 file changed, 38 insertions(+), 23 deletions(-)
+
+diff --git a/drivers/usb/typec/typec_wcove.c b/drivers/usb/typec/typec_wcove.c
+index fa241f7..b5ef768 100644
+--- a/drivers/usb/typec/typec_wcove.c
++++ b/drivers/usb/typec/typec_wcove.c
+@@ -126,6 +126,8 @@
+ #define USBC_PD_RX_BUF_LEN		30
+ #define USBC_PD_TX_BUF_LEN		30
+ 
++#define XHCI_MUX	0x924080d8
++
+ struct wcove_typec {
+ 	int pd_port_num;
+ 	struct mutex lock; /* device lock */
+@@ -138,6 +140,7 @@ struct wcove_typec {
+ 	struct typec_connection con;
+ 	struct typec_partner partner;
+ 	struct pci_dev *xhci_dev;
++	void __iomem *drd_mux;
+ };
+ 
+ enum wcove_typec_func {
+@@ -155,6 +158,7 @@ enum wcove_typec_orientation {
+ enum wcove_typec_role {
+ 	WCOVE_ROLE_HOST,
+ 	WCOVE_ROLE_DEVICE,
++	WCOVE_ROLE_DEVICE_NO_VBUS,
+ };
+ 
+ static struct sink_ps profiles[] = {
+@@ -223,17 +227,25 @@ static int wcove_typec_func(struct wcove_typec *wcove,
+ 	union acpi_object tmp;
+ 	union acpi_object argv4 = ACPI_INIT_DSM_ARGV4(1, &tmp);
+ 
+-	tmp.type = ACPI_TYPE_INTEGER;
+-	tmp.integer.value = param;
+-
+-	obj = acpi_evaluate_dsm(ACPI_HANDLE(wcove->dev), uuid.b, 1, func,
+-				&argv4);
+-	if (!obj) {
+-		dev_err(wcove->dev, "%s: failed to evaluate _DSM\n", __func__);
+-		return -EIO;
++	if (func == WCOVE_FUNC_ROLE && param == WCOVE_ROLE_DEVICE_NO_VBUS)
++	{
++		/* Disable VBUS_VALID bit to indicate dwc3 about cable disconnection */
++		writel(0x300000, wcove->drd_mux);
+ 	}
++	else
++	{
++		tmp.type = ACPI_TYPE_INTEGER;
++		tmp.integer.value = param;
++
++		obj = acpi_evaluate_dsm(ACPI_HANDLE(wcove->dev), uuid.b, 1, func,
++					&argv4);
++		if (!obj) {
++			dev_err(wcove->dev, "%s: failed to evaluate _DSM\n", __func__);
++			return -EIO;
++		}
+ 
+-	ACPI_FREE(obj);
++		ACPI_FREE(obj);
++	}
+ 	return 0;
+ }
+ 
+@@ -405,7 +417,8 @@ static irqreturn_t  wcove_typec_irq(int irq, void *data)
+ 	if (status1 & USBC_STATUS1_DET_ONGOING)
+ 		goto out;
+ 
+-	if (USBC_STATUS1_RSLT(status1) == USBC_RSLT_NOTHING) {
++	if (USBC_STATUS1_RSLT(status1) == USBC_RSLT_NOTHING ||
++		USBC_STATUS1_RSLT(status1) == USBC_RSLT_SNK) {
+ 		if (wcove->con.partner) {
+ 			typec_disconnect(wcove->port);
+ 			memset(&wcove->con, 0, sizeof(wcove->con));
+@@ -416,7 +429,7 @@ static irqreturn_t  wcove_typec_irq(int irq, void *data)
+ 				 WCOVE_ORIENTATION_NORMAL);
+ 		/* Device mode by default */
+ 		wcove_access_xhci(wcove, true);
+-		wcove_typec_func(wcove, WCOVE_FUNC_ROLE, WCOVE_ROLE_DEVICE);
++		wcove_typec_func(wcove, WCOVE_FUNC_ROLE, WCOVE_ROLE_DEVICE_NO_VBUS);
+ 		wcove_access_xhci(wcove, false);
+ 		/* reset the pd sink state */
+ 		if (wcove->pd_port_num >= 0)
+@@ -475,18 +488,18 @@ static irqreturn_t  wcove_typec_irq(int irq, void *data)
+ 		wcove->con.pwr_opmode = TYPEC_PWR_MODE_3_0A;
+ 		wcove_typec_device_mode(wcove);
+ 		break;
+-	case USBC_RSLT_SNK:
+-		wcove->partner.type = TYPEC_PARTNER_USB;
+-		wcove->con.partner = &wcove->partner;
+-		wcove->con.data_role = TYPEC_HOST;
+-		wcove->con.pwr_role = TYPEC_SOURCE;
+-		wcove->con.vconn_role = TYPEC_SOURCE;
+-		wcove_access_xhci(wcove, true);
+-		wcove_typec_func(wcove, WCOVE_FUNC_ROLE, WCOVE_ROLE_HOST);
+-		wcove_access_xhci(wcove, false);
+-
+-		typec_connect(wcove->port, &wcove->con);
+-		break;
++	// case USBC_RSLT_SNK:
++	// 	wcove->partner.type = TYPEC_PARTNER_USB;
++	// 	wcove->con.partner = &wcove->partner;
++	// 	wcove->con.data_role = TYPEC_HOST;
++	// 	wcove->con.pwr_role = TYPEC_SOURCE;
++	// 	wcove->con.vconn_role = TYPEC_SOURCE;
++	// 	wcove_access_xhci(wcove, true);
++	// 	wcove_typec_func(wcove, WCOVE_FUNC_ROLE, WCOVE_ROLE_HOST);
++	// 	wcove_access_xhci(wcove, false);
++
++	// 	typec_connect(wcove->port, &wcove->con);
++	// 	break;
+ 	case USBC_RSLT_DEBUG_ACC:
+ 		wcove->partner.accessory = TYPEC_ACCESSORY_DEBUG;
+ 		wcove->partner.type = TYPEC_PARTNER_ACCESSORY;
+@@ -549,6 +562,8 @@ static int wcove_typec_probe(struct platform_device *pdev)
+ 	if (IS_ERR(wcove->port))
+ 		return PTR_ERR(wcove->port);
+ 
++	wcove->drd_mux = ioremap(XHCI_MUX, 0x0f);
++
+ 	/* PD receive packet handler */
+ 	wcove->pd_port_num = pd_sink_register_port(&profile,
+ 				wcove_typec_pd_tx_pkt_handler, wcove);
+-- 
+2.7.4
+

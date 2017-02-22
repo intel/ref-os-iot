@@ -1,0 +1,42 @@
+From 077411e5eb8872736fdc5f3e7277719160918dde Mon Sep 17 00:00:00 2001
+From: Vinod Koul <vinod.koul@intel.com>
+Date: Tue, 15 Mar 2016 16:39:26 +0530
+Subject: [PATCH] ASoC: Intel: Skylake: Unmap the address last
+
+In Skylake destructor we unmap the hardware address and then free
+links and streams. The stream free accesses hardware to write to
+registers and predictably causes oops.
+
+So change the order and unmap last in destructor.
+
+Signed-off-by: Jeeja KP <jeeja.kp@intel.com>
+Signed-off-by: Vinod Koul <vinod.koul@intel.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+---
+ sound/soc/intel/skylake/skl.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/sound/soc/intel/skylake/skl.c b/sound/soc/intel/skylake/skl.c
+index 292d51d..6e916c3 100644
+--- a/sound/soc/intel/skylake/skl.c
++++ b/sound/soc/intel/skylake/skl.c
+@@ -316,12 +316,13 @@ static int skl_free(struct hdac_ext_bus *ebus)
+ 
+ 	if (bus->irq >= 0)
+ 		free_irq(bus->irq, (void *)bus);
+-	if (bus->remap_addr)
+-		iounmap(bus->remap_addr);
+-
+ 	snd_hdac_bus_free_stream_pages(bus);
+ 	snd_hdac_stream_free_all(ebus);
+ 	snd_hdac_link_free_all(ebus);
++
++	if (bus->remap_addr)
++		iounmap(bus->remap_addr);
++
+ 	pci_release_regions(skl->pci);
+ 	pci_disable_device(skl->pci);
+ 
+-- 
+2.7.4
+

@@ -1,0 +1,13 @@
+[Unit]
+Description=Getty to run on usb serial
+After=usb-gadget.service
+
+[Service]
+Type=simple
+ExecStart=/sbin/getty -t 999 -L 115200 ttyGS0 vt102
+RemainAfterExit=no
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=usb-gadget.service

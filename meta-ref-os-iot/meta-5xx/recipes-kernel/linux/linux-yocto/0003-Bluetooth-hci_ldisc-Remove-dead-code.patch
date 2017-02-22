@@ -1,0 +1,36 @@
+From 56c435778e24d2e6027c56d5de6499fdffe4c041 Mon Sep 17 00:00:00 2001
+From: Peter Hurley <peter@hurleysoftware.com>
+Date: Fri, 27 Nov 2015 16:39:00 -0500
+Subject: [PATCH 03/15] Bluetooth: hci_ldisc: Remove dead code
+
+The N_HCI ldisc does not define a flush_buffer() ldisc method, so
+the check when opening the ldisc is always false.
+
+Signed-off-by: Peter Hurley <peter@hurleysoftware.com>
+Signed-off-by: Marcel Holtmann <marcel@holtmann.org>
+---
+ drivers/bluetooth/hci_ldisc.c | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+diff --git a/drivers/bluetooth/hci_ldisc.c b/drivers/bluetooth/hci_ldisc.c
+index 96bcec5..c303f87 100644
+--- a/drivers/bluetooth/hci_ldisc.c
++++ b/drivers/bluetooth/hci_ldisc.c
+@@ -461,13 +461,7 @@ static int hci_uart_tty_open(struct tty_struct *tty)
+ 	INIT_WORK(&hu->init_ready, hci_uart_init_work);
+ 	INIT_WORK(&hu->write_work, hci_uart_write_work);
+ 
+-	/* Flush any pending characters in the driver and line discipline. */
+-
+-	/* FIXME: why is this needed. Note don't use ldisc_ref here as the
+-	   open path is before the ldisc is referencable */
+-
+-	if (tty->ldisc->ops->flush_buffer)
+-		tty->ldisc->ops->flush_buffer(tty);
++	/* Flush any pending characters in the driver */
+ 	tty_driver_flush_buffer(tty);
+ 
+ 	return 0;
+-- 
+2.7.4
+

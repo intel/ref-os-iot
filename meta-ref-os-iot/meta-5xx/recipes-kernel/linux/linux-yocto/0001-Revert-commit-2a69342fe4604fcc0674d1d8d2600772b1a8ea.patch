@@ -1,0 +1,74 @@
+From 3d9aef1046ac84a7b9bbc0013168d1e41ae2bbb0 Mon Sep 17 00:00:00 2001
+From: Matti Paasto <matti.paasto@intel.com>
+Date: Tue, 17 Jan 2017 11:33:28 +0200
+Subject: [PATCH] Revert commit 2a69342fe4604fcc0674d1d8d2600772b1a8ea7e BIOS
+ has support for spidev now and hack now needed anymore
+
+Signed-off-by: Matti Paasto <matti.paasto@intel.com>
+---
+ init/main.c | 42 ------------------------------------------
+ 1 file changed, 42 deletions(-)
+
+diff --git a/init/main.c b/init/main.c
+index a1bf350..d191d2a 100644
+--- a/init/main.c
++++ b/init/main.c
+@@ -927,46 +927,6 @@ static int try_to_run_init_process(const char *init_filename)
+ 	return ret;
+ }
+ 
+-#include <linux/spi/spi.h>
+-static struct spi_board_info _spi_board_info[] = {
+-	{
+-		.modalias	= "spidev",
+-		.bus_num	= 32766,
+-		.chip_select	= 0,
+-		.max_speed_hz	= 12000000,
+-	},
+-	{
+-		.modalias	= "spidev",
+-		.bus_num	= 32766,
+-		.chip_select	= 1,
+-		.max_speed_hz	= 12000000,
+-	},
+-	{
+-		.modalias	= "spidev",
+-		.bus_num	= 32765,
+-		.chip_select	= 0,
+-		.max_speed_hz	= 12000000,
+-	},
+-	{
+-		.modalias	= "spidev",
+-		.bus_num	= 32765,
+-		.chip_select	= 1,
+-		.max_speed_hz	= 12000000,
+-	},
+-	{
+-		.modalias	= "spidev",
+-		.bus_num	= 32764,
+-		.chip_select	= 0,
+-		.max_speed_hz	= 12000000,
+-	},
+-	{
+-		.modalias	= "spidev",
+-		.bus_num	= 32764,
+-		.chip_select	= 1,
+-		.max_speed_hz	= 12000000,
+-	},
+-};
+-
+ static noinline void __init kernel_init_freeable(void);
+ 
+ static int __ref kernel_init(void *unused)
+@@ -983,8 +943,6 @@ static int __ref kernel_init(void *unused)
+ 
+ 	flush_delayed_fput();
+ 
+-	spi_register_board_info(_spi_board_info, ARRAY_SIZE(_spi_board_info));
+-
+ 	if (ramdisk_execute_command) {
+ 		ret = run_init_process(ramdisk_execute_command);
+ 		if (!ret)
+-- 
+2.7.4
+

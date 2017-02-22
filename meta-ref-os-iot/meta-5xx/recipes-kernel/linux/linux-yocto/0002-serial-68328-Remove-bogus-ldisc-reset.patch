@@ -1,0 +1,41 @@
+From 4638bab25f0af9e2f41655d5bc97f8449539d4fb Mon Sep 17 00:00:00 2001
+From: Peter Hurley <peter@hurleysoftware.com>
+Date: Sun, 10 Jan 2016 22:40:51 -0800
+Subject: [PATCH 02/15] serial: 68328: Remove bogus ldisc reset
+
+As the #warning indicates, the open-coded ldisc reset was always not ok.
+Not only is this code long dead, but now it would have no effect as
+the ldisc is destroyed when this driver's close() method returns; remove.
+
+Signed-off-by: Peter Hurley <peter@hurleysoftware.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/tty/serial/68328serial.c | 12 +-----------
+ 1 file changed, 1 insertion(+), 11 deletions(-)
+
+diff --git a/drivers/tty/serial/68328serial.c b/drivers/tty/serial/68328serial.c
+index 0140ba4..355f337 100644
+--- a/drivers/tty/serial/68328serial.c
++++ b/drivers/tty/serial/68328serial.c
+@@ -1054,17 +1054,7 @@ static void rs_close(struct tty_struct *tty, struct file * filp)
+ 	tty_ldisc_flush(tty);
+ 	tty->closing = 0;
+ 	tty_port_tty_set(&info->tport, NULL);
+-#warning "This is not and has never been valid so fix it"	
+-#if 0
+-	if (tty->ldisc.num != ldiscs[N_TTY].num) {
+-		if (tty->ldisc.close)
+-			(tty->ldisc.close)(tty);
+-		tty->ldisc = ldiscs[N_TTY];
+-		tty->termios.c_line = N_TTY;
+-		if (tty->ldisc.open)
+-			(tty->ldisc.open)(tty);
+-	}
+-#endif	
++
+ 	if (port->blocked_open) {
+ 		if (port->close_delay)
+ 			msleep_interruptible(jiffies_to_msecs(port->close_delay));
+-- 
+2.7.4
+

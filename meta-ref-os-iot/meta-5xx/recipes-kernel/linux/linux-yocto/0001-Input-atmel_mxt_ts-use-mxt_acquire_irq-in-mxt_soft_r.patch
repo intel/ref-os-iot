@@ -1,0 +1,83 @@
+From 38f914d862cc8d7b23555a9e1eda5f33bd56b486 Mon Sep 17 00:00:00 2001
+From: Nick Dyer <nick.dyer@itdev.co.uk>
+Date: Mon, 25 Apr 2016 14:18:52 -0700
+Subject: [PATCH 1/2] Input: atmel_mxt_ts - use mxt_acquire_irq in
+ mxt_soft_reset
+
+Backport: commit eb43335c409543506dd84b59f5c6bdd35cecf2c7 in upstream
+
+If using IRQF_TRIGGER_FALLING, then there is a race here: if the reset
+completes before we enable the IRQ, then CHG is already low and touch
+will be broken.
+
+This has been seen on Chromebook Pixel 2.
+
+A workaround is to reconfig T18 COMMSCONFIG to enable the RETRIGEN bit
+using mxt-app:
+    mxt-app -W -T18 44
+    mxt-app --backup
+
+Tested-by: Tom Rini <trini@konsulko.com>
+Signed-off-by: Nick Dyer <nick.dyer@itdev.co.uk>
+Signed-off-by: Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/input/touchscreen/atmel_mxt_ts.c | 28 ++++++++++++++--------------
+ 1 file changed, 14 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/input/touchscreen/atmel_mxt_ts.c b/drivers/input/touchscreen/atmel_mxt_ts.c
+index 2d5794e..887020a 100644
+--- a/drivers/input/touchscreen/atmel_mxt_ts.c
++++ b/drivers/input/touchscreen/atmel_mxt_ts.c
+@@ -1092,6 +1092,19 @@ static int mxt_t6_command(struct mxt_data *data, u16 cmd_offset,
+ 	return 0;
+ }
+ 
++static int mxt_acquire_irq(struct mxt_data *data)
++{
++	int error;
++
++	enable_irq(data->irq);
++
++	error = mxt_process_messages_until_invalid(data);
++	if (error)
++		return error;
++
++	return 0;
++}
++
+ static int mxt_soft_reset(struct mxt_data *data)
+ {
+ 	struct device *dev = &data->client->dev;
+@@ -1110,7 +1123,7 @@ static int mxt_soft_reset(struct mxt_data *data)
+ 	/* Ignore CHG line for 100ms after reset */
+ 	msleep(100);
+ 
+-	enable_irq(data->irq);
++	mxt_acquire_irq(data);
+ 
+ 	ret = mxt_wait_for_completion(data, &data->reset_completion,
+ 				      MXT_RESET_TIMEOUT);
+@@ -1465,19 +1478,6 @@ release_mem:
+ 	return ret;
+ }
+ 
+-static int mxt_acquire_irq(struct mxt_data *data)
+-{
+-	int error;
+-
+-	enable_irq(data->irq);
+-
+-	error = mxt_process_messages_until_invalid(data);
+-	if (error)
+-		return error;
+-
+-	return 0;
+-}
+-
+ static int mxt_get_info(struct mxt_data *data)
+ {
+ 	struct i2c_client *client = data->client;
+-- 
+2.7.4
+

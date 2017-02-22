@@ -1,0 +1,41 @@
+From 246ab5235a97e28a68717f3c657e5f7880aff00e Mon Sep 17 00:00:00 2001
+From: Peter Hurley <peter@hurleysoftware.com>
+Date: Sun, 10 Jan 2016 22:40:59 -0800
+Subject: [PATCH 07/15] tty: Fix comments for tty_ldisc_get()
+
+tty_ldisc_get() returns ERR_PTR() values if unsuccessful, not NULL;
+fix function header documentation.
+
+Signed-off-by: Peter Hurley <peter@hurleysoftware.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/tty/tty_ldisc.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/tty/tty_ldisc.c b/drivers/tty/tty_ldisc.c
+index 909cc49..1cdb82d 100644
+--- a/drivers/tty/tty_ldisc.c
++++ b/drivers/tty/tty_ldisc.c
+@@ -140,9 +140,16 @@ static void put_ldops(struct tty_ldisc_ops *ldops)
+  *	@disc: ldisc number
+  *
+  *	Takes a reference to a line discipline. Deals with refcounts and
+- *	module locking counts. Returns NULL if the discipline is not available.
+- *	Returns a pointer to the discipline and bumps the ref count if it is
+- *	available
++ *	module locking counts.
++ *
++ *	Returns: -EINVAL if the discipline index is not [N_TTY..NR_LDISCS] or
++ *			 if the discipline is not registered
++ *		 -EAGAIN if request_module() failed to load or register the
++ *			 the discipline
++ *		 -ENOMEM if allocation failure
++ *
++ *		 Otherwise, returns a pointer to the discipline and bumps the
++ *		 ref count
+  *
+  *	Locking:
+  *		takes tty_ldiscs_lock to guard against ldisc races
+-- 
+2.7.4
+

@@ -1,0 +1,6 @@
+#!/bin/sh
+
+TEMPLATECONF=${TEMPLATECONF:-../meta-ref-os-iot/meta-5xx/conf}
+BITBAKEDIR=${BITBAKEDIR:-./intel-iot-refkit/bitbake}
+
+source mig-init-build-env

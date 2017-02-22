@@ -1,0 +1,149 @@
+From 19abda8a2eeed5a41a32874d33ee24d438003cc5 Mon Sep 17 00:00:00 2001
+From: Peter Hurley <peter@hurleysoftware.com>
+Date: Sun, 10 Jan 2016 22:41:01 -0800
+Subject: [PATCH 09/15] tty: Prepare for destroying line discipline on hangup
+
+tty file_operations (read/write/ioctl) wait for the ldisc reference
+indefinitely (until ldisc lifetime events, such as hangup or TIOCSETD,
+finish). Since hangup now destroys the ldisc and does not instance
+another copy, file_operations must now be prepared to receive a NULL
+ldisc reference from tty_ldisc_ref_wait():
+
+CPU 0                                   CPU 1
+-----                                   -----
+(*f_op->read)() => tty_read()
+                                        __tty_hangup()
+                                        ...
+                                        f_op = &hung_up_tty_fops;
+                                        ...
+                                        tty_ldisc_hangup()
+                                           tty_ldisc_lock()
+                                           tty_ldisc_kill()
+                                              tty->ldisc = NULL
+                                           tty_ldisc_unlock()
+ld = tty_ldisc_ref_wait()
+/* ld == NULL */
+
+Instead, the action taken now is to return the same value as if the
+tty had been hungup a moment earlier:
+
+CPU 0                                   CPU 1
+-----                                   -----
+                                        __tty_hangup()
+                                        ...
+                                        f_op = &hung_up_tty_fops;
+(*f_op->read)() => hung_up_tty_read()
+return 0;
+                                        ...
+                                        tty_ldisc_hangup()
+                                           tty_ldisc_lock()
+                                           tty_ldisc_kill()
+                                              tty->ldisc = NULL
+                                           tty_ldisc_unlock()
+
+Signed-off-by: Peter Hurley <peter@hurleysoftware.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/tty/tty_io.c       | 14 ++++++++++++++
+ drivers/tty/tty_ldisc.c    |  4 ++--
+ drivers/tty/vt/selection.c |  2 ++
+ 3 files changed, 18 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/tty/tty_io.c b/drivers/tty/tty_io.c
+index dd1be88..053dc4e 100644
+--- a/drivers/tty/tty_io.c
++++ b/drivers/tty/tty_io.c
+@@ -1067,6 +1067,8 @@ static ssize_t tty_read(struct file *file, char __user *buf, size_t count,
+ 	/* We want to wait for the line discipline to sort out in this
+ 	   situation */
+ 	ld = tty_ldisc_ref_wait(tty);
++	if (!ld)
++		return hung_up_tty_read(file, buf, count, ppos);
+ 	if (ld->ops->read)
+ 		i = ld->ops->read(tty, file, buf, count);
+ 	else
+@@ -1242,6 +1244,8 @@ static ssize_t tty_write(struct file *file, const char __user *buf,
+ 		printk(KERN_ERR "tty driver %s lacks a write_room method.\n",
+ 			tty->driver->name);
+ 	ld = tty_ldisc_ref_wait(tty);
++	if (!ld)
++		return hung_up_tty_write(file, buf, count, ppos);
+ 	if (!ld->ops->write)
+ 		ret = -EIO;
+ 	else
+@@ -2199,6 +2203,8 @@ static unsigned int tty_poll(struct file *filp, poll_table *wait)
+ 		return 0;
+ 
+ 	ld = tty_ldisc_ref_wait(tty);
++	if (!ld)
++		return hung_up_tty_poll(filp, wait);
+ 	if (ld->ops->poll)
+ 		ret = ld->ops->poll(tty, filp, wait);
+ 	tty_ldisc_deref(ld);
+@@ -2288,6 +2294,8 @@ static int tiocsti(struct tty_struct *tty, char __user *p)
+ 		return -EFAULT;
+ 	tty_audit_tiocsti(tty, ch);
+ 	ld = tty_ldisc_ref_wait(tty);
++	if (!ld)
++		return -EIO;
+ 	ld->ops->receive_buf(tty, &ch, &mbz, 1);
+ 	tty_ldisc_deref(ld);
+ 	return 0;
+@@ -2680,6 +2688,8 @@ static int tiocgetd(struct tty_struct *tty, int __user *p)
+ 	int ret;
+ 
+ 	ld = tty_ldisc_ref_wait(tty);
++	if (!ld)
++		return -EIO;
+ 	ret = put_user(ld->ops->num, p);
+ 	tty_ldisc_deref(ld);
+ 	return ret;
+@@ -2977,6 +2987,8 @@ long tty_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 			return retval;
+ 	}
+ 	ld = tty_ldisc_ref_wait(tty);
++	if (!ld)
++		return hung_up_tty_ioctl(file, cmd, arg);
+ 	retval = -EINVAL;
+ 	if (ld->ops->ioctl) {
+ 		retval = ld->ops->ioctl(tty, file, cmd, arg);
+@@ -3005,6 +3017,8 @@ static long tty_compat_ioctl(struct file *file, unsigned int cmd,
+ 	}
+ 
+ 	ld = tty_ldisc_ref_wait(tty);
++	if (!ld)
++		return hung_up_tty_compat_ioctl(file, cmd, arg);
+ 	if (ld->ops->compat_ioctl)
+ 		retval = ld->ops->compat_ioctl(tty, file, cmd, arg);
+ 	else
+diff --git a/drivers/tty/tty_ldisc.c b/drivers/tty/tty_ldisc.c
+index 840e699..5d3f868 100644
+--- a/drivers/tty/tty_ldisc.c
++++ b/drivers/tty/tty_ldisc.c
+@@ -262,8 +262,8 @@ const struct file_operations tty_ldiscs_proc_fops = {
+  *	against a discipline change, such as an existing ldisc reference
+  *	(which we check for)
+  *
+- *	Note: only callable from a file_operations routine (which
+- *	guarantees tty->ldisc != NULL when the lock is acquired).
++ *	Note: a file_operations routine (read/poll/write) should use this
++ *	function to wait for any ldisc lifetime events to finish.
+  */
+ 
+ struct tty_ldisc *tty_ldisc_ref_wait(struct tty_struct *tty)
+diff --git a/drivers/tty/vt/selection.c b/drivers/tty/vt/selection.c
+index 381a2b1..4dd9dd2 100644
+--- a/drivers/tty/vt/selection.c
++++ b/drivers/tty/vt/selection.c
+@@ -347,6 +347,8 @@ int paste_selection(struct tty_struct *tty)
+ 	console_unlock();
+ 
+ 	ld = tty_ldisc_ref_wait(tty);
++	if (!ld)
++		return -EIO;	/* ldisc was hung up */
+ 	tty_buffer_lock_exclusive(&vc->port);
+ 
+ 	add_wait_queue(&vc->paste_wait, &wait);
+-- 
+2.7.4
+

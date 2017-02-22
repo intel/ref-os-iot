@@ -1,0 +1,180 @@
+From c87c16d2cc0508a235814cf189902301ce63a4d3 Mon Sep 17 00:00:00 2001
+From: Peter Hurley <peter@hurleysoftware.com>
+Date: Sun, 10 Jan 2016 22:41:06 -0800
+Subject: [PATCH 15/15] tty: Destroy ldisc instance on hangup
+
+Currently, when the tty is hungup, the ldisc is re-instanced; ie., the
+current instance is destroyed and a new instance is created. The purpose
+of this design was to guarantee a valid, open ldisc for the lifetime of
+the tty.
+
+However, now that tty buffers are owned by and have lifetime equivalent
+to the tty_port (since v3.10), any data received immediately after the
+ldisc is re-instanced may cause continued driver i/o operations
+concurrently with the driver's hangup() operation. For drivers that
+shutdown h/w on hangup, this is unexpected and usually bad. For example,
+the serial core may free the xmit buffer page concurrently with an
+in-progress write() operation (triggered by echo).
+
+With the existing stable and robust ldisc reference handling, the
+cleaned-up tty_reopen(), the straggling unsafe ldisc use cleaned up, and
+the preparation to properly handle a NULL tty->ldisc, the ldisc instance
+can be destroyed and only re-instanced when the tty is re-opened.
+
+If the tty was opened as /dev/console or /dev/tty0, the original behavior
+of re-instancing the ldisc is retained (the 'reinit' parameter to
+tty_ldisc_hangup() is true). This is required since those file descriptors
+are never hungup.
+
+This patch has neglible impact on userspace; the tty file_operations ptr
+is changed to point to the hungup file operations _before_ the ldisc
+instance is destroyed, so only racing file operations might now retrieve
+a NULL ldisc reference (which is simply handled as if the hungup file
+operation had been called instead -- see "tty: Prepare for destroying
+line discipline on hangup").
+
+This resolves a long-standing FIXME and several crash reports.
+
+Signed-off-by: Peter Hurley <peter@hurleysoftware.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/tty/tty_io.c    | 12 ++++++------
+ drivers/tty/tty_ldisc.c | 40 +++++++++++++++++-----------------------
+ include/linux/tty.h     |  3 ++-
+ 3 files changed, 25 insertions(+), 30 deletions(-)
+
+diff --git a/drivers/tty/tty_io.c b/drivers/tty/tty_io.c
+index 8bc059f..435fc04 100644
+--- a/drivers/tty/tty_io.c
++++ b/drivers/tty/tty_io.c
+@@ -726,7 +726,7 @@ static void __tty_hangup(struct tty_struct *tty, int exit_session)
+ 	while (refs--)
+ 		tty_kref_put(tty);
+ 
+-	tty_ldisc_hangup(tty);
++	tty_ldisc_hangup(tty, cons_filp != NULL);
+ 
+ 	spin_lock_irq(&tty->ctrl_lock);
+ 	clear_bit(TTY_THROTTLED, &tty->flags);
+@@ -751,10 +751,9 @@ static void __tty_hangup(struct tty_struct *tty, int exit_session)
+ 	} else if (tty->ops->hangup)
+ 		tty->ops->hangup(tty);
+ 	/*
+-	 * We don't want to have driver/ldisc interactions beyond
+-	 * the ones we did here. The driver layer expects no
+-	 * calls after ->hangup() from the ldisc side. However we
+-	 * can't yet guarantee all that.
++	 * We don't want to have driver/ldisc interactions beyond the ones
++	 * we did here. The driver layer expects no calls after ->hangup()
++	 * from the ldisc side, which is now guaranteed.
+ 	 */
+ 	set_bit(TTY_HUPPED, &tty->flags);
+ 	tty_unlock(tty);
+@@ -1479,7 +1478,8 @@ static int tty_reopen(struct tty_struct *tty)
+ 
+ 	tty->count++;
+ 
+-	WARN_ON(!tty->ldisc);
++	if (!tty->ldisc)
++		return tty_ldisc_reinit(tty, tty->termios.c_line);
+ 
+ 	return 0;
+ }
+diff --git a/drivers/tty/tty_ldisc.c b/drivers/tty/tty_ldisc.c
+index 40e8b1a..894e5c2 100644
+--- a/drivers/tty/tty_ldisc.c
++++ b/drivers/tty/tty_ldisc.c
+@@ -257,6 +257,9 @@ const struct file_operations tty_ldiscs_proc_fops = {
+  *	reference to it. If the line discipline is in flux then
+  *	wait patiently until it changes.
+  *
++ *	Returns: NULL if the tty has been hungup and not re-opened with
++ *		 a new file descriptor, otherwise valid ldisc reference
++ *
+  *	Note: Must not be called from an IRQ/timer context. The caller
+  *	must also be careful not to hold other locks that will deadlock
+  *	against a discipline change, such as an existing ldisc reference
+@@ -644,14 +647,15 @@ static void tty_reset_termios(struct tty_struct *tty)
+  *	@disc: line discipline to reinitialize
+  *
+  *	Completely reinitialize the line discipline state, by closing the
+- *	current instance and opening a new instance. If an error occurs opening
+- *	the new non-N_TTY instance, the instance is dropped and tty->ldisc reset
+- *	to NULL. The caller can then retry with N_TTY instead.
++ *	current instance, if there is one, and opening a new instance. If
++ *	an error occurs opening the new non-N_TTY instance, the instance
++ *	is dropped and tty->ldisc reset to NULL. The caller can then retry
++ *	with N_TTY instead.
+  *
+  *	Returns 0 if successful, otherwise error code < 0
+  */
+ 
+-static int tty_ldisc_reinit(struct tty_struct *tty, int disc)
++int tty_ldisc_reinit(struct tty_struct *tty, int disc)
+ {
+ 	struct tty_ldisc *ld;
+ 	int retval;
+@@ -695,11 +699,9 @@ static int tty_ldisc_reinit(struct tty_struct *tty, int disc)
+  *	tty itself so we must be careful about locking rules.
+  */
+ 
+-void tty_ldisc_hangup(struct tty_struct *tty)
++void tty_ldisc_hangup(struct tty_struct *tty, bool reinit)
+ {
+ 	struct tty_ldisc *ld;
+-	int reset = tty->driver->flags & TTY_DRIVER_RESET_TERMIOS;
+-	int err = 0;
+ 
+ 	tty_ldisc_debug(tty, "%p: hangup\n", tty->ldisc);
+ 
+@@ -727,25 +729,17 @@ void tty_ldisc_hangup(struct tty_struct *tty)
+ 	 */
+ 	tty_ldisc_lock(tty, MAX_SCHEDULE_TIMEOUT);
+ 
+-	if (tty->ldisc) {
++	if (tty->driver->flags & TTY_DRIVER_RESET_TERMIOS)
++		tty_reset_termios(tty);
+ 
+-		/* At this point we have a halted ldisc; we want to close it and
+-		   reopen a new ldisc. We could defer the reopen to the next
+-		   open but it means auditing a lot of other paths so this is
+-		   a FIXME */
+-		if (reset == 0)
+-			err = tty_ldisc_reinit(tty, tty->termios.c_line);
+-
+-		/* If the re-open fails or we reset then go to N_TTY. The
+-		   N_TTY open cannot fail */
+-		if (reset || err < 0)
+-			tty_ldisc_reinit(tty, N_TTY);
++	if (tty->ldisc) {
++		if (reinit) {
++			if (tty_ldisc_reinit(tty, tty->termios.c_line) < 0)
++				tty_ldisc_reinit(tty, N_TTY);
++		} else
++			tty_ldisc_kill(tty);
+ 	}
+ 	tty_ldisc_unlock(tty);
+-	if (reset)
+-		tty_reset_termios(tty);
+-
+-	tty_ldisc_debug(tty, "%p: re-opened\n", tty->ldisc);
+ }
+ 
+ /**
+diff --git a/include/linux/tty.h b/include/linux/tty.h
+index c35f713..0964e9d 100644
+--- a/include/linux/tty.h
++++ b/include/linux/tty.h
+@@ -498,7 +498,8 @@ extern int tty_set_termios(struct tty_struct *tty, struct ktermios *kt);
+ extern struct tty_ldisc *tty_ldisc_ref(struct tty_struct *);
+ extern void tty_ldisc_deref(struct tty_ldisc *);
+ extern struct tty_ldisc *tty_ldisc_ref_wait(struct tty_struct *);
+-extern void tty_ldisc_hangup(struct tty_struct *tty);
++extern void tty_ldisc_hangup(struct tty_struct *tty, bool reset);
++extern int tty_ldisc_reinit(struct tty_struct *tty, int disc);
+ extern const struct file_operations tty_ldiscs_proc_fops;
+ 
+ extern void tty_wakeup(struct tty_struct *tty);
+-- 
+2.7.4
+

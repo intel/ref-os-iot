@@ -1,0 +1,17 @@
+# LAYER_CONF_VERSION is increased each time build/conf/bblayers.conf
+# changes incompatibly
+LCONF_VERSION = "1"
+
+BBPATH = "${TOPDIR}"
+BBFILES ?= ""
+
+# REF-OS layers
+require ${TOPDIR}/../meta-ref-os-iot/conf/bblayers.conf
+
+# Extra layers
+REF_OS_EXTRA_LAYERS ?= "\
+ ${TOPDIR}/../meta-ref-os-iot/meta-edison \
+"
+
+BBLAYERS += "${REF_OS_EXTRA_LAYERS}"
+BBLAYERS_NON_REMOVABLE += "${REF_OS_EXTRA_LAYERS}"

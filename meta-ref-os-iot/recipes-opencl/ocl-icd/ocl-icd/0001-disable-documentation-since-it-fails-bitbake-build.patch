@@ -1,0 +1,26 @@
+From 39f11b1e271858c3546b12172a3de1782409b739 Mon Sep 17 00:00:00 2001
+From: Tuomas Katila <tuomas.katila@intel.com>
+Date: Wed, 30 Nov 2016 23:50:57 +0200
+Subject: [PATCH] disable documentation since it fails bitbake build
+
+Signed-off-by: Tuomas Katila <tuomas.katila@intel.com>
+---
+ configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configure.ac b/configure.ac
+index 264d6e0..3085fca 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -31,7 +31,7 @@ AC_PROG_LN_S
+ AM_PROG_CC_C_O
+ 
+ AC_PATH_PROG([ASCIIDOC], [asciidoc], [])
+-AC_PATH_PROG([A2X], [a2x], [])
++#AC_PATH_PROG([A2X], [a2x], [])
+ AC_PATH_PROG([XMLTO], [xmlto], [])
+ AM_CONDITIONAL([GEN_DOC], [\
+ 	test x"$ASCIIDOC" != x && \
+-- 
+1.9.1
+

@@ -1,0 +1,2 @@
+ACTION=="add", KERNEL=="0000:00:15.1", SUBSYSTEM=="pci", ATTR{power/control}="auto"
+ACTION=="add", KERNEL=="dwc3.*.auto", SUBSYSTEM=="platform", ATTR{power/control}="auto"

@@ -1,0 +1,31 @@
+From 39678da180cbf2c710adbc1b46f89f5c48e08c5a Mon Sep 17 00:00:00 2001
+From: Peter Hurley <peter@hurleysoftware.com>
+Date: Sun, 10 Jan 2016 22:41:00 -0800
+Subject: [PATCH 08/15] tty: Fix comments for tty_ldisc_release()
+
+tty_ldisc_kill() sets tty->ldisc to NULL; _not_ to N_TTY with a valid
+but unopened ldisc. Fix function header documentation.
+
+Signed-off-by: Peter Hurley <peter@hurleysoftware.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/tty/tty_ldisc.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/drivers/tty/tty_ldisc.c b/drivers/tty/tty_ldisc.c
+index 1cdb82d..840e699 100644
+--- a/drivers/tty/tty_ldisc.c
++++ b/drivers/tty/tty_ldisc.c
+@@ -775,8 +775,7 @@ static void tty_ldisc_kill(struct tty_struct *tty)
+  *	@tty: tty being shut down (or one end of pty pair)
+  *
+  *	Called during the final close of a tty or a pty pair in order to shut
+- *	down the line discpline layer. On exit, each ldisc assigned is N_TTY and
+- *	each ldisc has not been opened.
++ *	down the line discpline layer. On exit, each tty's ldisc is NULL.
+  */
+ 
+ void tty_ldisc_release(struct tty_struct *tty)
+-- 
+2.7.4
+

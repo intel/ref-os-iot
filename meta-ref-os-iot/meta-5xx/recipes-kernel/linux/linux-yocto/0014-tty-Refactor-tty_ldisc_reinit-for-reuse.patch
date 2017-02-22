@@ -1,0 +1,105 @@
+From 814fbd9ad75405464db0ca04ef19e679557a1a15 Mon Sep 17 00:00:00 2001
+From: Peter Hurley <peter@hurleysoftware.com>
+Date: Sun, 10 Jan 2016 22:41:05 -0800
+Subject: [PATCH 14/15] tty: Refactor tty_ldisc_reinit() for reuse
+
+At tty hangup, the line discipline instance is reinitialized by
+closing the current ldisc instance and opening a new instance.
+This operation is complicated by error recovery: if the attempt
+to reinit the current line discipline fails, the line discipline
+is reset to N_TTY (which should not but can fail).
+
+Re-purpose tty_ldisc_reinit() to return a valid, open line discipline
+instance, or otherwise, an error.
+
+Signed-off-by: Peter Hurley <peter@hurleysoftware.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/tty/tty_ldisc.c | 53 +++++++++++++++++++++++++++++--------------------
+ 1 file changed, 31 insertions(+), 22 deletions(-)
+
+diff --git a/drivers/tty/tty_ldisc.c b/drivers/tty/tty_ldisc.c
+index c5582f9..40e8b1a 100644
+--- a/drivers/tty/tty_ldisc.c
++++ b/drivers/tty/tty_ldisc.c
+@@ -643,26 +643,41 @@ static void tty_reset_termios(struct tty_struct *tty)
+  *	@tty: tty to reinit
+  *	@disc: line discipline to reinitialize
+  *
+- *	Switch the tty to a line discipline and leave the ldisc
+- *	state closed
++ *	Completely reinitialize the line discipline state, by closing the
++ *	current instance and opening a new instance. If an error occurs opening
++ *	the new non-N_TTY instance, the instance is dropped and tty->ldisc reset
++ *	to NULL. The caller can then retry with N_TTY instead.
++ *
++ *	Returns 0 if successful, otherwise error code < 0
+  */
+ 
+ static int tty_ldisc_reinit(struct tty_struct *tty, int disc)
+ {
+-	struct tty_ldisc *ld = tty_ldisc_get(tty, disc);
++	struct tty_ldisc *ld;
++	int retval;
+ 
+-	if (IS_ERR(ld))
+-		return -1;
++	ld = tty_ldisc_get(tty, disc);
++	if (IS_ERR(ld)) {
++		BUG_ON(disc == N_TTY);
++		return PTR_ERR(ld);
++	}
+ 
+-	tty_ldisc_close(tty, tty->ldisc);
+-	tty_ldisc_put(tty->ldisc);
+-	/*
+-	 *	Switch the line discipline back
+-	 */
++	if (tty->ldisc) {
++		tty_ldisc_close(tty, tty->ldisc);
++		tty_ldisc_put(tty->ldisc);
++	}
++
++	/* switch the line discipline */
+ 	tty->ldisc = ld;
+ 	tty_set_termios_ldisc(tty, disc);
+-
+-	return 0;
++	retval = tty_ldisc_open(tty, tty->ldisc);
++	if (retval) {
++		if (!WARN_ON(disc == N_TTY)) {
++			tty_ldisc_put(tty->ldisc);
++			tty->ldisc = NULL;
++		}
++	}
++	return retval;
+ }
+ 
+ /**
+@@ -718,19 +733,13 @@ void tty_ldisc_hangup(struct tty_struct *tty)
+ 		   reopen a new ldisc. We could defer the reopen to the next
+ 		   open but it means auditing a lot of other paths so this is
+ 		   a FIXME */
+-		if (reset == 0) {
++		if (reset == 0)
++			err = tty_ldisc_reinit(tty, tty->termios.c_line);
+ 
+-			if (!tty_ldisc_reinit(tty, tty->termios.c_line))
+-				err = tty_ldisc_open(tty, tty->ldisc);
+-			else
+-				err = 1;
+-		}
+ 		/* If the re-open fails or we reset then go to N_TTY. The
+ 		   N_TTY open cannot fail */
+-		if (reset || err) {
+-			BUG_ON(tty_ldisc_reinit(tty, N_TTY));
+-			WARN_ON(tty_ldisc_open(tty, tty->ldisc));
+-		}
++		if (reset || err < 0)
++			tty_ldisc_reinit(tty, N_TTY);
+ 	}
+ 	tty_ldisc_unlock(tty);
+ 	if (reset)
+-- 
+2.7.4
+

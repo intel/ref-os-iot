@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<ThermalConfiguration>
+        <Platform>
+                <Name>_TRT export</Name>
+                <ProductName>Broxton M          </ProductName>
+                <Preference>QUIET</Preference>
+                <ThermalZones>
+                        <ThermalZone>
+                                <Type>SEN0</Type>
+                                <TripPoints>
+                                                <TripPoint>
+                                                        <SensorType>SEN0</SensorType>
+                                                        <Temperature>*</Temperature>
+                                                        <type>passive</type>
+                                                        <ControlType>SEQUENTIAL</ControlType>
+                                                        <CoolingDevice>
+                                                                <type>TCHG</type>
+                                                                <influence>100</influence>
+                                                                <SamplingPeriod>75</SamplingPeriod>
+                                                        </CoolingDevice>
+                                                </TripPoint>
+                                </TripPoints>
+                        </ThermalZone>
+                        <ThermalZone>
+                                <Type>PNIT</Type>
+                                <TripPoints>
+                                                        <TripPoint>
+                                                                <SensorType>PNIT</SensorType>
+                                                                <Temperature>*</Temperature>
+                                                                <type>passive</type>
+                                                                <ControlType>SEQUENTIAL</ControlType>
+                                                                <CoolingDevice>
+                                                                        <index>1</index>
+                                                                        <type>rapl_controller</type>
+                                                                        <influence> 50 </influence>
+                                                                        <SamplingPeriod> 10 </SamplingPeriod>
+                                                                </CoolingDevice>
+                                                                <CoolingDevice>
+                                                                        <index>2</index>
+                                                                        <type>intel_powerclamp</type>
+                                                                        <influence> 40 </influence>
+                                                                        <SamplingPeriod> 10 </SamplingPeriod>
+                                                                </CoolingDevice>
+                                                                <CoolingDevice>
+                                                                        <index>3</index>
+                                                                        <type>cpufreq</type>
+                                                                        <influence> 30 </influence>
+                                                                        <SamplingPeriod> 8 </SamplingPeriod>
+                                                                </CoolingDevice>
+                                                                <CoolingDevice>
+                                                                        <index>4</index>
+                                                                        <type>Processor</type>
+                                                                        <influence> 20 </influence>
+                                                                        <SamplingPeriod> 5 </SamplingPeriod>
+                                                                </CoolingDevice>
+                                                        </TripPoint>
+                                </TripPoints>
+                        </ThermalZone>
+                        <ThermalZone>
+                                <Type>cpu</Type>
+                                <TripPoints>
+                                                        <TripPoint>
+                                                                <SensorType>cpu</SensorType>
+                                                                <Temperature>*</Temperature>
+                                                                <type>passive</type>
+                                                        </TripPoint>
+                                                        <TripPoint>
+                                                                <SensorType>cpu</SensorType>
+                                                                <Temperature>*</Temperature>
+                                                                <type>max</type>
+                                                        </TripPoint>
+                                </TripPoints>
+                        </ThermalZone>
+                </ThermalZones>
+        </Platform>
+</ThermalConfiguration>
+

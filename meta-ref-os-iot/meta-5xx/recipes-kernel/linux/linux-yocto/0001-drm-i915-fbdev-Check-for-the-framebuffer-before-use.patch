@@ -1,0 +1,83 @@
+From 475abc610344f78cc9a6d08addc81ac72a8ecafd Mon Sep 17 00:00:00 2001
+From: Chris Wilson <chris@chris-wilson.co.uk>
+Date: Wed, 13 Jul 2016 18:34:45 +0100
+Subject: [PATCH] drm/i915/fbdev: Check for the framebuffer before use
+
+Commit: c45eb4fed12d278d3619f1904885bd0d7bcbf036 in upstream
+
+If the fbdev probing fails, and in our error path we fail to clear the
+dev_priv->fbdev, then we can try and use a dangling fbdev pointer, and
+in particular a NULL fb. This could also happen in pathological cases
+where we try to operate on the fbdev prior to it being probed.
+
+Reported-by: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
+Signed-off-by: Chris Wilson <chris@chris-wilson.co.uk>
+Cc: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
+Cc: Daniel Vetter <daniel.vetter@ffwll.ch>
+Cc: Mika Kuoppala <mika.kuoppala@intel.com>
+Link: http://patchwork.freedesktop.org/patch/msgid/1468431285-28264-2-git-send-email-chris@chris-wilson.co.uk
+Reviewed-by: Daniel Vetter <daniel.vetter@ffwll.ch>
+Reviewed-by: Mika Kuoppala <mika.kuoppala@intel.com>
+(cherry picked from commit 6bc265424df02f8162f4a17a37e4982e1c64460e)
+Signed-off-by: Jani Nikula <jani.nikula@intel.com>
+Signed-off-by: Jari Nippula <jari.nippula@intel.com>
+---
+ drivers/gpu/drm/i915/intel_fbdev.c | 24 +++++++++++-------------
+ 1 file changed, 11 insertions(+), 13 deletions(-)
+
+diff --git a/drivers/gpu/drm/i915/intel_fbdev.c b/drivers/gpu/drm/i915/intel_fbdev.c
+index ab8d09a..5fb93db9 100644
+--- a/drivers/gpu/drm/i915/intel_fbdev.c
++++ b/drivers/gpu/drm/i915/intel_fbdev.c
+@@ -764,7 +764,7 @@ void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous
+ 	struct intel_fbdev *ifbdev = dev_priv->fbdev;
+ 	struct fb_info *info;
+ 
+-	if (!ifbdev)
++	if (!ifbdev || !ifbdev->fb)
+ 		return;
+ 
+ 	info = ifbdev->helper.fbdev;
+@@ -809,29 +809,27 @@ void intel_fbdev_set_suspend(struct drm_device *dev, int state, bool synchronous
+ 
+ void intel_fbdev_output_poll_changed(struct drm_device *dev)
+ {
+-	struct drm_i915_private *dev_priv = dev->dev_private;
+-	if (dev_priv->fbdev)
+-		drm_fb_helper_hotplug_event(&dev_priv->fbdev->helper);
++	struct intel_fbdev *ifbdev = to_i915(dev)->fbdev;
++
++	if (ifbdev && ifbdev->fb)
++		drm_fb_helper_hotplug_event(&ifbdev->helper);
+ }
+ 
+ void intel_fbdev_restore_mode(struct drm_device *dev)
+ {
+-	int ret;
+-	struct drm_i915_private *dev_priv = dev->dev_private;
+-	struct intel_fbdev *ifbdev = dev_priv->fbdev;
+-	struct drm_fb_helper *fb_helper;
++	struct intel_fbdev *ifbdev = to_i915(dev)->fbdev;
+ 
+ 	if (!ifbdev)
+ 		return;
+ 
+-	fb_helper = &ifbdev->helper;
++	if (!ifbdev->fb)
++		return;
+ 
+-	ret = drm_fb_helper_restore_fbdev_mode_unlocked(fb_helper);
+-	if (ret) {
++	if (drm_fb_helper_restore_fbdev_mode_unlocked(&ifbdev->helper)) {
+ 		DRM_DEBUG("failed to restore crtc mode\n");
+ 	} else {
+-		mutex_lock(&fb_helper->dev->struct_mutex);
++		mutex_lock(&dev->struct_mutex);
+ 		intel_fb_obj_invalidate(ifbdev->fb->obj, ORIGIN_GTT);
+-		mutex_unlock(&fb_helper->dev->struct_mutex);
++		mutex_unlock(&dev->struct_mutex);
+ 	}
+ }
+-- 
+2.7.4
+

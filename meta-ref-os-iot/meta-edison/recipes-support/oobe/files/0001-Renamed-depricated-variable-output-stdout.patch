@@ -1,0 +1,44 @@
+From 3dd8dc796383bbae9df4f6ae785a00ff9fb71aed Mon Sep 17 00:00:00 2001
+From: Evgeny Kalugin <evgeny.kalugin@intel.com>
+Date: Sat, 14 Jan 2017 21:49:15 +0200
+Subject: [PATCH] Renamed depricated variable output->stdout
+
+Signed-off-by: Evgeny Kalugin <evgeny.kalugin@intel.com>
+---
+ src/server.js | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/server.js b/src/server.js
+index 5d90c51..db79f7c 100644
+--- a/src/server.js
++++ b/src/server.js
+@@ -346,7 +346,7 @@ function inWhiteList(path) {
+     return false;
+   // if shell command succeeds and in host AP mode
+   var result = shell.exec('configure_edison --showWiFiMode', {silent:true});
+-  if ((result.code != 0) || (result.output.trim() === "Master")) {
++  if ((result.code != 0) || (result.stdout.trim() === "Master")) {
+     return true;
+   }
+   return WHITELIST_PATHS[path] || WHITELIST_CMDS[path];
+@@ -374,7 +374,7 @@ function requestHandler(req, res) {
+     res.setHeader('Access-Control-Allow-Origin', '*');
+ 
+     var result = shell.exec('configure_edison --showWiFiMode', {silent:true});
+-    if ((result.code != 0) || (result.output.trim() != "Master")) {
++    if ((result.code != 0) || (result.stdout.trim() != "Master")) {
+       var res_str = fs.readFileSync(site + '/status.html', {encoding: 'utf8'});
+       var myhostname, myipaddr;
+       exec('configure_edison --showWiFiIP', function (error, stdout, stderr) {
+@@ -436,7 +436,7 @@ exec('configure_edison --showNames', function (error, stdout, stderr) {
+         }
+       });
+       var result = shell.exec('configure_edison --isRestartWithAPSet', {silent:true});
+-      if ((result.code != 0) || (result.output.trim() === "True")) {
++      if ((result.code != 0) || (result.stdout.trim() === "True")) {
+         exec('configure_edison --enableOneTimeSetup', function (error, stdout, stderr) {
+           if (error) {
+             console.log("Error starting out-of-box-experience.");
+-- 
+2.7.4
+

@@ -1,0 +1,196 @@
+From 3a7bce890454cb57a002e4c519f2acfd17a7332e Mon Sep 17 00:00:00 2001
+From: Scott D Phillips <scott.d.phillips@intel.com>
+Date: Thu, 2 Feb 2017 14:20:06 -0800
+Subject: [PATCH 1/2] HACK: add dmabuf-alloc-tiled property
+
+Original patch received from:
+Scott D Phillips <scott.d.phillips@intel.com>
+
+Please note that this hack must be removed once proper
+support for NV12 tiled buffers is upstreamed.
+
+Signed-off-by: Soren Friis <soren.friis@intel.com>
+---
+ gst/vaapi/gstvaapiencode.c     | 17 ++++++++++++++++-
+ gst/vaapi/gstvaapipluginbase.c |  3 +++
+ gst/vaapi/gstvaapipluginbase.h |  1 +
+ gst/vaapi/gstvaapipostproc.c   | 14 ++++++++++++++
+ gst/vaapi/gstvaapisink.c       | 13 +++++++++++++
+ 5 files changed, 47 insertions(+), 1 deletion(-)
+
+diff --git a/gst/vaapi/gstvaapiencode.c b/gst/vaapi/gstvaapiencode.c
+index 4a7c64f..d217cd3 100644
+--- a/gst/vaapi/gstvaapiencode.c
++++ b/gst/vaapi/gstvaapiencode.c
+@@ -49,7 +49,7 @@ GST_VAAPI_PLUGIN_BASE_DEFINE_SET_CONTEXT (gst_vaapiencode_parent_class);
+ enum
+ {
+   PROP_0,
+-
++  PROP_DMABUF_ALLOC_TILED,
+   PROP_BASE,
+ };
+ 
+@@ -163,6 +163,11 @@ gst_vaapiencode_default_get_property (GstVaapiEncode * encode, guint prop_id,
+     g_value_copy (&prop_value->value, value);
+     return TRUE;
+   }
++  if (prop_id == PROP_DMABUF_ALLOC_TILED) {
++    GstVaapiPluginBase *const plugin = GST_VAAPI_PLUGIN_BASE (encode);
++    g_value_set_boolean (value, plugin->dmabuf_alloc_tiled);
++    return TRUE;
++  }
+   return FALSE;
+ }
+ 
+@@ -176,6 +181,11 @@ gst_vaapiencode_default_set_property (GstVaapiEncode * encode, guint prop_id,
+     g_value_copy (value, &prop_value->value);
+     return TRUE;
+   }
++  if (prop_id == PROP_DMABUF_ALLOC_TILED) {
++    GstVaapiPluginBase *plugin = GST_VAAPI_PLUGIN_BASE (encode);
++    plugin->dmabuf_alloc_tiled = g_value_get_boolean (value);
++    return TRUE;
++  }
+   return FALSE;
+ }
+ 
+@@ -837,6 +847,11 @@ gst_vaapiencode_class_init_properties (GstVaapiEncodeClass * klass)
+   GPtrArray *const props = get_properties (klass);
+   guint i;
+ 
++  g_object_class_install_property (object_class, PROP_DMABUF_ALLOC_TILED,
++      g_param_spec_boolean ("dmabuf-alloc-tiled", "dma-buf Alloc Tiled",
++          "Allocate tiled memory for dma-buf export", FALSE,
++          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
+   if (!props)
+     return FALSE;
+ 
+diff --git a/gst/vaapi/gstvaapipluginbase.c b/gst/vaapi/gstvaapipluginbase.c
+index 7e7a443..d5a821f 100644
+--- a/gst/vaapi/gstvaapipluginbase.c
++++ b/gst/vaapi/gstvaapipluginbase.c
+@@ -249,6 +249,8 @@ gst_vaapi_plugin_base_init (GstVaapiPluginBase * plugin,
+   if (!(GST_OBJECT_FLAGS (plugin) & GST_ELEMENT_FLAG_SINK))
+     plugin->srcpad = gst_element_get_static_pad (GST_ELEMENT (plugin), "src");
+   gst_video_info_init (&plugin->srcpad_info);
++
++  plugin->dmabuf_alloc_tiled = FALSE;
+ }
+ 
+ void
+@@ -513,6 +515,7 @@ ensure_sinkpad_allocator (GstVaapiPluginBase * plugin, GstCaps * caps,
+   if (has_dmabuf_capable_peer (plugin, plugin->sinkpad)) {
+     plugin->sinkpad_allocator =
+         gst_vaapi_dmabuf_allocator_new (plugin->display, &vinfo,
++        plugin->dmabuf_alloc_tiled ? 0 :
+         GST_VAAPI_SURFACE_ALLOC_FLAG_LINEAR_STORAGE);
+     goto bail;
+   }
+diff --git a/gst/vaapi/gstvaapipluginbase.h b/gst/vaapi/gstvaapipluginbase.h
+index 9526d8f..0990d94 100644
+--- a/gst/vaapi/gstvaapipluginbase.h
++++ b/gst/vaapi/gstvaapipluginbase.h
+@@ -144,6 +144,7 @@ struct _GstVaapiPluginBase
+   GstCaps *allowed_raw_caps;
+   GstAllocator *sinkpad_allocator;
+   GstAllocator *srcpad_allocator;
++  gboolean dmabuf_alloc_tiled;
+ };
+ 
+ struct _GstVaapiPluginBaseClass
+diff --git a/gst/vaapi/gstvaapipostproc.c b/gst/vaapi/gstvaapipostproc.c
+index e2afea8..646bcba 100644
+--- a/gst/vaapi/gstvaapipostproc.c
++++ b/gst/vaapi/gstvaapipostproc.c
+@@ -117,6 +117,7 @@ enum
+   PROP_CONTRAST,
+   PROP_SCALE_METHOD,
+   PROP_SKIN_TONE_ENHANCEMENT,
++  PROP_DMABUF_ALLOC_TILED,
+ };
+ 
+ #define GST_VAAPI_TYPE_DEINTERLACE_MODE \
+@@ -1466,6 +1467,10 @@ gst_vaapipostproc_set_property (GObject * object,
+       postproc->skintone_enhance = g_value_get_boolean (value);
+       postproc->flags |= GST_VAAPI_POSTPROC_FLAG_SKINTONE;
+       break;
++    case PROP_DMABUF_ALLOC_TILED:
++      GST_VAAPI_PLUGIN_BASE (postproc)->dmabuf_alloc_tiled =
++          g_value_get_boolean (value);
++      break;
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+       break;
+@@ -1526,6 +1531,10 @@ gst_vaapipostproc_get_property (GObject * object,
+     case PROP_SKIN_TONE_ENHANCEMENT:
+       g_value_set_boolean (value, postproc->skintone_enhance);
+       break;
++    case PROP_DMABUF_ALLOC_TILED:
++      g_value_set_boolean (value,
++          GST_VAAPI_PLUGIN_BASE (postproc)->dmabuf_alloc_tiled);
++      break;
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+       break;
+@@ -1753,6 +1762,11 @@ gst_vaapipostproc_class_init (GstVaapiPostprocClass * klass)
+     g_object_class_install_property (object_class,
+         PROP_SKIN_TONE_ENHANCEMENT, filter_op->pspec);
+ 
++  g_object_class_install_property (object_class, PROP_DMABUF_ALLOC_TILED,
++      g_param_spec_boolean ("dmabuf-alloc-tiled", "dma-buf Alloc Tiled",
++          "Allocate tiled memory for dma-buf export", TRUE,
++          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
++
+   g_ptr_array_unref (filter_ops);
+ }
+ 
+diff --git a/gst/vaapi/gstvaapisink.c b/gst/vaapi/gstvaapisink.c
+index 7c8caff..57ed6b4 100644
+--- a/gst/vaapi/gstvaapisink.c
++++ b/gst/vaapi/gstvaapisink.c
+@@ -132,6 +132,7 @@ enum
+   PROP_BRIGHTNESS,
+   PROP_CONTRAST,
+   PROP_SIGNAL_HANDOFFS,
++  PROP_DMABUF_ALLOC_TILED,
+ 
+   N_PROPERTIES
+ };
+@@ -1580,6 +1581,10 @@ gst_vaapisink_set_property (GObject * object,
+     case PROP_CONTRAST:
+       cb_set_gvalue (sink, (prop_id - PROP_HUE) + CB_HUE, value);
+       break;
++    case PROP_DMABUF_ALLOC_TILED:
++      GST_VAAPI_PLUGIN_BASE (sink)->dmabuf_alloc_tiled =
++          g_value_get_boolean (value);
++      break;
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+       break;
+@@ -1621,6 +1626,10 @@ gst_vaapisink_get_property (GObject * object,
+       g_value_set_float (value, cb_get_value (sink,
+               (prop_id - PROP_HUE) + CB_HUE));
+       break;
++    case PROP_DMABUF_ALLOC_TILED:
++      g_value_set_boolean (value,
++          GST_VAAPI_PLUGIN_BASE (sink)->dmabuf_alloc_tiled);
++      break;
+     default:
+       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+       break;
+@@ -1863,6 +1872,10 @@ gst_vaapisink_class_init (GstVaapiSinkClass * klass)
+       "The display contrast value", 0.0, 2.0, 1.0,
+       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT);
+ 
++  g_properties[PROP_DMABUF_ALLOC_TILED] =
++      g_param_spec_boolean ("dmabuf-alloc-tiled", "dma-buf Alloc Tiled",
++      "Allocate tiled memory for dma-buf export", FALSE,
++      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+   g_object_class_install_properties (object_class, N_PROPERTIES, g_properties);
+ 
+   /**
+-- 
+2.7.4
+

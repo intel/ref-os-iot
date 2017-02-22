@@ -1,0 +1,3 @@
+polkitd:x:27:27::/:/bin/false
+avahi:x:28:28::/:/bin/false
+_apt:x:29:29::/:/bin/false
