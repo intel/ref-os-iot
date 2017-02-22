@@ -1,0 +1,44 @@
+From d540e439a803a3c45fd4535a402a7d17f3bdada9 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?V=C3=ADctor=20Manuel=20J=C3=A1quez=20Leal?=
+ <vjaquez@igalia.com>
+Date: Wed, 8 Feb 2017 19:54:00 +0100
+Subject: [PATCH] JPEG Encoder: support vaQuerySurfaceAttributes() pixel format
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+When querying the surface attributes, using the JPEG encoder
+(profile VAProfileJPEGBaseline, entrypoint VAEntrypointEncPicture)
+the function doesn't return the available VASurfaceAttribPixelFormat
+because it is not considered in the driver's code.
+
+This patch returns the default pixel formats for encoders entry
+points.
+
+This error was reported in
+https://bugzilla.gnome.org/show_bug.cgi?id=775490
+
+Fixes #38
+
+Signed-off-by: Víctor Manuel Jáquez Leal <vjaquez@igalia.com>
+---
+ src/i965_drv_video.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/i965_drv_video.c b/src/i965_drv_video.c
+index 4aaadf6..9f84b0e 100644
+--- a/src/i965_drv_video.c
++++ b/src/i965_drv_video.c
+@@ -5845,7 +5845,8 @@ i965_QuerySurfaceAttributes(VADriverContextP ctx,
+             }
+         } else if (obj_config->entrypoint == VAEntrypointEncSlice ||  /* encode */
+                    obj_config->entrypoint == VAEntrypointVideoProc ||
+-                   obj_config->entrypoint == VAEntrypointEncSliceLP) {
++                   obj_config->entrypoint == VAEntrypointEncSliceLP ||
++                   obj_config->entrypoint == VAEntrypointEncPicture) {
+ 
+             if (obj_config->profile == VAProfileHEVCMain10) {
+                 attribs[i].type = VASurfaceAttribPixelFormat;
+-- 
+2.7.4
+
