@@ -1,0 +1,7 @@
+[Match]
+Name=usb0
+
+[Network]
+Address=192.168.2.15/24
+LinkLocalAddressing=no
+
