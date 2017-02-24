@@ -346,3 +346,4 @@ dpkg@core
 apt@core
 package-index@core
 usbutils@core
+readtty@ref-os-iot

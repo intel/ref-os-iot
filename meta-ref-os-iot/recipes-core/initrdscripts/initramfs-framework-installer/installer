@@ -11,6 +11,18 @@ DST_DISK=
 # rootfs partition of the installation media
 SRC_PARTITION="/dev/disk/by-partuuid/`echo $bootparam_root | cut -d'=' -f2`"
 
+echotty() {
+    echo $1
+    echo $1 > /dev/tty1
+}
+
+echottynlb() {
+    echo -n $1
+    echo -n $1 > /dev/tty1
+}
+
+
+
 installer_enabled() {
     if [ -n "$bootparam_installer" ]; then
         return 0
@@ -33,24 +45,24 @@ installer_run() {
         return 0
     fi
 
-    echo "Welcome to Reference Linux OS for IoT installer!"
-    echo ""
-    echo "-----------------------------------------------------------------------------"
-    echo "| THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,            |"
-    echo "| EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES            |"
-    echo "| OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  |"
-    echo "| IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY       |"
-    echo "| CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,       |"
-    echo "| TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE |"
-    echo "| OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                              |"
-    echo "-----------------------------------------------------------------------------"
-    echo ""
-    echo -n "Would you like to install the system onto eMMC [y/N]: "
-    read -t 15 -n 1 answer || echo "Got no answer."
+    echotty "Welcome to Reference Linux OS for IoT installer!"
+    echotty ""
+    echotty "-----------------------------------------------------------------------------"
+    echotty "| THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,            |"
+    echotty "| EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES            |"
+    echotty "| OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  |"
+    echotty "| IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY       |"
+    echotty "| CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,       |"
+    echotty "| TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE |"
+    echotty "| OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                              |"
+    echotty "-----------------------------------------------------------------------------"
+    echotty ""
+    echottynlb "Would you like to install the system onto eMMC [y/N]: "
+    answer="$(readtty 15)"
     echo ""
     [ "$answer" = "" ] && answer="n"
     if [ "$answer" != "Y" -a "$answer" != "y" ]; then
-        echo "Installation aborted! Boot to live system..."
+        echotty "Installation aborted! Boot to live system..."
     else
         install_onto_emmc
     fi
@@ -66,10 +78,11 @@ installer_failed () {
         exit 0
     fi
 
-    echo "Installation failed"
+    echotty "Installation failed"
     while true; do
-        echo "[R]eboot/[S]hell?"
-        read answer
+        echotty "[R]eboot/[S]hell?"
+        anwer="$(readtty)"
+        #read answer
         case $answer in
             [rR]) echo b > /proc/sysrq-trigger;;
             [sS]) while true; do /bin/sh; done
@@ -113,7 +126,7 @@ populate_vfat() {
 }
 
 install_onto_emmc() {
-    echo "Installing..."
+    echotty "Installing..."
     set -x
     local pnum=0
     local gdisk_pnum=1
@@ -121,8 +134,8 @@ install_onto_emmc() {
 
     if [ -s /rootfs/etc/machine-id ]; then
         set +x
-        echo "The USB-stick has been booted at least once and looks tainted. Installer skipped!"
-        echo "Press any key to boot from the USB-stick"
+        echotty "The USB-stick has been booted at least once and looks tainted. Installer skipped!"
+        echotty "Press any key to boot from the USB-stick"
         read -s -n 1 answer
         return 0
     fi
@@ -166,9 +179,10 @@ install_onto_emmc() {
     done
 
     set +x
-    echo "Done."
-    echo "Press any key to reboot"
-    read -s -n 1 answer
+    echotty "Done."
+    echotty "Press any key to reboot"
+    #read -s -n 1 answer
+    answer="$(readtty)"
     # Do reboot
     echo b > /proc/sysrq-trigger
 }
@@ -178,7 +192,7 @@ read_settings() {
     local disk=
 
     while [ ! -b $SRC_PARTITION ]; do
-        echo "Waiting for installation media is fully initialized..."
+        echotty "Waiting for installation media is fully initialized..."
         sleep 1
     done
 
@@ -226,14 +240,14 @@ find_emmc_disk() {
         disk="${mmc_prefix}${i}"
         rpmb_part="${disk}${rpmb_suffix}"
         if [ -b ${rpmb_part} ]; then
-            echo "Here's the eMMC: ${disk}"
+            echotty "Here's the eMMC: ${disk}"
             DST_DISK=$disk
 	    return 0
         fi
     done
 
     if [ -z $DST_DISK ]; then
-        echo "ERROR: no eMMC found!"
+        echotty "ERROR: no eMMC found!"
         exit 1
     fi
 }

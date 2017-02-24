@@ -1,7 +1,7 @@
 SUMMARY = "Installer module for the modular initramfs system"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384361b4de20420"
-RDEPENDS_${PN} = "initramfs-framework-base gptfdisk dosfstools rsync e2fsprogs"
+RDEPENDS_${PN} = "initramfs-framework-base gptfdisk dosfstools rsync e2fsprogs readtty"
 
 SRC_URI = " \
     file://installer \
