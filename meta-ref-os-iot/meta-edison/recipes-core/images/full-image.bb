@@ -18,6 +18,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      mosquitto \
      wpa-supplicant \
      intel-xdk \
+     intel-xdk-support \
 "
 
 IMAGE_FEATURES += " \

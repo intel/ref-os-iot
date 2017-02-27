@@ -19,6 +19,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      pulseaudio \
      sensors \
      text-utils \
+     intel-xdk-support \
 "
 
 IMAGE_FEATURES += " \

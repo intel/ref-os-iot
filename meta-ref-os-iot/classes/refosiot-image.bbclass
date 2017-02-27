@@ -39,7 +39,12 @@ FEATURE_PACKAGES_upm = "upm"
 FEATURE_PACKAGES_ofono = "ofono"
 FEATURE_PACKAGES_mosquitto = "mosquitto-dev mosquitto-clients"
 FEATURE_PACKAGES_wpa-supplicant = "wpa-supplicant"
-FEATURE_PACKAGES_intel-xdk ="xdk-daemon avahi-daemon avahi-utils nss nodejs-npm"
+# XDK daemon and the support packages needed. These are teo separate items
+# as for 5xx we don't need the daemon, where as edison needs it. This is because
+# existing edison releases had the OOB which improves the OOB experience.
+FEATURE_PACKAGES_intel-xdk ="xdk-daemon"
+FEATURE_PACKAGES_intel-xdk-support ="avahi-daemon avahi-utils nss nodejs-npm"
+
 FEATURE_PACKAGES_dev-packages ="libjpeg-turbo-dev opencv-dev gdb"
 
 # Taken from old refkit
