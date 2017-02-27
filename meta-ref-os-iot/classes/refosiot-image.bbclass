@@ -54,6 +54,8 @@ FEATURE_PACKAGES_app-framework = " \
 FEATURE_PACKAGES_java-jdk = "packagegroup-java-jdk"
 FEATURE_PACKAGES_ssh-server-openssh_append = " openssh-sftp-server"
 
+FEATURE_PACKAGES_mraa-full = "mraa-dev mraa-doc"
+
 PACKAGECONFIG_append_pn-alsa-utils = " udev"
 
 IMAGE_INSTALL_append = "\

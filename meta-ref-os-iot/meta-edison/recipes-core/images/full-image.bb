@@ -19,6 +19,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      wpa-supplicant \
      intel-xdk \
      intel-xdk-support \
+     mraa-full \
 "
 
 IMAGE_FEATURES += " \
