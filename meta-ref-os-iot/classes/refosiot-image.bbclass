@@ -35,7 +35,6 @@ FEATURE_PACKAGES_arduino-support = " \
 "
 FEATURE_PACKAGES_pam = "libpam"
 FEATURE_PACKAGES_omp = "libgomp"
-FEATURE_PACKAGES_upm = "upm"
 FEATURE_PACKAGES_ofono = "ofono"
 FEATURE_PACKAGES_mosquitto = "mosquitto-dev mosquitto-clients"
 FEATURE_PACKAGES_wpa-supplicant = "wpa-supplicant"
@@ -54,7 +53,7 @@ FEATURE_PACKAGES_app-framework = " \
 FEATURE_PACKAGES_java-jdk = "packagegroup-java-jdk"
 FEATURE_PACKAGES_ssh-server-openssh_append = " openssh-sftp-server"
 
-FEATURE_PACKAGES_mraa-full = "mraa-dev mraa-doc"
+FEATURE_PACKAGES_mraa-dev-support = "mraa-dev mraa-doc"
 
 PACKAGECONFIG_append_pn-alsa-utils = " udev"
 

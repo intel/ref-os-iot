@@ -10,7 +10,6 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      nodejs-runtime-wo-soletta \
      pam \
      omp \
-     upm \
      alsa \
      pulseaudio \
      ofono \
@@ -19,7 +18,8 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      wpa-supplicant \
      intel-xdk \
      intel-xdk-support \
-     mraa-full \
+     sensors \
+     mraa-dev-support \
 "
 
 IMAGE_FEATURES += " \
