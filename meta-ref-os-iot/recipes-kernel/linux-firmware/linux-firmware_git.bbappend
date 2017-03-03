@@ -9,6 +9,7 @@ FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
 SRC_URI += "\
             file://1a98-INTEL-EDK2-2-tplg.bin \
+            file://iwlwifi-8000C-27.ucode \
             file://LICENSE.1a98-INTEL-EDK2-2-tplg;subdir=git/ \
 "
 
@@ -21,6 +22,6 @@ LIC_FILES_CHKSUM += "file://LICENSE.1a98-INTEL-EDK2-2-tplg;md5=4e63f629d461663f6
 
 do_install_append() {
 	cp -r ${WORKDIR}/1a98-INTEL-EDK2-2-tplg.bin ${D}/lib/firmware/
+	cp -r ${WORKDIR}/iwlwifi-8000C-27.ucode ${D}/lib/firmware/
 	cp -r ${S}/LICENSE.1a98-INTEL-EDK2-2-tplg ${D}/lib/firmware/
-        rm ${D}/lib/firmware/iwlwifi-8000C-22.ucode
 }
