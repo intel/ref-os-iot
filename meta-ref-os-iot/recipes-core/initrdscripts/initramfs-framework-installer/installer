@@ -45,7 +45,7 @@ installer_run() {
         return 0
     fi
 
-    echotty "Welcome to Reference Linux OS for IoT installer!"
+    echotty "Welcome to Reference OS for IoT installer!"
     echotty ""
     echotty "-----------------------------------------------------------------------------"
     echotty "| THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,            |"
