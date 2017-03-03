@@ -347,3 +347,4 @@ apt@core
 package-index@core
 usbutils@core
 readtty@ref-os-iot
+5xx-comms-leds@5xx
