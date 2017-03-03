@@ -25,7 +25,6 @@ SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/iwlwifi/backport-iwlwif
 SRC_URI += " \
 	file://iwlwifi.conf \
 	file://0001-Forklift-compat-crypto-ccm.c-from-core-19.patch \
-        file://0001-Modify-the-WIFI-config-to-enable-the-Runtime-Power-M.patch \
 "
 
 SRCREV = "${AUTOREV}"
