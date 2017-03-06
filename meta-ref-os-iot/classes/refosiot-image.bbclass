@@ -6,7 +6,16 @@ FEATURE_PACKAGES_xfce-ui = "packagegroup-xfce-base"
 FEATURE_PACKAGES_usb-gadget-networking = "usbgadget"
 FEATURE_PACKAGES_opencv = "opencv"
 FEATURE_PACKAGES_opencl = "packagegroup-opencl"
-FEATURE_PACKAGES_realsense = "packagegroup-realsense packagegroup-librealsense"
+FEATURE_PACKAGES_realsense = "\
+			   realsense-sdk \
+			   realsense-persontracking \
+			   realsense-projectionopt \
+			   realsense-objectrecognition \
+			   realsense-slam \
+			   librealsense \
+			   librealsense-dev \
+			   librealsense-graphical-examples \
+			   "
 FEATURE_PACKAGES_ros = "packagegroup-ros-comm rosinit"
 FEATURE_PACKAGES_multimedia = "\
 			    gstreamer1.0-plugins-base \

@@ -33,12 +33,6 @@ DEPENDS_remove_pn-libgphoto2 = "libexif"
 
 # Remove dependency with some gstreamer plugins, based on code review
 
-# Remove speex codec
-DEPENDS_remove_pn-gst-plugins-good = "speex"
-DEPENDS_remove_pn-pulseaudio = "speexdsp"
-PACKAGECONFIG_remove_pn-alsa-plugins = "speexdsp"
-EXTRA_OECONF_append_pn-pulseaudio = " --without-speex"
-
 # Remove libogg and dependent codecs (flac, vorbis and theora)
 PNBLACKLIST[libogg] ?= "Removed due to review"
 PNBLACKLIST[libvorbis] ?= "Removed due to dependency to libogg"
@@ -48,6 +42,7 @@ DEPENDS_remove_pn-gstreamer1 = "libtheora"
 DEPENDS_remove_pn-gstreamer1.0-plugins-base = "libtheora"
 PACKAGECONFIG_remove_pn-gstreamer1.0-plugins-base = "ogg"
 PACKAGECONFIG_remove_pn-gstreamer1.0-plugins-base = "vorbis"
+DEPENDS_remove_pn-speex = "libogg"
 
 # Remove dependencies to libogg from libsndfile1 
 DEPENDS_remove_pn-libsndfile1 = "libogg"

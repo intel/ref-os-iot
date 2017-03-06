@@ -7,9 +7,6 @@
 [submodule "meta-java"]
 	path = meta-ref-os-iot/meta-common/meta-java
 	url = http://git.yoctoproject.org/git/meta-java
-[submodule "meta-intel-realsense"]
-	path = meta-ref-os-iot/meta-common/meta-intel-realsense
-	url = git://github.com/IntelRealSense/meta-intel-realsense.git
 [submodule "meta-clang"]
 	path = meta-ref-os-iot/meta-common/meta-clang
 	url = git://github.com/kraj/meta-clang.git
