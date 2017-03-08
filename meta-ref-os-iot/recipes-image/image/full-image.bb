@@ -11,6 +11,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      opencv \
      opencl \
      realsense \
+     realsense-dev \
      multimedia \
      iotivity \
      python-runtime \

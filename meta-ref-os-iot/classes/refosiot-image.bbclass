@@ -13,9 +13,15 @@ FEATURE_PACKAGES_realsense = "\
 			   realsense-objectrecognition \
 			   realsense-slam \
 			   librealsense \
+			   "
+FEATURE_PACKAGES_realsense-dev = "\
+			   realsense-persontracking-dev \
+			   realsense-projectionopt-dev \
+			   realsense-objectrecognition-dev \
+			   realsense-slam-dev \
 			   librealsense-dev \
 			   librealsense-graphical-examples \
-			   "
+"
 FEATURE_PACKAGES_ros = "packagegroup-ros-comm rosinit"
 FEATURE_PACKAGES_multimedia = "\
 			    gstreamer1.0-plugins-base \
