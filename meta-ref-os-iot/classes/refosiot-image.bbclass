@@ -27,7 +27,7 @@ FEATURE_PACKAGES_nodejs-runtime-wo-soletta = "iotivity-node node-mraa"
 FEATURE_PACKAGES_alsa = "alsa-lib alsa-plugins alsa-utils"
 FEATURE_PACKAGES_vnc = "x11vnc"
 FEATURE_PACKAGES_text-utils = "gedit nano"
-FEATURE_PACKAGES_test-utils = "fwts"
+FEATURE_PACKAGES_test-utils = "glmark2 fwts"
 FEATURE_PACKAGES_pulseaudio = " \
 			    pulseaudio-server \
 			    pulseaudio-module-bluetooth-discover \
