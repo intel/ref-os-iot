@@ -35,4 +35,5 @@ SRC_URI_append = " file://0001-Enable-autosuspend-after-dwc3_resume.patch"
 SRC_URI_append = " file://0002-Type-c-in-DEVICE-mode-if-not-connection.patch"
 SRC_URI_append = " file://0001-Workaround-for-dwc3-suspend-issue.patch"
 SRC_URI_append = " file://0001-Bluetooth-add-LED-trigger-for-indicating-HCI-is-powe.patch"
+SRC_URI_append = " file://kernel_dynamic_debug.cfg"
 
