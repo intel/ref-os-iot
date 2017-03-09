@@ -1,0 +1,40 @@
+From ff8304c5a5f0756cfe739e75e0ccc58fc58e9ea1 Mon Sep 17 00:00:00 2001
+From: Tuomas Katila <tuomas.katila@intel.com>
+Date: Thu, 9 Mar 2017 11:31:34 +0200
+Subject: [PATCH] fix compilation with flex 2.6.2
+
+Signed-off-by: Tuomas Katila <tuomas.katila@intel.com>
+---
+ src/acpica/source/compiler/dtparser.l | 2 +-
+ src/acpica/source/compiler/prparser.l | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/acpica/source/compiler/dtparser.l b/src/acpica/source/compiler/dtparser.l
+index 30a0ba6..a014947 100644
+--- a/src/acpica/source/compiler/dtparser.l
++++ b/src/acpica/source/compiler/dtparser.l
+@@ -192,7 +192,7 @@ DtInitLexer (
+     char                    *String)
+ {
+ 
+-    LexBuffer = yy_scan_string (String);
++    LexBuffer = DtParser_scan_string (String);
+     return (LexBuffer == NULL);
+ }
+ 
+diff --git a/src/acpica/source/compiler/prparser.l b/src/acpica/source/compiler/prparser.l
+index 7c2677d..b5cee4c 100644
+--- a/src/acpica/source/compiler/prparser.l
++++ b/src/acpica/source/compiler/prparser.l
+@@ -209,7 +209,7 @@ PrInitLexer (
+     char                    *String)
+ {
+ 
+-    LexBuffer = yy_scan_string (String);
++    LexBuffer = PrParser_scan_string (String);
+     return (LexBuffer == NULL);
+ }
+ 
+-- 
+2.7.4
+
