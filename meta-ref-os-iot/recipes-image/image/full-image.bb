@@ -1,4 +1,4 @@
-include base-image.bb
+require ../../recipes-image/image/base-image.bb
 
 SUMMARY = "Ref OS IOT  image for local builds with swupd disabled."
 DESCRIPTION = "Ref OS IOT image with everything"

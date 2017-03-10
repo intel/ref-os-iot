@@ -77,10 +77,6 @@ FEATURE_PACKAGES_mraa-dev-support = "mraa-dev mraa-doc"
 
 PACKAGECONFIG_append_pn-alsa-utils = " udev"
 
-IMAGE_INSTALL_append = "\
-    ${MACHINE_EXTRA_RDEPENDS} \
-"
-
 DSK_IMAGE_LAYOUT = ' \
 { \
     "gpt_initial_offset_mb": 3, \

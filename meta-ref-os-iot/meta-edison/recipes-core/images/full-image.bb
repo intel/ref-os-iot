@@ -1,4 +1,4 @@
-include base-image.bb
+require ../../../recipes-image/image/base-image.bb
 
 DESCRIPTION = "A fully functional image to run EDISON"
 LICENSE = "MIT"
