@@ -55,6 +55,11 @@ FEATURE_PACKAGES_intel-xdk-support ="avahi-daemon avahi-utils nss nodejs-npm"
 
 FEATURE_PACKAGES_dev-packages ="libjpeg-turbo-dev opencv-dev gdb"
 
+FEATURE_PACKAGES_bluetooth-tools =" \
+                               bluez5-noinst-tools \
+                               bluez5-obex \
+                               bluez5-testtools  \
+"
 # Taken from old refkit
 FEATURE_PACKAGES_app-framework = " \
 	packagegroup-app-framework \
