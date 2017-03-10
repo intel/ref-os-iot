@@ -1,0 +1,28 @@
+From 8c7369f87f25554d826e32a53c7d2bf8382d2043 Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Mon, 13 Mar 2017 12:37:07 +0200
+Subject: [PATCH] Disable library test suite building
+
+The library test suite requires BLAS and boost libraries, disable it for now
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 6a88c41..856fc68 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -18,7 +18,7 @@ cmake_minimum_required(VERSION 2.8)
+ 
+ #User toggle-able options that can be changed on the command line with -D
+ option( BUILD_RUNTIME "Build the BLAS runtime library" ON )
+-option( BUILD_TEST "Build the library testing suite (dependency on google test, Boost, and ACML/NETLIB BLAS)" ON )
++option( BUILD_TEST "Build the library testing suite (dependency on google test, Boost, and ACML/NETLIB BLAS)" OFF )
+ option( BUILD_PERFORMANCE "Copy the performance scripts that can measure and graph performance" OFF )
+ option( BUILD_SAMPLE "Build the sample programs" OFF )
+ option( BUILD_CLIENT "Build a command line clBLAS client program with a variety of configurable parameters (dependency on Boost)" OFF )
+-- 
+2.7.4
+

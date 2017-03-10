@@ -347,3 +347,4 @@ package-index@core
 usbutils@core
 readtty@ref-os-iot
 5xx-comms-leds@5xx
+clBLAS@ref-os-iot

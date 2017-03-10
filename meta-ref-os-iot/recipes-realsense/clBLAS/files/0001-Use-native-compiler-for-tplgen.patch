@@ -1,0 +1,28 @@
+From d657fd9e1c07bdcb05b2c24f4e43a96214404e01 Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Tue, 14 Mar 2017 21:32:24 +0200
+Subject: [PATCH] Use native compiler for tplgen
+
+The tplgen is used on the host while compiling, so don't use cross-compiler
+for this
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ library/tools/tplgen/CMakeLists.txt | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/library/tools/tplgen/CMakeLists.txt b/library/tools/tplgen/CMakeLists.txt
+index a33e992..5047644 100644
+--- a/library/tools/tplgen/CMakeLists.txt
++++ b/library/tools/tplgen/CMakeLists.txt
+@@ -18,3 +18,7 @@ cmake_minimum_required(VERSION 2.6)
+ project(tplgen C CXX)
+ ADD_DEFINITIONS(/D_CRT_SECURE_NO_WARNINGS)
+ ADD_EXECUTABLE(tplgen tplgen.cpp)
++
++SET(CMAKE_CXX_COMPILER /usr/bin/g++)
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --sysroot=/" CACHE INTERNAL "" FORCE)
++set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} --sysroot=/" CACHE INTERNAL "" FORCE)
+-- 
+2.7.4
+

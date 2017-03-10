@@ -1,0 +1,38 @@
+From c9b4e1d4614e18bb5e1d138bb37bd11425175ba2 Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Fri, 10 Mar 2017 18:12:04 +0200
+Subject: [PATCH] Set cmake paths for begnet opencv libraries
+
+clBLAS' cmake scripts can't find the beignet libraries because
+of their location and names. This fixes the FindOpenCL.cmake
+for beignet in ref-os-iot environment.
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ FindOpenCL.cmake | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/FindOpenCL.cmake b/FindOpenCL.cmake
+index 9810dd2..b721c44 100644
+--- a/FindOpenCL.cmake
++++ b/FindOpenCL.cmake
+@@ -109,7 +109,7 @@ endif( )
+ 
+ if( LIB64 )
+   find_library( OPENCL_LIBRARIES
+-    NAMES OpenCL
++    NAMES cl
+     HINTS
+       ${OPENCL_ROOT}/lib
+       $ENV{OPENCL_ROOT}/lib
+@@ -119,6 +119,7 @@ if( LIB64 )
+     PATH_SUFFIXES x86_64 x64 x86_64/sdk
+     PATHS
+     /usr/lib
++    /usr/lib/beignet
+     /usr/local/cuda/lib
+   )
+ else( )
+-- 
+2.7.4
+
