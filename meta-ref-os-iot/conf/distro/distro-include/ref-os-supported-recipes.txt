@@ -348,3 +348,4 @@ usbutils@core
 readtty@ref-os-iot
 5xx-comms-leds@5xx
 clBLAS@ref-os-iot
+libjpeg-turbo8@ref-os-iot
