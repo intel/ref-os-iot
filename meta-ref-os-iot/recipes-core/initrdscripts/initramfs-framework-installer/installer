@@ -38,6 +38,15 @@ installer_run() {
 
     # Wait until kernel spits out all pending messages
     sleep 2
+    mount -t $bootparam_rootfstype -o ro $SRC_PARTITION /rootfs
+
+    if [ -s /rootfs/etc/machine-id ]; then
+        set +x
+        echotty "The USB-stick has been booted at least once and looks tainted. Installer skipped!"
+        umount /rootfs
+        set +e
+        return 0
+    fi
 
     if [ "xno" = "x${SETTINGS_INTERACTIVE}" ]; then
         install_onto_emmc
@@ -57,8 +66,8 @@ installer_run() {
     echotty "| OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                              |"
     echotty "-----------------------------------------------------------------------------"
     echotty ""
-    echottynlb "Would you like to install the system onto eMMC [y/N]: "
-    answer="$(readtty 15)"
+    echottynlb "Would you like to install the system onto eMMC [Y/N]: "
+    answer="$(readtty)"
     echo ""
     [ "$answer" = "" ] && answer="n"
     if [ "$answer" != "Y" -a "$answer" != "y" ]; then
@@ -130,15 +139,6 @@ install_onto_emmc() {
     set -x
     local pnum=0
     local gdisk_pnum=1
-    mount -t $bootparam_rootfstype -o ro $SRC_PARTITION /rootfs
-
-    if [ -s /rootfs/etc/machine-id ]; then
-        set +x
-        echotty "The USB-stick has been booted at least once and looks tainted. Installer skipped!"
-        echotty "Press any key to boot from the USB-stick"
-        read -s -n 1 answer
-        return 0
-    fi
 
     find_emmc_disk
 
