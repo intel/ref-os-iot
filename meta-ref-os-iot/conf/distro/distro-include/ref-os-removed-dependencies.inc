@@ -34,8 +34,6 @@ DEPENDS_remove_pn-libgphoto2 = "libexif"
 # Remove dependency with some gstreamer plugins, based on code review
 
 # Remove libogg and dependent codecs (flac, vorbis and theora)
-PNBLACKLIST[libogg] ?= "Removed due to review"
-PNBLACKLIST[libvorbis] ?= "Removed due to dependency to libogg"
 PNBLACKLIST[libtheora] ?= "Removed due to dependency to libogg"
 DEPENDS_remove_pn-gst-plugins-base = "libogg"
 DEPENDS_remove_pn-gstreamer1 = "libtheora"
