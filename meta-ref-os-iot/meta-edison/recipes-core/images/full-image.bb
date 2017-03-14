@@ -23,6 +23,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      tools-debug \
      tools-develop \
      misc-tools \
+     paho-mqtt \
 "
 
 IMAGE_FEATURES += " \

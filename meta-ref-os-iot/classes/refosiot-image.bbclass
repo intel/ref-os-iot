@@ -76,6 +76,11 @@ FEATURE_PACKAGES_misc-tools =" \
                                tcpdump \
                                sudo \
 "
+FEATURE_PACKAGES_paho-mqtt =" \
+                             paho-mqtt \
+                             paho-mqtt-dev \
+                             python-paho-mqtt \
+"
 # Taken from old refkit
 FEATURE_PACKAGES_app-framework = " \
 	packagegroup-app-framework \

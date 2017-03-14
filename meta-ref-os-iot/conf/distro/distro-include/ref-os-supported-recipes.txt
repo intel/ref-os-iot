@@ -356,3 +356,5 @@ lsof@core
 parted@core
 crashlog@ref-os-iot
 tcpdump@networking-layer
+paho-mqtt@ref-os-iot
+python-paho-mqtt@meta-python
