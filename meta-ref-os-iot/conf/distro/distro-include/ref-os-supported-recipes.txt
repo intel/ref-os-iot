@@ -326,7 +326,7 @@ libsodium@openembedded-layer
 linux-yocto-edison@edison
 mcu-fw-bin@edison
 mcu-fw-load@edison
-mosquitto@edison
+mosquitto@ref-os-iot
 oobe@edison
 post-install@edison
 pwr-button-handler@edison
