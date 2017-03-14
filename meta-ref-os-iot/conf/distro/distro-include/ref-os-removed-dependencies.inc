@@ -54,3 +54,5 @@ CFLAG_remove_pn-openssl = "-DHAVE_CRYPTODEV"
 
 # Remove dependency to mbedtls
 SRC_URI_remove_pn-iotivity = "${url_mbedtls};name=mbedtls;destsuffix=${S}/extlibs/mbedtls/mbedtls;protocol=http"
+# Remove dependency to sysfsutils
+DEPENDS_remove_pn-bridge-utils = "sysfsutils"

@@ -66,6 +66,16 @@ FEATURE_PACKAGES_bluetooth-tools =" \
                                bluez5-obex \
                                bluez5-testtools  \
 "
+# Misc tools for end user
+FEATURE_PACKAGES_misc-tools =" \
+                               bridge-utils \
+                               ethtool \
+                               lsof \
+                               libnl-cli \
+                               parted \
+                               tcpdump \
+                               sudo
+"
 # Taken from old refkit
 FEATURE_PACKAGES_app-framework = " \
 	packagegroup-app-framework \

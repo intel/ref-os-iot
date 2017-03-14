@@ -22,6 +22,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      mraa-dev-support \
      tools-debug \
      tools-develop \
+     misc-tools \
 "
 
 IMAGE_FEATURES += " \

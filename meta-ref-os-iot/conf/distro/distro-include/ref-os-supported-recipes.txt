@@ -349,3 +349,10 @@ readtty@ref-os-iot
 5xx-comms-leds@5xx
 clBLAS@ref-os-iot
 libjpeg-turbo8@ref-os-iot
+bridge-utils@networking-layer
+cleanjournal@ref-os-iot
+ethtool@core
+lsof@core
+parted@core
+crashlog@ref-os-iot
+tcpdump@networking-layer
