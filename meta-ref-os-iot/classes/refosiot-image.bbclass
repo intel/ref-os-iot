@@ -74,7 +74,7 @@ FEATURE_PACKAGES_misc-tools =" \
                                libnl-cli \
                                parted \
                                tcpdump \
-                               sudo
+                               sudo \
 "
 # Taken from old refkit
 FEATURE_PACKAGES_app-framework = " \
