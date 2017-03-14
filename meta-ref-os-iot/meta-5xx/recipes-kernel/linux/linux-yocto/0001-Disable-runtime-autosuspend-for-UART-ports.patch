@@ -1,0 +1,34 @@
+From 9d28923399ae986362021c2a94698716bd9c95ac Mon Sep 17 00:00:00 2001
+From: Alexander Tereschenko <aleksandr.v.tereschenko@intel.com>
+Date: Tue, 14 Mar 2017 21:23:48 +0200
+Subject: [PATCH] Disable runtime suspend for UART ports
+
+Upstream-status: inappropriate (workaround)
+
+This disables runtime autosuspend for UART devices
+as there's currently no way to wake them up properly
+without reinitialization. This is a temporary fix,
+while we are working out a longer-term solution.
+
+JIRA: https://jira01.devtools.intel.com/browse/GT-1262
+Signed-off-by: Alexander Tereschenko <aleksandr.v.tereschenko@intel.com>
+---
+ drivers/tty/serial/8250/8250_dw.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/tty/serial/8250/8250_dw.c b/drivers/tty/serial/8250/8250_dw.c
+index c3b6edf..e5f62b1 100644
+--- a/drivers/tty/serial/8250/8250_dw.c
++++ b/drivers/tty/serial/8250/8250_dw.c
+@@ -474,7 +474,7 @@ static int dw8250_probe(struct platform_device *pdev)
+ 	platform_set_drvdata(pdev, data);
+ 
+ 	pm_runtime_use_autosuspend(&pdev->dev);
+-	pm_runtime_set_autosuspend_delay(&pdev->dev, 5000);
++	pm_runtime_set_autosuspend_delay(&pdev->dev, -1);
+ 
+ 	pm_runtime_set_active(&pdev->dev);
+ 	pm_runtime_enable(&pdev->dev);
+-- 
+2.7.4
+
