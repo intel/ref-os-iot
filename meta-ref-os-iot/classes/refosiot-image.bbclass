@@ -15,6 +15,7 @@ FEATURE_PACKAGES_realsense = "\
 			   librealsense \
 			   "
 FEATURE_PACKAGES_realsense-dev = "\
+			   realsense-sdk-dev \
 			   realsense-persontracking-dev \
 			   realsense-projectionopt-dev \
 			   realsense-objectrecognition-dev \

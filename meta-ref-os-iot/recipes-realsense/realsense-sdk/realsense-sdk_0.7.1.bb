@@ -9,20 +9,9 @@ SRC_URI[sha256sum]="a8aac4b046e2bd856ae1c5a2104732ee2eed78b5e12f7336754222902711
 
 DEPENDS="librealsense log4cxx gtest iotivity opencv lz4"
 RDEPENDS_${PN}= "librealsense opencv gtest"
-RDEPENDS_${PN}-dev= " ${PN}-staticdev"
 
 PR = "r0"
 
 inherit pkgconfig cmake
 
 S = "${WORKDIR}/realsense_sdk-${PV}/sdk"
-
-PACKAGES = "${PN} ${PN}-dev ${PN}-staticdev ${PN}-dbg"
-
-FILES_${PN}+=" \
-                /usr/lib/librs_log_utils.so \
-                /usr/lib/librs_max_depth_value_module.so \
-                /usr/lib/librs_projection.so \
-             "
-
-
