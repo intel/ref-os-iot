@@ -14,28 +14,14 @@ declare -a mmcdevices=("mmcblk0" "mmcblk1")
 
 start()
 {
-    mmcdevice=""
-    for i in "${mmcdevices[@]}"
-    do
-        if [ -f /sys/block/$i/device/type ]; then
-            if grep -xq SD "/sys/block/$i/device/type"; then
-                mmcdevice=$i
-                break
-            fi
-        fi
-    done
     modprobe configfs
     modprobe libcomposite
     sleep 1
     mkdir -p /sys/kernel/config/usb_gadget/g1
     mkdir -p /sys/kernel/config/usb_gadget/g1/configs/c.1
-    if [ ! -z "$mmcdevice" ]; then
-        mkdir -p /sys/kernel/config/usb_gadget/g1/functions/mass_storage.0
-        echo "/dev/$mmcdevice" > /sys/kernel/config/usb_gadget/g1/functions/mass_storage.0/lun.0/file
-        ln -s /sys/kernel/config/usb_gadget/g1/functions/mass_storage.0 /sys/kernel/config/usb_gadget/g1/configs/c.1
-    fi
     mkdir -p /sys/kernel/config/usb_gadget/g1/functions/acm.GS0
     mkdir -p /sys/kernel/config/usb_gadget/g1/functions/ecm.usb0
+    mkdir -p /sys/kernel/config/usb_gadget/g1/functions/mtp.GS0
     mkdir -p /sys/kernel/config/usb_gadget/g1/configs/c.1/strings/0x409
     mkdir -p /sys/kernel/config/usb_gadget/g1/strings/0x409
     echo "${idVendor}" > /sys/kernel/config/usb_gadget/g1/idVendor
@@ -46,8 +32,11 @@ start()
     echo "${host_mac}" > /sys/kernel/config/usb_gadget/g1/functions/ecm.usb0/host_addr
     echo "${dev_mac}" > /sys/kernel/config/usb_gadget/g1/functions/ecm.usb0/dev_addr
     echo "${configuration}" > /sys/kernel/config/usb_gadget/g1/configs/c.1/strings/0x409/configuration
+    echo 1 > /sys/kernel/config/usb_gadget/g1/os_desc/use
+    echo "MTP" > /sys/kernel/config/usb_gadget/g1/functions/mtp.GS0/os_desc/interface.MTP/compatible_id
     ln -s /sys/kernel/config/usb_gadget/g1/functions/acm.GS0 /sys/kernel/config/usb_gadget/g1/configs/c.1
     ln -s /sys/kernel/config/usb_gadget/g1/functions/ecm.usb0 /sys/kernel/config/usb_gadget/g1/configs/c.1
+    ln -s /sys/kernel/config/usb_gadget/g1/functions/mtp.GS0 /sys/kernel/config/usb_gadget/g1/configs/c.1
     echo $(ls /sys/class/udc) > /sys/kernel/config/usb_gadget/g1/UDC
     sleep 1
     ifconfig usb0 "${dev_ip}" netmask 255.255.255.0
@@ -61,7 +50,7 @@ stop()
     ifconfig usb0 down
     unlink /sys/kernel/config/usb_gadget/g1/configs/c.1/acm.GS0
     unlink /sys/kernel/config/usb_gadget/g1/configs/c.1/ecm.usb0
-    unlink /sys/kernel/config/usb_gadget/g1/configs/c.1/mass_storage.0
+    unlink /sys/kernel/config/usb_gadget/g1/configs/c.1/mtp.GS0
     exit 0
 }
 

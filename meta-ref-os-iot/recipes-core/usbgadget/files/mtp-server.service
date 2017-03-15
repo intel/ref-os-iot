@@ -1,0 +1,13 @@
+[Unit]
+Description=MTP-server over USB
+After=usb-gadget.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/mtp-server
+RemainAfterExit=no
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=usb-gadget.service

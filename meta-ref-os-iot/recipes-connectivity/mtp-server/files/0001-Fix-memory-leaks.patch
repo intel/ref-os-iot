@@ -1,0 +1,119 @@
+From c3376210f24ca3173bac4ca6ad0143326cd44484 Mon Sep 17 00:00:00 2001
+From: Matti Paasto <matti.paasto@intel.com>
+Date: Wed, 15 Mar 2017 11:30:54 +0200
+Subject: [PATCH] Fix memory leaks
+
+Signed-off-by: Matti Paasto <matti.paasto@intel.com>
+---
+ libusbhost/src/usbhost.c   |  6 ++++--
+ server/UbuntuMtpDatabase.h | 15 ++++++---------
+ server/server.cpp          |  1 +
+ src/MtpProperty.cpp        |  2 +-
+ 4 files changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/libusbhost/src/usbhost.c b/libusbhost/src/usbhost.c
+index f0b6c21..1fba85d 100644
+--- a/libusbhost/src/usbhost.c
++++ b/libusbhost/src/usbhost.c
+@@ -170,7 +170,7 @@ void usb_host_run(struct usb_host_context *context,
+                   void *client_data)
+ {
+     struct inotify_event* event;
+-    char event_buf[512];
++    char event_buf[513];
+     char path[100];
+     int i, ret, done = 0;
+     int wd, wdd, wds[10];
+@@ -199,7 +199,9 @@ void usb_host_run(struct usb_host_context *context,
+         done |= discovery_done_cb(client_data);
+ 
+     while (!done) {
+-        ret = read(context->fd, event_buf, sizeof(event_buf));
++        ret = read(context->fd, event_buf, sizeof(event_buf)-1);
++        if (ret >= 0)
++            event_buf[ret] = '\0';
+         if (ret >= (int)sizeof(struct inotify_event)) {
+             event = (struct inotify_event *)event_buf;
+             wd = event->wd;
+diff --git a/server/UbuntuMtpDatabase.h b/server/UbuntuMtpDatabase.h
+index 29bd315..811ac92 100644
+--- a/server/UbuntuMtpDatabase.h
++++ b/server/UbuntuMtpDatabase.h
+@@ -349,7 +349,7 @@ public:
+ 
+         stream_desc.assign(inotify_fd);
+ 
+-	db = std::map<MtpObjectHandle, DbEntry>();
++        db = std::map<MtpObjectHandle, DbEntry>();
+ 
+         notifier_thread = boost::thread(&UbuntuMtpDatabase::read_more_notify,
+                                        this);
+@@ -362,6 +362,7 @@ public:
+         notifier_thread.detach();
+         io_service_thread.join();
+         close(inotify_fd);
++        std::map<MtpObjectHandle, DbEntry>::iterator itr = db.begin();
+     }
+ 
+     virtual void addStoragePath(const MtpString& path,
+@@ -680,7 +681,8 @@ public:
+                         LOG(ERROR) << "Cannot read packet";
+                         return MTP_RESPONSE_GENERAL_ERROR;
+                     }
+-                    newname = strdup(buffer);
++                    std::string str((const char*)buffer, strnlen((const char*)buffer,MTP_STRING_MAX_CHARACTER_NUMBER*3+1));
++                    newname=str;
+ 
+                     oldpath /= entry.path;
+                     newpath /= oldpath.branch_path() / "/" / newname;
+@@ -972,7 +974,7 @@ public:
+             info.mName = ::strdup(db.at(handle).display_name.c_str());
+             info.mDateCreated = 0;
+             info.mDateModified = db.at(handle).last_modified;
+-            info.mKeywords = ::strdup("ubuntu,touch");
++            info.mKeywords = ::strdup("Intel Device");
+ 
+             if (VLOG_IS_ON(2))
+                 info.print();
+@@ -986,12 +988,7 @@ public:
+ 
+     virtual void* getThumbnail(MtpObjectHandle handle, size_t& outThumbSize)
+     {
+-        void* result;
+-
+-	outThumbSize = 0;
+-	memset(result, 0, outThumbSize);
+-
+-        return result;
++        return NULL;
+     }
+ 
+     virtual MtpResponseCode getObjectFilePath(
+diff --git a/server/server.cpp b/server/server.cpp
+index f68bda7..6f78da6 100644
+--- a/server/server.cpp
++++ b/server/server.cpp
+@@ -255,6 +255,7 @@ private:
+             notifier_thread.detach();
+             io_service_thread.join();
+             close(inotify_fd);
++            delete server;
+         }
+ 
+         void run()
+diff --git a/src/MtpProperty.cpp b/src/MtpProperty.cpp
+index 9d80516..e11f12c 100644
+--- a/src/MtpProperty.cpp
++++ b/src/MtpProperty.cpp
+@@ -560,7 +560,7 @@ MtpPropertyValue* MtpProperty::readArrayValues(MtpDataPacket& packet, uint32_t&
+     MtpPropertyValue* result = new MtpPropertyValue[length];
+     for (uint32_t i = 0; i < length; i++)
+         if (!readValue(packet, result[i])) {
+-            delete result;
++            delete[] result;
+             return NULL;
+         }
+     return result;
+-- 
+2.7.4
+

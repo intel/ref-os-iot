@@ -1,0 +1,27 @@
+From d2555020aca80c5cc60dcaf63fd188189793e9c3 Mon Sep 17 00:00:00 2001
+From: Matti Paasto <matti.paasto@intel.com>
+Date: Tue, 14 Mar 2017 11:29:16 +0200
+Subject: [PATCH] Disable testing
+
+Signed-off-by: Matti Paasto <matti.paasto@intel.com>
+---
+ CMakeLists.txt | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index da2c1f0..8078b0e 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -92,9 +92,6 @@ install(
+   PUBLIC_HEADER DESTINATION include/mtp
+ )
+ 
+-enable_testing()
+-
+ add_subdirectory(libusbhost)
+ add_subdirectory(server)
+-add_subdirectory(tests)
+ add_subdirectory(po)
+-- 
+2.7.4
+
