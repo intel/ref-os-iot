@@ -35,9 +35,6 @@ do_install() {
 
 	# These are hacks to solve library dependencies, the ref-os-iot has newer versions than ubuntu
 	# and ubuntu binaries link explictly to specific version
-	ln -sf libboost_filesystem.so.1.62.0 ${D}${libdir}/libboost_filesystem.so.1.58.0
-	ln -sf libboost_system.so.1.62.0 ${D}${libdir}/libboost_system.so.1.58.0
-	ln -sf libboost_thread.so.1.62.0 ${D}${libdir}/libboost_thread.so.1.58.0
 	ln -sf libopencv_highgui.so.3.2 ${D}${libdir}/libopencv_highgui.so.3.1
 	ln -sf libopencv_imgcodecs.so.3.2 ${D}${libdir}/libopencv_imgcodecs.so.3.1
 	ln -sf libopencv_imgproc.so.3.2 ${D}${libdir}/libopencv_imgproc.so.3.1
@@ -53,9 +50,6 @@ do_install() {
 FILES_${PN} = " \
 	    ${libdir}/librealsense_object_recognition.so.0 \
 	    ${libdir}/librealsense_object_recognition.so.0.5.1 \
-	    ${libdir}/libboost_filesystem.so.1.58.0 \
-	    ${libdir}/libboost_system.so.1.58.0 \
-	    ${libdir}/libboost_thread.so.1.58.0 \
 	    ${libdir}/libopencv_highgui.so.3.1 \
 	    ${libdir}/libopencv_imgcodecs.so.3.1 \
 	    ${libdir}/libopencv_imgproc.so.3.1 \
