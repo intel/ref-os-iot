@@ -90,6 +90,7 @@ FEATURE_PACKAGES_java-jdk = "packagegroup-java-jdk"
 FEATURE_PACKAGES_ssh-server-openssh_append = " openssh-sftp-server"
 
 FEATURE_PACKAGES_mraa-dev-support = "mraa-dev mraa-doc"
+FEATURE_PACKAGES_tools-develop_append = " cmake"
 
 PACKAGECONFIG_append_pn-alsa-utils = " udev"
 
