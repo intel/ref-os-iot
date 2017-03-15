@@ -20,6 +20,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      intel-xdk-support \
      sensors \
      mraa-dev-support \
+     tools-debug \
 "
 
 IMAGE_FEATURES += " \

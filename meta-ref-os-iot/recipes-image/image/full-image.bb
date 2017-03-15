@@ -20,6 +20,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      sensors \
      text-utils \
      intel-xdk-support \
+     tools-debug \
 "
 
 IMAGE_FEATURES += " \
