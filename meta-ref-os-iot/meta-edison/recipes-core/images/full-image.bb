@@ -21,6 +21,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      sensors \
      mraa-dev-support \
      tools-debug \
+     tools-develop \
 "
 
 IMAGE_FEATURES += " \

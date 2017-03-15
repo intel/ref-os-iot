@@ -50,10 +50,10 @@ FEATURE_PACKAGES_wpa-supplicant = "wpa-supplicant"
 # XDK daemon and the support packages needed. These are teo separate items
 # as for 5xx we don't need the daemon, where as edison needs it. This is because
 # existing edison releases had the OOB which improves the OOB experience.
-FEATURE_PACKAGES_intel-xdk ="xdk-daemon"
-FEATURE_PACKAGES_intel-xdk-support ="avahi-daemon avahi-utils nss nodejs-npm"
+FEATURE_PACKAGES_intel-xdk = "xdk-daemon"
+FEATURE_PACKAGES_intel-xdk-support = "avahi-daemon avahi-utils nss nodejs-npm"
 
-FEATURE_PACKAGES_dev-packages ="libjpeg-turbo-dev opencv-dev gdb"
+FEATURE_PACKAGES_dev-packages = "libjpeg-turbo-dev opencv-dev"
 
 FEATURE_PACKAGES_bluetooth-tools =" \
                                bluez5-noinst-tools \
