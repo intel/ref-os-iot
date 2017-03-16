@@ -1,4 +1,4 @@
-From 79f0baf68a386fe650de101c513247e9fd4e2456 Mon Sep 17 00:00:00 2001
+From 573bfad062399d8fc22b66cb5591cce660318d3f Mon Sep 17 00:00:00 2001
 From: Arun Ravindran <arun.ravindran@intel.com>
 Date: Mon, 6 Mar 2017 13:33:50 +0200
 Subject: [PATCH] mraa: Fix issues with gpio mapping
@@ -25,17 +25,18 @@ Note:
    and should be renamed as IURT0RT
 10) PIN 80 UART1CT as per GPIO is ISHUART1CT and is not available in breakout pins
    and should be renamed as IURT0CT
+11) I2C pins don't work as GPIOs, and should be reflecting this in documentation.
 
 BIOS used is #193
 
 Signed-off-by: Arun Ravindran <arun.ravindran@intel.com>
 ---
- docs/grossetete.md         |  29 ++++++-----
- src/x86/intel_gt_tuchuck.c | 117 ++++++++++++++++++++++++---------------------
- 2 files changed, 78 insertions(+), 68 deletions(-)
+ docs/grossetete.md         |  29 +++++-----
+ src/x86/intel_gt_tuchuck.c | 133 ++++++++++++++++++++++++---------------------
+ 2 files changed, 86 insertions(+), 76 deletions(-)
 
 diff --git a/docs/grossetete.md b/docs/grossetete.md
-index fc0dd9e..a965042 100644
+index fc0dd9e..e916751 100644
 --- a/docs/grossetete.md
 +++ b/docs/grossetete.md
 @@ -44,6 +44,9 @@ Pin Mapping
@@ -78,7 +79,7 @@ index fc0dd9e..a965042 100644
  | 69          | SPP0RX       | GPIO SPI |
  | 70          | UART0RT      | GPIO UART|
 -| 71          | I2C1SDA      | GPIO I2C |
-+| 71          | I2C1SDA   | GPIO I2C |
++| 71          | I2C1SDA      | I2C |
  | 72          | UART0CT      | GPIO UART|
 -| 73          | I2C1SCL      | GPIO I2C |
 -| 74          | UART1TX      | GPIO UART|
@@ -86,30 +87,35 @@ index fc0dd9e..a965042 100644
 -| 76          | UART1RX      | GPIO UART|
 -| 77          | I2C1SCL      | GPIO I2C |
 -| 78          | UART1RT      | GPIO UART|
-+| 73          | I2C1SCL   | GPIO I2C |
-+| 74          | IURT0TX   | GPIO UART|
-+| 75          | I2C2SDA   | GPIO I2C |
-+| 76          | IURT0RX   | GPIO UART|
-+| 77          | I2C2SCL   | GPIO I2C |
-+| 78          | IURT0RT   | GPIO UART|
++| 73          | I2C1SCL      | I2C |
++| 74          | IURT0TX      | GPIO UART|
++| 75          | I2C2SDA      | I2C |
++| 76          | IURT0RX      | GPIO UART|
++| 77          | I2C2SCL      | I2C |
++| 78          | IURT0RT      | GPIO UART|
  | 79          | RTC_CLK      | GPIO     |
 -| 80          | UART1CT      | GPIO UART|
-+| 80          | IURT0CT   | GPIO UART|
++| 80          | IURT0CT      | GPIO UART|
  | 100         | LED100       | GPIO     |
  | 101         | LED101       | GPIO 	|
  | 102         | LED102       | GPIO 	|
 diff --git a/src/x86/intel_gt_tuchuck.c b/src/x86/intel_gt_tuchuck.c
-index a165db2..baeacfe 100644
+index a165db2..2af5f96 100644
 --- a/src/x86/intel_gt_tuchuck.c
 +++ b/src/x86/intel_gt_tuchuck.c
-@@ -151,6 +151,7 @@ mraa_gt_tuchuck_board()
+@@ -151,9 +151,10 @@ mraa_gt_tuchuck_board()
      b->pins[pos].capabilities = (mraa_pincapabilities_t){ 0, 0, 0, 0, 0, 0, 0, 0 };
      pos++;
  
+-    strncpy(b->pins[pos].name, "GPIO", 8);
 +    // pin 1
-     strncpy(b->pins[pos].name, "GPIO", 8);
++    strncpy(b->pins[pos].name, "GPIO22", 8);
      b->pins[pos].capabilities = (mraa_pincapabilities_t){ 1, 1, 0, 0, 0, 0, 0, 0 };
-     b->pins[pos].gpio.pinmap = 446;
+-    b->pins[pos].gpio.pinmap = 446;
++    b->pins[pos].gpio.pinmap = 451;
+     b->pins[pos].gpio.mux_total = 0;
+     pos++;
+ 
 @@ -189,10 +190,9 @@ mraa_gt_tuchuck_board()
      pos++;
  
@@ -270,10 +276,11 @@ index a165db2..baeacfe 100644
      pos++;
  
 -    strncpy(b->pins[pos].name, "I2S3SDO", 8);
-+    strncpy(b->pins[pos].name, "ISH_IO2", 8);
-     b->pins[pos].capabilities = (mraa_pincapabilities_t){ 1, 0, 0, 0, 0, 0, 0, 0 };
+-    b->pins[pos].capabilities = (mraa_pincapabilities_t){ 1, 0, 0, 0, 0, 0, 0, 0 };
 -    //b->pins[pos].gpio.pinmap = 400;
 -    //b->pins[pos].gpio.mux_total = 0;
++    strncpy(b->pins[pos].name, "ISH_IO2", 8);
++    b->pins[pos].capabilities = (mraa_pincapabilities_t){ 1, 1, 0, 0, 0, 0, 0, 0 };
 +    // High level will be V1P8 - VBE on MBT3904D
 +    b->pins[pos].gpio.pinmap = 339;
 +    b->pins[pos].gpio.mux_total = 0;
@@ -358,6 +365,15 @@ index a165db2..baeacfe 100644
      strncpy(b->pins[pos].name, "UART0RT", 8);
      b->pins[pos].capabilities = (mraa_pincapabilities_t){ 1, 1, 0, 0, 0, 0, 0, 1 };
      b->pins[pos].gpio.pinmap = 469;
+@@ -578,7 +584,7 @@ mraa_gt_tuchuck_board()
+     pos++;
+ 
+     strncpy(b->pins[pos].name, "I2C1SDA", 8);
+-    b->pins[pos].capabilities = (mraa_pincapabilities_t){ 1, 1, 0, 0, 0, 1, 0, 0 };
++    b->pins[pos].capabilities = (mraa_pincapabilities_t){ 1, 0, 0, 0, 0, 1, 0, 0 };
+     b->pins[pos].gpio.pinmap = 317;
+     b->pins[pos].gpio.mux_total = 0;
+     b->pins[pos].i2c.pinmap = 0;
 @@ -587,7 +593,7 @@ mraa_gt_tuchuck_board()
  
      strncpy(b->pins[pos].name, "UART0CT", 8);
@@ -367,7 +383,7 @@ index a165db2..baeacfe 100644
      b->pins[pos].gpio.mux_total = 0;
      b->pins[pos].uart.pinmap = 0;
      b->pins[pos].uart.parent_id = 0;
-@@ -595,14 +601,14 @@ mraa_gt_tuchuck_board()
+@@ -595,16 +601,16 @@ mraa_gt_tuchuck_board()
      pos++;
  
      strncpy(b->pins[pos].name, "I2C1SCL", 8);
@@ -382,9 +398,12 @@ index a165db2..baeacfe 100644
 -    strncpy(b->pins[pos].name, "UART1TX", 8);
 +    strncpy(b->pins[pos].name, "IURT0TX", 8);
      b->pins[pos].capabilities = (mraa_pincapabilities_t){ 1, 1, 0, 0, 0, 0, 0, 1 };
-     b->pins[pos].gpio.pinmap = 484;
+-    b->pins[pos].gpio.pinmap = 484;
++    b->pins[pos].gpio.pinmap = 480;
      b->pins[pos].gpio.mux_total = 0;
-@@ -612,14 +618,14 @@ mraa_gt_tuchuck_board()
+     b->pins[pos].uart.pinmap = 0;
+     b->pins[pos].uart.parent_id = 0;
+@@ -612,33 +618,33 @@ mraa_gt_tuchuck_board()
      pos++;
  
      strncpy(b->pins[pos].name, "I2C2SDA", 8);
@@ -399,9 +418,11 @@ index a165db2..baeacfe 100644
 -    strncpy(b->pins[pos].name, "UART1RX", 8);
 +    strncpy(b->pins[pos].name, "IURT0RX", 8);
      b->pins[pos].capabilities = (mraa_pincapabilities_t){ 1, 1, 0, 0, 0, 0, 0, 1 };
-     b->pins[pos].gpio.pinmap = 483;
+-    b->pins[pos].gpio.pinmap = 483;
++    b->pins[pos].gpio.pinmap = 479;
      b->pins[pos].gpio.mux_total = 0;
-@@ -628,15 +634,15 @@ mraa_gt_tuchuck_board()
+     b->pins[pos].uart.pinmap = 0;
+     b->pins[pos].uart.parent_id = 0;
      b->pins[pos].uart.mux_total = 0;
      pos++;
  
@@ -418,9 +439,12 @@ index a165db2..baeacfe 100644
 -    strncpy(b->pins[pos].name, "UART1RT", 8);
 +    strncpy(b->pins[pos].name, "IURT0RT", 8);
      b->pins[pos].capabilities = (mraa_pincapabilities_t){ 1, 1, 0, 0, 0, 0, 0, 1 };
-     b->pins[pos].gpio.pinmap = 485;
+-    b->pins[pos].gpio.pinmap = 485;
++    b->pins[pos].gpio.pinmap = 481;
      b->pins[pos].gpio.mux_total = 0;
-@@ -651,7 +657,8 @@ mraa_gt_tuchuck_board()
+     b->pins[pos].uart.pinmap = 0;
+     b->pins[pos].uart.parent_id = 0;
+@@ -651,9 +657,10 @@ mraa_gt_tuchuck_board()
      b->pins[pos].gpio.mux_total = 0;
      pos++;
  
@@ -428,8 +452,11 @@ index a165db2..baeacfe 100644
 +    // pin 80
 +    strncpy(b->pins[pos].name, "IURT0CT", 8);
      b->pins[pos].capabilities = (mraa_pincapabilities_t){ 1, 1, 0, 0, 0, 0, 0, 1 };
-     b->pins[pos].gpio.pinmap = 486;
+-    b->pins[pos].gpio.pinmap = 486;
++    b->pins[pos].gpio.pinmap = 482;
      b->pins[pos].uart.pinmap = 0;
+     b->pins[pos].uart.parent_id = 0;
+     b->pins[pos].uart.mux_total = 0;
 @@ -688,13 +695,13 @@ mraa_gt_tuchuck_board()
      b->pins[pos].gpio.mux_total = 0;
      pos++;
