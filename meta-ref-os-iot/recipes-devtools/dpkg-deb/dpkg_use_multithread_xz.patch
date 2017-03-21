@@ -1,0 +1,13 @@
+diff --git a/lib/dpkg/compress.c
+index ecc833e..9386bab 100644
+--- a/lib/dpkg/compress.c
++++ b/lib/dpkg/compress.c
+@@ -622,7 +622,7 @@ compress_xz(int fd_in, int fd_out, struct compress_params *params, const char *d
+ 		strategy = NULL;
+ 
+ 	snprintf(combuf, sizeof(combuf), "-c%d", params->level);
+-	fd_fd_filter(fd_in, fd_out, desc, env_xz, XZ, combuf, strategy, NULL);
++	fd_fd_filter(fd_in, fd_out, desc, env_xz, XZ,"-T0", combuf, strategy,NULL);
+ }
+ #endif
+ 
