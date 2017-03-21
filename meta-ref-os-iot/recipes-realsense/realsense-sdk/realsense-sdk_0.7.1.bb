@@ -15,3 +15,5 @@ PR = "r0"
 inherit pkgconfig cmake
 
 S = "${WORKDIR}/realsense_sdk-${PV}/sdk"
+
+OECMAKE_CXX_FLAGS+="-Wno-error=conversion -Wno-error=misleading-indentation"
