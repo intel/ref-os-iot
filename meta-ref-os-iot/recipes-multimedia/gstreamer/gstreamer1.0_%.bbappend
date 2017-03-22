@@ -4,6 +4,8 @@ PV = "1.11.1"
 SRC_URI[md5sum] = "f0ca78f679079fab91369cd810248074"
 SRC_URI[sha256sum] = "856747a797746d16d9808f959647bcc96d0dd935b51914870844301689fc3e0e"
 
+DEPENDS_append = " libunwind"
+
 # Remove this option since it is not understood by version 1.11.1:
 EXTRA_OECONF_remove = " \
     --disable-docbook"
