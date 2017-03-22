@@ -23,6 +23,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      intel-xdk-support \
      tools-debug \
      tools-develop \
+     mraa-dev-support \
 "
 
 IMAGE_FEATURES += " \
