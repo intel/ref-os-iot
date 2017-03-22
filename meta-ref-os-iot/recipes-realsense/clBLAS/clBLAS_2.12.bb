@@ -14,8 +14,8 @@ SRC_URI[blas.sha256sum]="55415f901bfc9afc19d7bd7cb246a559a748fc737353125fcce4c40
 
 S = "${WORKDIR}/git/src"
 
-DEPENDS="beignet"
-RDEPENDS_${PN}="libgcc beignet"
+DEPENDS="beignet-570x boost"
+RDEPENDS_${PN}="libgcc beignet-570x"
 
 inherit cmake pkgconfig pythonnative
 

@@ -11,3 +11,5 @@ DEPENDS_append_pn-thermald = " dbus-glib-native"
 DEPENDS_append_pn-gtksourceview2 = " glib-2.0-native"
 DEPENDS_append_pn-python-pyyaml = " python-setuptools"
 DEPENDS_append_pn-glibmm = " glib-2.0-native"
+
+HOSTTOOLS_append = " xz pkg-config cc bc svn seq"
