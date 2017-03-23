@@ -41,21 +41,6 @@ if [ -z "$ZSH_NAME" ] && [ "$0" = "$THIS_SCRIPT" ]; then
     exit 1
 fi
 
-function add_git_commit_hook()
-{
-    local hook_path=$1
-    [ -x $hook_path ] && return
-    curl -k https://git-amr-4.devtools.intel.com/gerrit/tools/hooks/commit-msg -o $hook_path
-    chmod +x $hook_path
-}
-
-gitprojects=".git/hooks/commit-msg"
-
-echo "setting up git commit hooks"
-for gitproj in $gitprojects; do
-    add_git_commit_hook $gitproj
-done
-
 if [ -z "$OEROOT" ]; then
     OEROOT=$(dirname "$THIS_SCRIPT")/intel-iot-refkit/openembedded-core
     OEROOT=$(readlink -f "$OEROOT")
@@ -70,8 +55,6 @@ export OEROOT
 }
 unset OEROOT
 unset TEMPLATECONF
-
-
 
 [ -z "$BUILDDIR" ] || cd "$BUILDDIR"
 
