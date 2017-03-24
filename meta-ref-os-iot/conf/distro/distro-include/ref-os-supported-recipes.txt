@@ -361,3 +361,4 @@ python-paho-mqtt@meta-python
 boost@ref-os-iot
 mtp-server@ref-os-iot
 libpcre2@core
+kernel-devsrc@core
