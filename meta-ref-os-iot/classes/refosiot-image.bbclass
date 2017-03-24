@@ -76,6 +76,7 @@ FEATURE_PACKAGES_misc-tools =" \
                                parted \
                                tcpdump \
                                sudo \
+                               net-tools \
 "
 FEATURE_PACKAGES_paho-mqtt =" \
                              paho-mqtt \
