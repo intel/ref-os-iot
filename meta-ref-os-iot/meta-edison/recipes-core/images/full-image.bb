@@ -24,6 +24,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      tools-develop \
      misc-tools \
      paho-mqtt \
+     ext2-tools \
 "
 
 IMAGE_FEATURES += " \

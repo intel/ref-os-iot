@@ -62,6 +62,21 @@ FEATURE_PACKAGES_intel-xdk-support = "avahi-daemon avahi-utils nss nodejs-npm"
 
 FEATURE_PACKAGES_dev-packages = "libjpeg-turbo-dev opencv-dev"
 
+# tools to manipulate file sysytems
+FEATURE_PACKAGES_ext2-tools =" \
+		               e2fsprogs \
+                               e2fsprogs-e2fsck \
+                               e2fsprogs-mke2fs \
+                               e2fsprogs-tune2fs \
+                               e2fsprogs-badblocks \
+                               libcomerr \
+                               libss \
+                               libe2p \
+                               libext2fs \
+                               dosfstools \
+                               util-linux \
+"
+
 FEATURE_PACKAGES_bluetooth-tools =" \
                                bluez5-noinst-tools \
                                bluez5-obex \
