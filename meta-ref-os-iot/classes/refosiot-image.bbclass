@@ -1,7 +1,6 @@
 # Ref OS IOT image class
 # for now, only a way to add features to the image
 
-FEATURE_PACKAGES_sensors = "i2c-tools"
 FEATURE_PACKAGES_xfce-ui = "packagegroup-xfce-base"
 FEATURE_PACKAGES_usb-gadget-networking = "usbgadget mtp-server"
 FEATURE_PACKAGES_opencv = "opencv"
@@ -30,7 +29,6 @@ FEATURE_PACKAGES_multimedia = "\
 			    gstreamer1.0-plugins-bad \
 			    ${FEATURE_PACKAGES_hwcodecs} \
 			    "
-FEATURE_PACKAGES_nodejs-runtime-wo-soletta = "iotivity-node node-mraa"
 FEATURE_PACKAGES_alsa = "alsa-lib alsa-plugins alsa-utils"
 FEATURE_PACKAGES_vnc = "x11vnc"
 FEATURE_PACKAGES_text-utils = "gedit nano"

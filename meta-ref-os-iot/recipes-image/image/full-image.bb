@@ -15,7 +15,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      multimedia \
      iotivity \
      python-runtime \
-     nodejs-runtime-wo-soletta \
+     nodejs-runtime \
      alsa \
      pulseaudio \
      pulseaudio-bluetooth \

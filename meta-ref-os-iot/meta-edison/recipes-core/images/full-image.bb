@@ -7,7 +7,7 @@ LICENSE = "MIT"
 REF_OS_IMAGE_PKG_FEATURES += " \
      python-runtime \
      arduino-support \
-     nodejs-runtime-wo-soletta \
+     nodejs-runtime \
      pam \
      omp \
      alsa \
