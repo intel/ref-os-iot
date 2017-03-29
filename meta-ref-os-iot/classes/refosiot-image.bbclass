@@ -92,6 +92,9 @@ FEATURE_PACKAGES_misc-tools =" \
                                tcpdump \
                                sudo \
                                net-tools \
+                               bison \
+                               elfutils \
+                               nano \
 "
 FEATURE_PACKAGES_paho-mqtt =" \
                              paho-mqtt \
@@ -107,6 +110,11 @@ FEATURE_PACKAGES_ssh-server-openssh_append = " openssh-sftp-server"
 
 FEATURE_PACKAGES_mraa-dev-support = "mraa-dev mraa-doc"
 FEATURE_PACKAGES_tools-develop_append = " cmake"
+
+# Transport Layer Security support
+FEATURE_PACKAGES_tls-support =" \
+                             gnutls-dev \
+"
 
 PACKAGECONFIG_append_pn-alsa-utils = " udev"
 
