@@ -12,6 +12,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      omp \
      alsa \
      pulseaudio \
+     pulseaudio-bluetooth \
      ofono \
      multimedia \
      mosquitto \

@@ -35,13 +35,19 @@ FEATURE_PACKAGES_alsa = "alsa-lib alsa-plugins alsa-utils"
 FEATURE_PACKAGES_vnc = "x11vnc"
 FEATURE_PACKAGES_text-utils = "gedit nano"
 FEATURE_PACKAGES_test-utils = "glmark2 fwts"
+
+#Pulseaudio support
 FEATURE_PACKAGES_pulseaudio = " \
 			    pulseaudio-server \
-			    pulseaudio-module-bluetooth-discover \
-			    pulseaudio-module-bluetooth-policy \
-			    pulseaudio-module-bluez5-device \
-			    pulseaudio-module-bluez5-discover \
-			    "
+                            pulseaudio-misc \
+"
+FEATURE_PACKAGES_pulseaudio-bluetooth = " \
+                            pulseaudio-module-bluetooth-discover \
+                            pulseaudio-module-bluetooth-policy \
+                            pulseaudio-module-bluez5-device \
+                            pulseaudio-module-bluez5-discover \
+"
+
 FEATURE_PACKAGES_arduino-support = " \
 				 clloader \
 				 sketch-check \

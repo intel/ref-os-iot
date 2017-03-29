@@ -18,6 +18,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      nodejs-runtime-wo-soletta \
      alsa \
      pulseaudio \
+     pulseaudio-bluetooth \
      sensors \
      text-utils \
      intel-xdk-support \
