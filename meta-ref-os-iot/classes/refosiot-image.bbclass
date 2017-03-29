@@ -121,7 +121,9 @@ FEATURE_PACKAGES_tools-develop_append = " cmake"
 FEATURE_PACKAGES_tls-support =" \
                              gnutls-dev \
 "
-
+FEATURE_PACKAGES_python-extra =" \
+                             python-pygobject \
+"
 PACKAGECONFIG_append_pn-alsa-utils = " udev"
 
 DSK_IMAGE_LAYOUT = ' \

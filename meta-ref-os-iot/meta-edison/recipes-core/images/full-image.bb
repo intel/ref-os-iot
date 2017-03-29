@@ -27,6 +27,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      paho-mqtt \
      ext2-tools \
      tls-support \
+     python-extra \
 "
 
 IMAGE_FEATURES += " \
