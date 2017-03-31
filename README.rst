@@ -10,6 +10,11 @@ INSTRUCTIONS
 These instructions are for building with bitbake directly and assume basic knowledge of build environments and processes. For more information on bitbake see https://www.yoctoproject.org/tools-resources/projects/bitbake
 NOTE: Instructions for Docker* can be found in the IoT Reference OS Kit for Intel(R) Architecture project, see https://github.com/intel/intel-iot-refkit
 
+Setup Ubuntu 16.04 host for build:
+=====================================
+| $ sudo apt update
+| $ sudo apt-get install gawk wget git-core git diffstat unzip texinfo gcc-multilib build-essential chrpath socat libsdl1.2-dev xterm subversion xsltproc
+
 Preparation:
 =======================
 | $ mkdir -p $HOME/work
