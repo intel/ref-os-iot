@@ -364,3 +364,10 @@ libpcre2@core
 kernel-devsrc@core
 net-tools@core
 python-pygobject@openembedded-layer
+babeltrace@core
+groff@core
+libaio@core
+man@core
+powertop@core
+systemtap@core
+trace-cmd@core

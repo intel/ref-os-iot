@@ -122,6 +122,16 @@ FEATURE_PACKAGES_tls-support =" \
 FEATURE_PACKAGES_python-extra =" \
                              python-pygobject \
 "
+# A set of profiling tools
+FEATURE_PACKAGES_profiling-tools =" \
+                              babeltrace \
+                              groff \
+                              libaio \
+                              man \
+                              powertop \
+                              systemtap \
+                              trace-cmd \
+"
 PACKAGECONFIG_append_pn-alsa-utils = " udev"
 
 DSK_IMAGE_LAYOUT = ' \
