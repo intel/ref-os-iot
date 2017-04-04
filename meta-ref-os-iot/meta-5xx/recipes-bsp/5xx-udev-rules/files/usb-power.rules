@@ -4,12 +4,23 @@
 # /lib/udev/usb-autosuspend-blacklist (read-only, maintained as part
 # of the OS) or the same file in /etc/udev (read/write, maintained by
 # users).
+ACTION!="add", GOTO="power_usb_rules_end"
+SUBSYSTEM!="usb", GOTO="power_usb_rules_end"
 
 # Check whether device is blacklisted.
-ACTION=="add", SUBSYSTEMS=="usb", PROGRAM="/bin/sh -c 'grep -q ^$attr{idVendor}:$attr{idProduct} /lib/udev/usb-autosuspend-blacklist || ( [ -e /etc/udev/usb-autosuspend-blacklist ] && grep -q $attr{idVendor}:$attr{idProduct} /etc/udev/usb-autosuspend-blacklist)'", GOTO="power_usb_rules_end"
+PROGRAM="/bin/sh -c 'grep -q ^$attr{idVendor}:$attr{idProduct} /lib/udev/usb-autosuspend-blacklist || ( [ -e /etc/udev/usb-autosuspend-blacklist ] && grep -q ^$attr{idVendor}:$attr{idProduct} /etc/udev/usb-autosuspend-blacklist)'", GOTO="disable_autosuspend"
 
 # Enable autosuspend.
-ACTION=="add", SUBSYSTEMS=="usb", TEST=="power/control", ATTR{power/control}="auto"
+TEST!="bInterfaceClass", GOTO="enable_autosuspend"
+ATTR{bInterfaceClass}!="03", GOTO="enable_autosuspend"
+
+LABEL="disable_autosuspend"
+TEST=="power/control", ATTR{power/control}="on", GOTO="power_usb_rules_end"
+TEST=="../power/control", ATTR{../power/control}="on"
+GOTO="power_usb_rules_end"
+
+LABEL="enable_autosuspend"
+ACTION=="add", SUBSYSTEM=="usb",TEST=="power/control", ATTR{power/control}="auto"
 
 # Done.
 LABEL="power_usb_rules_end"

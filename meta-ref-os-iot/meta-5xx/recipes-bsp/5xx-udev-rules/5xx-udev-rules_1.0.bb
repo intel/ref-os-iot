@@ -8,6 +8,9 @@ SRC_URI += " \
     file://hdmi-hotplug@.service \
     file://xhci-power.rules \
     file://pci-power.rules \
+    file://usb-power.rules \
+    file://dwc3-power.rules \
+    file://usb-autosuspend-blacklist \
 "
 
 do_install_append () {
@@ -21,9 +24,10 @@ do_install_append () {
     install -m 0755 ${WORKDIR}/hdmi-hotplug.sh ${D}/usr/bin/hdmi-hotplug.sh
     install -m 0644 ${WORKDIR}/xhci-power.rules ${D}/${base_libdir}/udev/rules.d/80-xhci-power.rules
     install -m 0644 ${WORKDIR}/pci-power.rules ${D}/${base_libdir}/udev/rules.d/80-pci-power.rules
-#    install -m 0644 ${WORKDIR}/usb-power.rules ${D}/${base_libdir}/udev/rules.d/80-usb-power.rules
-#    install -m 0644 ${WORKDIR}/usb-autosuspend-blacklist ${D}/${base_libdir}/udev/
+    install -m 0644 ${WORKDIR}/usb-power.rules ${D}/${base_libdir}/udev/rules.d/80-usb-power.rules
+    install -m 0644 ${WORKDIR}/dwc3-power.rules ${D}/${base_libdir}/udev/rules.d/dwc3-power.rules
+    install -m 0644 ${WORKDIR}/usb-autosuspend-blacklist ${D}/${base_libdir}/udev/
 }
 
 FILES_${PN} += "${base_libdir}/systemd/system/hdmi-hotplug@.service"
-#FILES_${PN} += "${base_libdir}/udev/usb-autosuspend-blacklist"
+FILES_${PN} += "${base_libdir}/udev/usb-autosuspend-blacklist"
