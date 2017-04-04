@@ -132,6 +132,10 @@ FEATURE_PACKAGES_profiling-tools =" \
                               systemtap \
                               trace-cmd \
 "
+
+FEATURE_PACKAGES_python3-extra =" \
+			     python3-pygobject \
+"
 PACKAGECONFIG_append_pn-alsa-utils = " udev"
 
 DSK_IMAGE_LAYOUT = ' \
