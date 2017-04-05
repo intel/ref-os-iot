@@ -26,6 +26,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      tools-develop \
      mraa-dev-support \
      python3-extra \
+     linux-firmware \
 "
 
 IMAGE_FEATURES += " \

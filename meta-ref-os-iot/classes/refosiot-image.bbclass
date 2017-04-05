@@ -5,6 +5,7 @@ FEATURE_PACKAGES_xfce-ui = "packagegroup-xfce-base"
 FEATURE_PACKAGES_usb-gadget-networking = "usbgadget mtp-server"
 FEATURE_PACKAGES_opencv = "opencv"
 FEATURE_PACKAGES_opencl = "beignet-${BEIGNET_BOARD}"
+FEATURE_PACKAGES_linux-firmware = "linux-firmware"
 FEATURE_PACKAGES_realsense = "\
 			   realsense-sdk \
 			   realsense-persontracking \
