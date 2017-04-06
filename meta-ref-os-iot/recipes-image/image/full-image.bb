@@ -27,6 +27,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      mraa-dev-support \
      python3-extra \
      linux-firmware \
+     wifi-hotspot \
 "
 
 IMAGE_FEATURES += " \

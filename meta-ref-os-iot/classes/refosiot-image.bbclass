@@ -59,6 +59,7 @@ FEATURE_PACKAGES_omp = "libgomp"
 FEATURE_PACKAGES_ofono = "ofono"
 FEATURE_PACKAGES_mosquitto = "mosquitto-dev mosquitto-clients"
 FEATURE_PACKAGES_wpa-supplicant = "wpa-supplicant"
+FEATURE_PACKAGES_wifi-hotspot = "hostapd"
 # XDK daemon and the support packages needed. These are teo separate items
 # as for 5xx we don't need the daemon, where as edison needs it. This is because
 # existing edison releases had the OOB which improves the OOB experience.
