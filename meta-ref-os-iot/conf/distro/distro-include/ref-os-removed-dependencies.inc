@@ -19,7 +19,9 @@ RDEPENDS_packagegroup-core-x11-utils_remove += "xinput-calibrator"
 DEPENDS_remove_pn-gedit = "enchant"
 
 # Remove dependency with ocl-icd
-RDEPENDS_realsense-slam_remove = "ocl-icd"
+PNBLACKLIST[ocl-icd] ?= "Removed"
+PACKAGECONFIG_remove_pn-opencv = "opencl"
+DEPENDS_remove_pn-beignet-570x = "ocl-icd"
 
 # Remove libusb-compat and replace it with libusb1
 PNBLACKLIST[libusb-compat] = "Not a whitelisted component"
