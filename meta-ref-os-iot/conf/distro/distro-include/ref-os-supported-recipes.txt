@@ -371,3 +371,4 @@ man@core
 powertop@core
 systemtap@core
 trace-cmd@core
+opencl-headers-cxx@refkit
