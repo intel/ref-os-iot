@@ -28,6 +28,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      python3-extra \
      linux-firmware \
      wifi-hotspot \
+     java-jdk \
 "
 
 IMAGE_FEATURES += " \
