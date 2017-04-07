@@ -58,3 +58,6 @@ CFLAG_remove_pn-openssl = "-DHAVE_CRYPTODEV"
 SRC_URI_remove_pn-iotivity = "${url_mbedtls};name=mbedtls;destsuffix=${S}/extlibs/mbedtls/mbedtls;protocol=http"
 # Remove dependency to sysfsutils
 DEPENDS_remove_pn-bridge-utils = "sysfsutils"
+
+# Remove xinput caliberator from the image
+RDEPENDS_nativesdk-packagegroup-sdk-host_remove += "nativesdk-dnf"
