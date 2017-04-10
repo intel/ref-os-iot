@@ -1,3 +1,3 @@
 polkitd:x:27:27::/:/bin/false
 avahi:x:28:28::/:/bin/false
-_apt:x:105:65534::/:/bin/false
+_apt:x:105:nogroup::/:/bin/false
