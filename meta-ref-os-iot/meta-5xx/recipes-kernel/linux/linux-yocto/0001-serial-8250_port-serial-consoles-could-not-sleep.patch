@@ -1,0 +1,37 @@
+From daccf467c0d7445d2293a4a5071c3ac35357b2b4 Mon Sep 17 00:00:00 2001
+From: Sami Torola <sami.torola@intel.com>
+Date: Tue, 11 Apr 2017 16:00:33 +0300
+Subject: [PATCH] serial: 8250_port: serial consoles could not sleep
+
+Removed a block which prevent a serial console to sleep.
+Autosuspend is set to disabled for serial consoles by default,
+which prevents a sleep, but user can enable autosuspend to allow
+sleep again.
+
+Signed-off-by: Sami Torola <sami.torola@intel.com>
+---
+ drivers/tty/serial/8250/8250_port.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/tty/serial/8250/8250_port.c b/drivers/tty/serial/8250/8250_port.c
+index 0900b56..724be46 100644
+--- a/drivers/tty/serial/8250/8250_port.c
++++ b/drivers/tty/serial/8250/8250_port.c
+@@ -2895,11 +2895,9 @@ int serial8250_console_setup(struct uart_port *port, char *options, bool probe)
+ 	else if (probe)
+ 		baud = probe_baud(port);
+ 
+-	/* At early stage device is not created yet, we can't do PM */
+-	if (port->dev) {
+-		/* Prevent all kind of power management of this port */
+-		pm_runtime_get_noresume(port->dev);
+-	}
++	/* Disable autosuspend for consoles */
++	if (port->dev)
++		pm_runtime_forbid(port->dev);
+ 
+ 	return uart_set_options(port, port->cons, baud, parity, bits, flow);
+ }
+-- 
+2.7.4
+

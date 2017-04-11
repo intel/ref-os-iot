@@ -1,0 +1,342 @@
+From c9d4188770832f01ad7665b083bd3d35c1ad2d8d Mon Sep 17 00:00:00 2001
+From: Sami Torola <sami.torola@intel.com>
+Date: Tue, 11 Apr 2017 16:17:56 +0300
+Subject: [PATCH] serial: 8250: enable sleep and rx-wakeup for serial 8250
+ uarts
+
+This patch will enable sleep and rx-wake for the serial uarts.
+If serial port is autosuspended to sleep, first character(s) will
+be lost from rx until serial port is waken up.
+
+Autosuspend functionality can be disabled or enabled if needed using
+sysfs's power/control handle.
+
+Console serial ports have autosuspend disabled by the default.
+
+This references patch 4a6b554d2f7830772d95912a66fd14b109004e3e
+
+Signed-off-by: Sami Torola <sami.torola@intel.com>
+---
+ drivers/pinctrl/intel/pinctrl-broxton.c | 66 ++++++++++++++++++++++++---------
+ drivers/tty/serial/8250/8250_dw.c       | 66 ++++++++++++++++++++++++++++++++-
+ drivers/tty/serial/8250/8250_dw_gt.c    | 29 +++++++++++++++
+ drivers/tty/serial/8250/Makefile        |  2 +-
+ 4 files changed, 143 insertions(+), 20 deletions(-)
+ create mode 100644 drivers/tty/serial/8250/8250_dw_gt.c
+
+diff --git a/drivers/pinctrl/intel/pinctrl-broxton.c b/drivers/pinctrl/intel/pinctrl-broxton.c
+index eea8bcd..a0f1f87 100644
+--- a/drivers/pinctrl/intel/pinctrl-broxton.c
++++ b/drivers/pinctrl/intel/pinctrl-broxton.c
+@@ -124,8 +124,10 @@ static const unsigned bxt_north_pwm0_pins[] = { 34 };
+ static const unsigned bxt_north_pwm1_pins[] = { 35 };
+ static const unsigned bxt_north_pwm2_pins[] = { 36 };
+ static const unsigned bxt_north_pwm3_pins[] = { 37 };
+-static const unsigned bxt_north_uart0_pins[] = { 38, 39, 40, 41 };
+-static const unsigned bxt_north_uart1_pins[] = { 42, 43, 44, 45 };
++static const unsigned bxt_north_uart0_in_pins[] = { 38, 41 };
++static const unsigned bxt_north_uart0_out_pins[] = { 39, 40 };
++static const unsigned bxt_north_uart1_in_pins[] = { 42 };
++static const unsigned bxt_north_uart1_out_pins[] = { 43 };
+ static const unsigned bxt_north_uart2_in_pins[] = { 46, 49 };
+ static const unsigned bxt_north_uart2_out_pins[] = { 47, 48 };
+ static const unsigned bxt_north_uart0b_pins[] = { 50, 51, 52, 53 };
+@@ -138,8 +140,12 @@ static const struct intel_pingroup bxt_north_groups[] = {
+ 	PIN_GROUP("pwm1_grp", bxt_north_pwm1_pins, 1),
+ 	PIN_GROUP("pwm2_grp", bxt_north_pwm2_pins, 1),
+ 	PIN_GROUP("pwm3_grp", bxt_north_pwm3_pins, 1),
+-	PIN_GROUP("uart0_grp", bxt_north_uart0_pins, 1),
+-	PIN_GROUP("uart1_grp", bxt_north_uart1_pins, 1),
++	PIN_GROUP("uart0_in_gpio_grp", bxt_north_uart0_in_pins, 0),
++	PIN_GROUP("uart0_in_uart_grp", bxt_north_uart0_in_pins, 1),
++	PIN_GROUP("uart0_grp", bxt_north_uart0_out_pins, 1),
++	PIN_GROUP("uart1_in_gpio_grp", bxt_north_uart1_in_pins, 0),
++	PIN_GROUP("uart1_in_uart_grp", bxt_north_uart1_in_pins, 1),
++	PIN_GROUP("uart1_grp", bxt_north_uart1_out_pins, 1),
+ 	PIN_GROUP("uart2_in_gpio_grp", bxt_north_uart2_in_pins, 0),
+ 	PIN_GROUP("uart2_in_uart_grp", bxt_north_uart2_in_pins, 1),
+ 	PIN_GROUP("uart2_grp", bxt_north_uart2_out_pins, 1),
+@@ -153,11 +159,17 @@ static const char * const bxt_north_pwm0_groups[] = { "pwm0_grp" };
+ static const char * const bxt_north_pwm1_groups[] = { "pwm1_grp" };
+ static const char * const bxt_north_pwm2_groups[] = { "pwm2_grp" };
+ static const char * const bxt_north_pwm3_groups[] = { "pwm3_grp" };
+-static const char * const bxt_north_uart0_groups[] = {
+-	"uart0_grp", "uart0b_grp",
++static const char * const bxt_north_uart0_gpio_groups[] = {
++	"uart0_in_gpio_grp", "uart0_grp",
+ };
+-static const char * const bxt_north_uart1_groups[] = {
+-	"uart1_grp", "uart1b_grp",
++static const char * const bxt_north_uart0_uart_groups[] = {
++	"uart0_in_uart_grp", "uart0_grp", "uart0b_grp",
++};
++static const char * const bxt_north_uart1_gpio_groups[] = {
++	"uart1_in_gpio_grp", "uart1_grp",
++};
++static const char * const bxt_north_uart1_uart_groups[] = {
++	"uart1_in_uart_grp", "uart1_grp", "uart1b_grp",
+ };
+ static const char * const bxt_north_uart2_gpio_groups[] = {
+ 	"uart2_in_gpio_grp", "uart2_grp",
+@@ -172,8 +184,10 @@ static const struct intel_function bxt_north_functions[] = {
+ 	FUNCTION("pwm1", bxt_north_pwm1_groups),
+ 	FUNCTION("pwm2", bxt_north_pwm2_groups),
+ 	FUNCTION("pwm3", bxt_north_pwm3_groups),
+-	FUNCTION("uart0", bxt_north_uart0_groups),
+-	FUNCTION("uart1", bxt_north_uart1_groups),
++	FUNCTION("uart0_uart", bxt_north_uart0_uart_groups),
++	FUNCTION("uart0_gpio", bxt_north_uart0_gpio_groups),
++	FUNCTION("uart1_uart", bxt_north_uart1_uart_groups),
++	FUNCTION("uart1_gpio", bxt_north_uart1_gpio_groups),
+ 	FUNCTION("uart2_uart", bxt_north_uart2_uart_groups),
+ 	FUNCTION("uart2_gpio", bxt_north_uart2_gpio_groups),
+ 	FUNCTION("uart3", bxt_north_uart3_groups),
+@@ -625,8 +639,10 @@ static const unsigned apl_north_pwm0_pins[] = { 34 };
+ static const unsigned apl_north_pwm1_pins[] = { 35 };
+ static const unsigned apl_north_pwm2_pins[] = { 36 };
+ static const unsigned apl_north_pwm3_pins[] = { 37 };
+-static const unsigned apl_north_uart0_pins[] = { 38, 39, 40, 41 };
+-static const unsigned apl_north_uart1_pins[] = { 42, 43, 44, 45 };
++static const unsigned apl_north_uart0_in_pins[] = { 38, 41 };
++static const unsigned apl_north_uart0_pins[] = { 39, 40 };
++static const unsigned apl_north_uart1_in_pins[] = { 38 };
++static const unsigned apl_north_uart1_pins[] = { 39 };
+ static const unsigned apl_north_uart2_in_pins[] = { 46, 49 };
+ static const unsigned apl_north_uart2_pins[] = { 47, 48 };
+ 
+@@ -635,8 +651,10 @@ static const struct intel_pingroup apl_north_groups[] = {
+ 	PIN_GROUP("pwm1_grp", apl_north_pwm1_pins, 1),
+ 	PIN_GROUP("pwm2_grp", apl_north_pwm2_pins, 1),
+ 	PIN_GROUP("pwm3_grp", apl_north_pwm3_pins, 1),
+-	PIN_GROUP("uart0_grp", apl_north_uart0_pins, 1),
+-	PIN_GROUP("uart1_grp", apl_north_uart1_pins, 1),
++	PIN_GROUP("uart0_in_gpio_grp", apl_north_uart0_in_pins, 0),
++	PIN_GROUP("uart0_in_uart_grp", apl_north_uart0_in_pins, 1),
++	PIN_GROUP("uart1_in_gpio_grp", apl_north_uart1_in_pins, 0),
++	PIN_GROUP("uart1_in_uart_grp", apl_north_uart1_in_pins, 1),
+ 	PIN_GROUP("uart2_in_gpio_grp", apl_north_uart2_in_pins, 0),
+ 	PIN_GROUP("uart2_in_uart_grp", apl_north_uart2_in_pins, 1),
+ 	PIN_GROUP("uart2_grp", apl_north_uart2_pins, 1),
+@@ -646,8 +664,18 @@ static const char * const apl_north_pwm0_groups[] = { "pwm0_grp" };
+ static const char * const apl_north_pwm1_groups[] = { "pwm1_grp" };
+ static const char * const apl_north_pwm2_groups[] = { "pwm2_grp" };
+ static const char * const apl_north_pwm3_groups[] = { "pwm3_grp" };
+-static const char * const apl_north_uart0_groups[] = { "uart0_grp" };
+-static const char * const apl_north_uart1_groups[] = { "uart1_grp" };
++static const char * const apl_north_uart0_gpio_groups[] = {
++	"uart0_in_gpio_grp", "uart0_grp"
++};
++static const char * const apl_north_uart0_uart_groups[] = {
++	"uart0_in_uart_grp", "uart0_grp"
++};
++static const char * const apl_north_uart1_gpio_groups[] = {
++	"uart1_in_gpio_grp", "uart1_grp"
++};
++static const char * const apl_north_uart1_uart_groups[] = {
++	"uart1_in_uart_grp", "uart1_grp"
++};
+ static const char * const apl_north_uart2_gpio_groups[] = {
+ 	"uart2_in_gpio_grp", "uart2_grp"
+ };
+@@ -660,8 +688,10 @@ static const struct intel_function apl_north_functions[] = {
+ 	FUNCTION("pwm1", apl_north_pwm1_groups),
+ 	FUNCTION("pwm2", apl_north_pwm2_groups),
+ 	FUNCTION("pwm3", apl_north_pwm3_groups),
+-	FUNCTION("uart0", apl_north_uart0_groups),
+-	FUNCTION("uart1", apl_north_uart1_groups),
++	FUNCTION("uart0_uart", apl_north_uart0_uart_groups),
++	FUNCTION("uart0_gpio", apl_north_uart0_gpio_groups),
++	FUNCTION("uart1_uart", apl_north_uart1_uart_groups),
++	FUNCTION("uart1_gpio", apl_north_uart1_gpio_groups),
+ 	FUNCTION("uart2_uart", apl_north_uart2_uart_groups),
+ 	FUNCTION("uart2_gpio", apl_north_uart2_gpio_groups),
+ };
+diff --git a/drivers/tty/serial/8250/8250_dw.c b/drivers/tty/serial/8250/8250_dw.c
+index e5f62b1..de41fcf 100644
+--- a/drivers/tty/serial/8250/8250_dw.c
++++ b/drivers/tty/serial/8250/8250_dw.c
+@@ -14,14 +14,19 @@
+  * raised, the LCR needs to be rewritten and the uart status register read.
+  */
+ #include <linux/device.h>
++#include <linux/gpio/machine.h>
++#include <linux/gpio/consumer.h>
+ #include <linux/io.h>
+ #include <linux/module.h>
+ #include <linux/serial_8250.h>
+ #include <linux/serial_reg.h>
++#include <linux/console.h>
+ #include <linux/of.h>
+ #include <linux/of_irq.h>
+ #include <linux/of_platform.h>
++#include <linux/pinctrl/consumer.h>
+ #include <linux/platform_device.h>
++#include <linux/pm_wakeirq.h>
+ #include <linux/slab.h>
+ #include <linux/acpi.h>
+ #include <linux/clk.h>
+@@ -320,6 +325,35 @@ static void dw8250_setup_port(struct uart_port *p)
+ 		up->capabilities |= UART_CAP_AFE;
+ }
+ 
++static int dw8250_init_wakeup(struct device *dev)
++{
++	struct gpio_desc *wake;
++	int irq, err;
++
++	/* Set up RxD pin as wake source */
++	wake = gpiod_get(dev, "rx", GPIOD_IN);
++
++	if (IS_ERR(wake))
++		return PTR_ERR(wake);
++
++	irq = gpiod_to_irq(wake);
++	if (irq < 0) {
++		dev_warn(dev, "8250_dw No RX IRQ found\n");
++		err = irq;
++	} else {
++		device_init_wakeup(dev, true);
++		err = dev_pm_set_dedicated_wake_irq(dev, irq);
++		if (err) {
++			dev_warn(dev, "Can't set dedicated wake IRQ: %d\n", err);
++			device_init_wakeup(dev, false);
++		} else {
++			irq_set_irq_type(irq, IRQ_TYPE_EDGE_BOTH);
++		}
++	}
++	gpiod_put(wake);
++	return err;
++}
++
+ static int dw8250_probe(struct platform_device *pdev)
+ {
+ 	struct uart_8250_port uart = {};
+@@ -367,6 +401,7 @@ static int dw8250_probe(struct platform_device *pdev)
+ 	data->uart_16550_compatible = device_property_read_bool(p->dev,
+ 						"snps,uart-16550-compatible");
+ 
++
+ 	err = device_property_read_u32(p->dev, "reg-shift", &val);
+ 	if (!err)
+ 		p->regshift = val;
+@@ -471,10 +506,14 @@ static int dw8250_probe(struct platform_device *pdev)
+ 		goto err_reset;
+ 	}
+ 
++	err = dw8250_init_wakeup(&pdev->dev);
++	if (err)
++		dev_dbg(&pdev->dev, "Can't init wakeup: %d\n", err);
++
+ 	platform_set_drvdata(pdev, data);
+ 
+ 	pm_runtime_use_autosuspend(&pdev->dev);
+-	pm_runtime_set_autosuspend_delay(&pdev->dev, -1);
++	pm_runtime_set_autosuspend_delay(&pdev->dev, 60000);
+ 
+ 	pm_runtime_set_active(&pdev->dev);
+ 	pm_runtime_enable(&pdev->dev);
+@@ -500,6 +539,10 @@ static int dw8250_remove(struct platform_device *pdev)
+ {
+ 	struct dw8250_data *data = platform_get_drvdata(pdev);
+ 
++	/* clear wakeup */
++	dev_pm_clear_wake_irq(&pdev->dev);
++	device_init_wakeup(&pdev->dev, false);
++
+ 	pm_runtime_get_sync(&pdev->dev);
+ 
+ 	serial8250_unregister_port(data->line);
+@@ -543,6 +586,13 @@ static int dw8250_resume(struct device *dev)
+ static int dw8250_runtime_suspend(struct device *dev)
+ {
+ 	struct dw8250_data *data = dev_get_drvdata(dev);
++	struct uart_8250_port *up = serial8250_get_port(data->line);
++	struct uart_port *port = &up->port;
++
++	if (uart_console(port))
++		console_stop(port->cons);
++
++	pinctrl_pm_select_sleep_state(dev);
+ 
+ 	if (!IS_ERR(data->clk))
+ 		clk_disable_unprepare(data->clk);
+@@ -556,6 +606,8 @@ static int dw8250_runtime_suspend(struct device *dev)
+ static int dw8250_runtime_resume(struct device *dev)
+ {
+ 	struct dw8250_data *data = dev_get_drvdata(dev);
++	struct uart_8250_port *up = serial8250_get_port(data->line);
++	struct uart_port *port = &up->port;
+ 
+ 	if (!IS_ERR(data->pclk))
+ 		clk_prepare_enable(data->pclk);
+@@ -563,6 +615,18 @@ static int dw8250_runtime_resume(struct device *dev)
+ 	if (!IS_ERR(data->clk))
+ 		clk_prepare_enable(data->clk);
+ 
++	pinctrl_pm_select_default_state(dev);
++
++	/* Restore context */
++	serial8250_do_restore_context(&up->port);
++
++	if (uart_console(port))
++		console_start(port->cons);
++
++	/*
++	 *  TODO: Check if it needs more than it's done in
++	 *  serial8250_console_restore()
++	 */
+ 	return 0;
+ }
+ #endif
+diff --git a/drivers/tty/serial/8250/8250_dw_gt.c b/drivers/tty/serial/8250/8250_dw_gt.c
+new file mode 100644
+index 0000000..30b01a1
+--- /dev/null
++++ b/drivers/tty/serial/8250/8250_dw_gt.c
+@@ -0,0 +1,29 @@
++#include <linux/init.h>
++#include <linux/module.h>
++#include <linux/pinctrl/machine.h>
++#include <linux/pinctrl/pinconf-generic.h>
++#include <linux/gpio/machine.h>
++#include <linux/gpio/consumer.h>
++
++/* FIXME: Pin mappings should be provided by ACPI */
++
++static const struct pinctrl_map uart2_mappings[] __initdata = {
++    PIN_MAP_MUX_GROUP("dw-apb-uart.8", PINCTRL_STATE_INIT, "INT34D1:00", "uart0_in_gpio_grp", "uart0_gpio"),
++    PIN_MAP_MUX_GROUP("dw-apb-uart.8", PINCTRL_STATE_DEFAULT, "INT34D1:00", "uart0_in_uart_grp", "uart0_uart"),
++    PIN_MAP_MUX_GROUP("dw-apb-uart.8", PINCTRL_STATE_SLEEP, "INT34D1:00", "uart0_in_gpio_grp", "uart0_gpio"),
++
++    PIN_MAP_MUX_GROUP("dw-apb-uart.9", PINCTRL_STATE_INIT, "INT34D1:00", "uart1_in_gpio_grp", "uart1_gpio"),
++    PIN_MAP_MUX_GROUP("dw-apb-uart.9", PINCTRL_STATE_DEFAULT, "INT34D1:00", "uart1_in_uart_grp", "uart1_uart"),
++    PIN_MAP_MUX_GROUP("dw-apb-uart.9", PINCTRL_STATE_SLEEP, "INT34D1:00", "uart1_in_gpio_grp", "uart1_gpio"),
++
++    PIN_MAP_MUX_GROUP("dw-apb-uart.10", PINCTRL_STATE_INIT, "INT34D1:00", "uart2_in_gpio_grp", "uart2_gpio"),
++    PIN_MAP_MUX_GROUP("dw-apb-uart.10", PINCTRL_STATE_DEFAULT, "INT34D1:00", "uart2_in_uart_grp", "uart2_uart"),
++    PIN_MAP_MUX_GROUP("dw-apb-uart.10", PINCTRL_STATE_SLEEP, "INT34D1:00", "uart2_in_gpio_grp", "uart2_gpio"),
++};
++
++static int __init uart2_init(void)
++{
++    return pinctrl_register_mappings(uart2_mappings, ARRAY_SIZE(uart2_mappings));
++}
++
++postcore_initcall(uart2_init);
+\ No newline at end of file
+diff --git a/drivers/tty/serial/8250/Makefile b/drivers/tty/serial/8250/Makefile
+index e177f86..2372fc9 100644
+--- a/drivers/tty/serial/8250/Makefile
++++ b/drivers/tty/serial/8250/Makefile
+@@ -19,7 +19,7 @@ obj-$(CONFIG_SERIAL_8250_BOCA)		+= 8250_boca.o
+ obj-$(CONFIG_SERIAL_8250_EXAR_ST16C554)	+= 8250_exar_st16c554.o
+ obj-$(CONFIG_SERIAL_8250_HUB6)		+= 8250_hub6.o
+ obj-$(CONFIG_SERIAL_8250_FSL)		+= 8250_fsl.o
+-obj-$(CONFIG_SERIAL_8250_DW)		+= 8250_dw.o
++obj-$(CONFIG_SERIAL_8250_DW)		+= 8250_dw.o 8250_dw_gt.o
+ obj-$(CONFIG_SERIAL_8250_EM)		+= 8250_em.o
+ obj-$(CONFIG_SERIAL_8250_OMAP)		+= 8250_omap.o
+ obj-$(CONFIG_SERIAL_8250_FINTEK)	+= 8250_fintek.o
+-- 
+2.7.4
+
