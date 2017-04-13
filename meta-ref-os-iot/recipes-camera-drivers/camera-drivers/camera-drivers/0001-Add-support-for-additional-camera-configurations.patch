@@ -1,0 +1,67 @@
+From 616e46198b91aa6ddedfa01d3c4eae2be8004bbf Mon Sep 17 00:00:00 2001
+From: Soren Friis <soren.friis@intel.com>
+Date: Thu, 13 Apr 2017 11:05:06 +0300
+Subject: [PATCH] Add support for additional camera configurations
+
+There are requirements to swap the imx214 and ov5670
+cameras between the JCAM1 and JCAM2 connectors and
+also have support for having up-to four ov5670 camera
+modules attached at the same time.
+
+Prepare for reading the various BIOS/ACPI tables
+related to these configurations.
+
+Signed-off-by: Soren Friis <soren.friis@intel.com>
+---
+ drivers/media/i2c/crlmodule/crlmodule-data.c        | 4 ++++
+ drivers/media/platform/intel-ipu4/intel-ipu4-acpi.c | 8 ++++++++
+ 2 files changed, 12 insertions(+)
+
+diff --git a/drivers/media/i2c/crlmodule/crlmodule-data.c b/drivers/media/i2c/crlmodule/crlmodule-data.c
+index 99bdd8b..b04d44e 100644
+--- a/drivers/media/i2c/crlmodule/crlmodule-data.c
++++ b/drivers/media/i2c/crlmodule/crlmodule-data.c
+@@ -20,8 +20,12 @@
+ 
+ static const struct crlmodule_sensors supported_sensors[] = {
+ 	{ "i2c-SONY214A:00", "imx214", &imx214_crl_configuration },
++	{ "i2c-SONY214C:00", "imx214", &imx214_crl_configuration },
+ 	{ "IMX214", "imx214", &imx214_crl_configuration },
+ 	{ "i2c-OV5670AA:00", "ov5670", &ov5670_crl_configuration },
++	{ "i2c-OV5670AB:00", "ov5670", &ov5670_crl_configuration },
++	{ "i2c-OV5670AC:00", "ov5670", &ov5670_crl_configuration },
++	{ "i2c-OV5670AD:00", "ov5670", &ov5670_crl_configuration },
+ 	{ "OV5670", "ov5670", &ov5670_crl_configuration },
+ };
+ 
+diff --git a/drivers/media/platform/intel-ipu4/intel-ipu4-acpi.c b/drivers/media/platform/intel-ipu4/intel-ipu4-acpi.c
+index f932562..8480616 100644
+--- a/drivers/media/platform/intel-ipu4/intel-ipu4-acpi.c
++++ b/drivers/media/platform/intel-ipu4/intel-ipu4-acpi.c
+@@ -632,7 +632,11 @@ err_free_pdata:
+ 
+ static const struct ipu4_acpi_devices supported_devices[] = {
+ 	{ "OV5670AA",  CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0 },
++	{ "OV5670AB",  CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0 },
++	{ "OV5670AC",  CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0 },
++	{ "OV5670AD",  CRLMODULE_NAME, get_crlmodule_pdata, NULL, 0 },
+ 	{ "SONY214A", CRLMODULE_NAME, get_crlmodule_pdata, "dw9714", 0 },
++	{ "SONY214C", CRLMODULE_NAME, get_crlmodule_pdata, "dw9714", 0 },
+ };
+ 
+ static int get_table_index(struct device *device, const __u8 *acpi_name)
+@@ -650,7 +654,11 @@ static int get_table_index(struct device *device, const __u8 *acpi_name)
+ /* List of ACPI devices what we can handle */
+ static const struct acpi_device_id ipu4_acpi_match[] = {
+ 	{ "SONY214A", 0 },
++	{ "SONY214C", 0 },
+ 	{ "OV5670AA", 0 },
++	{ "OV5670AB", 0 },
++	{ "OV5670AC", 0 },
++	{ "OV5670AD", 0 },
+ 	{},
+ };
+ 
+-- 
+2.7.4
+
