@@ -1,0 +1,26 @@
+From 9b33db5ea8245ee33ad9963566dfb0c005a919ff Mon Sep 17 00:00:00 2001
+From: Soren Friis <soren.friis@intel.com>
+Date: Thu, 13 Apr 2017 13:55:49 +0300
+Subject: [PATCH] Add camerahal.cfg file
+
+The maker and model information that goes in the EXIF
+data is specified in the camerahal.cfg file. Add an
+example for this.
+
+Signed-off-by: Soren Friis <soren.friis@intel.com>
+---
+ etc/camerahal.cfg | 2 ++
+ 1 file changed, 2 insertions(+)
+ create mode 100644 etc/camerahal.cfg
+
+diff --git a/etc/camerahal.cfg b/etc/camerahal.cfg
+new file mode 100644
+index 0000000..cef6609
+--- /dev/null
++++ b/etc/camerahal.cfg
+@@ -0,0 +1,2 @@
++ro.product.model=exampleModel
++ro.product.manufacturer=exampleManufacturer
+-- 
+2.7.4
+
