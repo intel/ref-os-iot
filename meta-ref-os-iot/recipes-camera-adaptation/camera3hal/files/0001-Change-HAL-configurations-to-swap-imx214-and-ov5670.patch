@@ -1,0 +1,69 @@
+From 926c7faeea7434c6506d891fe2cac4f217026cb6 Mon Sep 17 00:00:00 2001
+From: Soren Friis <soren.friis@intel.com>
+Date: Thu, 13 Apr 2017 14:06:02 +0300
+Subject: [PATCH] Change HAL configurations to swap imx214 and ov5670
+
+The default camera configuration is to have the imx214
+sensor on the JCAM1 connector and the ov5670 sensor
+on the JCAM2 connector.
+
+Change the CSI port numbers so the opposite HW
+configuration is supported instead. I.e. imx214 on
+JCAM2 and ov5670 on JCAM1.
+
+Signed-off-by: Soren Friis <soren.friis@intel.com>
+---
+ etc/camera3_profiles.xml      | 4 ++--
+ etc/graph_settings_imx214.xml | 2 +-
+ etc/graph_settings_ov5670.xml | 2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/etc/camera3_profiles.xml b/etc/camera3_profiles.xml
+index 59546fb..ba012ac 100644
+--- a/etc/camera3_profiles.xml
++++ b/etc/camera3_profiles.xml
+@@ -312,7 +312,7 @@
+             <element name="imx214 scaler" type="scaler"/>
+             <element name="imx214 binner" type="binner"/>
+             <element name="Intel IPU4 CSI2 BE" type="back_end"/>
+-            <element name="Intel IPU4 CSI-2 0" type="csi_receiver"/>
++            <element name="Intel IPU4 CSI-2 4" type="csi_receiver"/>
+             <element name="dw9714" type="lens"/>
+         </MediaCtl_elements_IPU4>
+     </Profiles>
+@@ -596,7 +596,7 @@
+             <element name="ov5670 scaler" type="scaler"/>
+             <element name="ov5670 binner" type="binner"/>
+             <element name="Intel IPU4 CSI2 BE" type="back_end"/>
+-            <element name="Intel IPU4 CSI-2 4" type="csi_receiver"/>
++            <element name="Intel IPU4 CSI-2 0" type="csi_receiver"/>
+             <element name="Intel IPU4 CSI-2 BE RAW" type="soc raw back_end"/>
+         </MediaCtl_elements_IPU4>
+     </Profiles>
+diff --git a/etc/graph_settings_imx214.xml b/etc/graph_settings_imx214.xml
+index 0eb5a31..56f03f0 100644
+--- a/etc/graph_settings_imx214.xml
++++ b/etc/graph_settings_imx214.xml
+@@ -14,7 +14,7 @@
+      limitations under the License.
+ -->
+ <graph_settings>
+-    <sensor_modes sensor_name="imx214" csi_port="0" metadata="0" interlaced="0" bayer_order="RGGB">
++    <sensor_modes sensor_name="imx214" csi_port="4" metadata="0" interlaced="0" bayer_order="RGGB">
+     <available_bit_per_pixel>
+         <bpp value="10"/>
+         <bpp value="8"/>
+diff --git a/etc/graph_settings_ov5670.xml b/etc/graph_settings_ov5670.xml
+index dbf061e..68e490d 100644
+--- a/etc/graph_settings_ov5670.xml
++++ b/etc/graph_settings_ov5670.xml
+@@ -1,5 +1,5 @@
+ <graph_settings>
+-    <sensor_modes sensor_name="ov5670" csi_port="4" metadata="0" bayer_order="BGGR">
++    <sensor_modes sensor_name="ov5670" csi_port="0" metadata="0" bayer_order="BGGR">
+     <!-- bayer_order: native bayer order without flip or mirror -->
+     <!-- TBD: I2C address will be removed, it should be autodetected -->
+     <!-- TBD: CSI port will be added manually, it depends on concrete configuration -->
+-- 
+2.7.4
+
