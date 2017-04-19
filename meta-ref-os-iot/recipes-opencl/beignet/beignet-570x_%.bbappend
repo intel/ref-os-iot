@@ -5,3 +5,6 @@ do_install_prepend_class-target() {
      touch ${D}${sysconfdir}/OpenCL/vendors/intel-beignet.icd
 }
 
+do_install_append () {
+     ln -rsf ${D}${libdir}/beignet-570x/libcl.so ${D}${libdir}/libcl.so
+}
