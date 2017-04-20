@@ -24,7 +24,7 @@ RPROVIDES_${PN} = "kernel-module-cfg80211-${KERNEL_VERSION} \
 SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/iwlwifi/backport-iwlwifi;branch=release/LinuxCore${PV}"
 SRC_URI += " \
 	file://iwlwifi.conf \
-	file://0001-Forklift-compat-crypto-ccm.c-from-core-19.patch \
+	file://0001-Fix-compilation-for-4.8-and-above-kernels.patch \
 "
 
 SRCREV = "${AUTOREV}"

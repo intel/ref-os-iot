@@ -1,0 +1,36 @@
+From 4b820c557944edea29f08e4912146ad4640c3c5c Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Wed, 8 Mar 2017 13:20:26 +0200
+Subject: [PATCH 06/10] at24: Enable M24M02 serial EEPROM
+
+Add support for M24M02 serial eeprom, which is used on intel 5xx/tuchuck
+development board. This board uses ACPI ID INT3500 for the device.
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/misc/eeprom/at24.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/misc/eeprom/at24.c b/drivers/misc/eeprom/at24.c
+index 051b147..6e3cde2 100644
+--- a/drivers/misc/eeprom/at24.c
++++ b/drivers/misc/eeprom/at24.c
+@@ -177,6 +177,7 @@ MODULE_DEVICE_TABLE(i2c, at24_ids);
+ 
+ static const struct acpi_device_id at24_acpi_ids[] = {
+ 	{ "INT3499", AT24_DEVICE_MAGIC(8192 / 8, 0) },
++	{ "INT3500", AT24_DEVICE_MAGIC(2097152 / 8, AT24_FLAG_ADDR16 ) },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(acpi, at24_acpi_ids);
+@@ -602,7 +603,6 @@ static int at24_probe(struct i2c_client *client, const struct i2c_device_id *id)
+ 			magic = id->driver_data;
+ 		} else {
+ 			const struct acpi_device_id *aid;
+-
+ 			aid = acpi_match_device(at24_acpi_ids, &client->dev);
+ 			if (aid)
+ 				magic = aid->driver_data;
+-- 
+2.7.4
+

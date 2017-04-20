@@ -1,0 +1,43 @@
+From 37d342d620247985ae60b8ed94b3bdb60350260c Mon Sep 17 00:00:00 2001
+From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Date: Mon, 14 Nov 2016 12:26:52 +0200
+Subject: [PATCH 2/2] serial: 8250_dma: power off device after TX is done
+
+When any 8250 based driver sets up DMA and has UART_CAP_RPM capability enabled
+the device is left powered on after transfer is done. We need to schedule a
+device suspend operation when DMA completes the transfer.
+
+The patch is based on the work done by the reporter.
+
+Reported-by: Huiquan Zhong <huiquan.zhong@intel.com>
+Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/tty/serial/8250/8250_dma.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/tty/serial/8250/8250_dma.c b/drivers/tty/serial/8250/8250_dma.c
+index fdbddbc..26f1745 100644
+--- a/drivers/tty/serial/8250/8250_dma.c
++++ b/drivers/tty/serial/8250/8250_dma.c
+@@ -72,10 +72,15 @@ int serial8250_tx_dma(struct uart_8250_port *p)
+ 	struct dma_async_tx_descriptor	*desc;
+ 	int ret;
+ 
+-	if (uart_tx_stopped(&p->port) || dma->tx_running ||
+-	    uart_circ_empty(xmit))
++	if (dma->tx_running)
+ 		return 0;
+ 
++	if (uart_tx_stopped(&p->port) || uart_circ_empty(xmit)) {
++		/* We have been called from __dma_tx_complete() */
++		serial8250_rpm_put_tx(p);
++		return 0;
++	}
++
+ 	dma->tx_size = CIRC_CNT_TO_END(xmit->head, xmit->tail, UART_XMIT_SIZE);
+ 
+ 	desc = dmaengine_prep_slave_single(dma->txchan,
+-- 
+2.7.4
+
