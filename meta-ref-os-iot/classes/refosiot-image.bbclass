@@ -69,7 +69,7 @@ FEATURE_PACKAGES_wifi-hotspot = "hostapd"
 FEATURE_PACKAGES_intel-xdk = "xdk-daemon"
 FEATURE_PACKAGES_intel-xdk-support = "avahi-daemon avahi-utils nss nodejs-npm"
 
-FEATURE_PACKAGES_dev-packages = "libjpeg-turbo-dev opencv-dev"
+FEATURE_PACKAGES_dev-packages = "libjpeg-turbo-dev opencv-dev kernel-headers"
 
 # tools to manipulate file sysytems
 FEATURE_PACKAGES_ext2-tools =" \

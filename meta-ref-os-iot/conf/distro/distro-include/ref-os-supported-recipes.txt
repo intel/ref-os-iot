@@ -372,3 +372,4 @@ powertop@core
 systemtap@core
 trace-cmd@core
 opencl-headers-cxx@refkit
+kernel-headers@ref-os-iot
