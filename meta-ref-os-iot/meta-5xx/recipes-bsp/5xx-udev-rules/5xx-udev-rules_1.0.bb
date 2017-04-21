@@ -8,7 +8,6 @@ SRC_URI += " \
     file://hdmi-hotplug@.service \
     file://xhci-power.rules \
     file://pci-power.rules \
-    file://bt-power.rules \
     file://dwc3-power.rules \
 "
 
@@ -23,7 +22,6 @@ do_install_append () {
     install -m 0755 ${WORKDIR}/hdmi-hotplug.sh ${D}/usr/bin/hdmi-hotplug.sh
     install -m 0644 ${WORKDIR}/xhci-power.rules ${D}/${base_libdir}/udev/rules.d/80-xhci-power.rules
     install -m 0644 ${WORKDIR}/pci-power.rules ${D}/${base_libdir}/udev/rules.d/80-pci-power.rules
-    install -m 0644 ${WORKDIR}/bt-power.rules ${D}/${base_libdir}/udev/rules.d/80-bt-power.rules
     install -m 0644 ${WORKDIR}/dwc3-power.rules ${D}/${base_libdir}/udev/rules.d/dwc3-power.rules
 }
 
