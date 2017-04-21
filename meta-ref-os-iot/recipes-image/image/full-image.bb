@@ -29,6 +29,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      linux-firmware \
      wifi-hotspot \
      java-jdk \
+     machinelearning \
 "
 
 IMAGE_FEATURES += " \

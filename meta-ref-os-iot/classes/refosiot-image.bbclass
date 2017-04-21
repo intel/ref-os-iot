@@ -26,6 +26,11 @@ FEATURE_PACKAGES_realsense-dev = "\
 			   librealsense-dev \
 			   librealsense-graphical-examples \
 "
+FEATURE_PACKAGES_machinelearning = "\
+			   mkl-dnn \
+			   mkl-dnn-dev \
+			   mkl-dnn-examples \
+"
 FEATURE_PACKAGES_ros = "packagegroup-ros-comm rosinit"
 FEATURE_PACKAGES_multimedia = "\
 			    gstreamer1.0-plugins-base \

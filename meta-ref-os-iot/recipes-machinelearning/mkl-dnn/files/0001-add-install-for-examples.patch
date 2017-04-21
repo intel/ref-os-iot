@@ -1,0 +1,26 @@
+From ae111cd2432fe3fb53f7741c1bf149da2b67fcdb Mon Sep 17 00:00:00 2001
+From: Tuomas Katila <tuomas.katila@intel.com>
+Date: Fri, 21 Apr 2017 06:21:20 +0300
+Subject: [PATCH] add install for examples
+
+Signed-off-by: Tuomas Katila <tuomas.katila@intel.com>
+---
+ examples/CMakeLists.txt | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/examples/CMakeLists.txt b/examples/CMakeLists.txt
+index 32e0e78..448361c 100644
+--- a/examples/CMakeLists.txt
++++ b/examples/CMakeLists.txt
+@@ -35,3 +35,8 @@ add_executable(simple-training-net-cpp simple_training_net.cpp)
+ set_property(TARGET simple-training-net-cpp PROPERTY CXX_STANDARD 11)
+ target_link_libraries(simple-training-net-cpp ${LIB_NAME} m)
+ add_test(simple-training-net-cpp simple-training-net-cpp)
++
++install(TARGETS simple-net-c DESTINATION bin)
++install(TARGETS simple-net-cpp DESTINATION bin)
++install(TARGETS simple-training-net-c DESTINATION bin)
++install(TARGETS simple-training-net-cpp DESTINATION bin)
+-- 
+2.7.4
+

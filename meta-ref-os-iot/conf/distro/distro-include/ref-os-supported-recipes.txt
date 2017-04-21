@@ -374,3 +374,4 @@ trace-cmd@core
 opencl-headers-cxx@refkit
 kernel-headers@ref-os-iot
 meta-extsdk-toolchain@core
+mkl-dnn@ref-os-iot
