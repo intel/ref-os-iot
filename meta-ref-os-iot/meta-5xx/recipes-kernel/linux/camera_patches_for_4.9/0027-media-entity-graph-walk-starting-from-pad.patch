@@ -1,0 +1,127 @@
+From 718ea8b1787712e8923db5329b66c9cf6db23ab4 Mon Sep 17 00:00:00 2001
+From: Jianxu Zheng <jian.xu.zheng@intel.com>
+Date: Wed, 22 Mar 2017 09:40:12 +0530
+Subject: [PATCH] media:entity: graph walk starting from pad
+
+Add new parameter in media_entity_graph_walk_start()
+Start walking the media graph at a given entity and pad
+
+This function initializes the graph traversal structure to walk
+the entities graph starting at the given entity and pad.
+As some entity may be on the cross node on pipeline, so add one
+parameter to start the graph traverse.
+
+Signed-off-by: Jianxu Zheng <jian.xu.zheng@intel.com>
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/media/media-entity.c      | 15 +++++++--------
+ drivers/media/v4l2-core/v4l2-mc.c |  6 +++---
+ include/media/media-entity.h      |  2 +-
+ 3 files changed, 11 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/media/media-entity.c b/drivers/media/media-entity.c
+index e2c8d43..2ff70a2 100644
+--- a/drivers/media/media-entity.c
++++ b/drivers/media/media-entity.c
+@@ -335,14 +335,14 @@ void media_entity_graph_walk_cleanup(struct media_entity_graph *graph)
+ EXPORT_SYMBOL_GPL(media_entity_graph_walk_cleanup);
+ 
+ void media_entity_graph_walk_start(struct media_entity_graph *graph,
+-				   struct media_entity *entity)
++				   struct media_pad *pad)
+ {
+ 	media_entity_enum_zero(&graph->ent_enum);
+-	media_entity_enum_set(&graph->ent_enum, entity);
++	media_entity_enum_set(&graph->ent_enum, pad->entity);
+ 
+ 	graph->top = 0;
+ 	graph->stack[graph->top].entity = NULL;
+-	stack_push(graph, entity, -1);
++	stack_push(graph, pad->entity, pad->index);
+ }
+ EXPORT_SYMBOL_GPL(media_entity_graph_walk_start);
+ 
+@@ -391,8 +391,7 @@ media_entity_graph_walk_next(struct media_entity_graph *graph)
+ 		 * Are the local pad and the pad we came from connected
+ 		 * internally in the entity ?
+ 		 */
+-		if (from_pad != -1 &&
+-		    !media_entity_has_route(entity, from_pad, local->index)) {
++		if (!media_entity_has_route(entity, from_pad, local->index)) {
+ 			link_top(graph)++;
+ 			continue;
+ 		}
+@@ -431,7 +430,7 @@ __must_check int __media_entity_pipeline_start(struct media_entity *entity,
+ 			goto error_graph_walk_start;
+ 	}
+ 
+-	media_entity_graph_walk_start(&pipe->graph, entity);
++	media_entity_graph_walk_start(&pipe->graph, &entity->pads[0]);
+ 
+ 	while ((entity = media_entity_graph_walk_next(graph))) {
+ 		DECLARE_BITMAP(active, MEDIA_ENTITY_MAX_PADS);
+@@ -502,7 +501,7 @@ __must_check int __media_entity_pipeline_start(struct media_entity *entity,
+ 	 * Link validation on graph failed. We revert what we did and
+ 	 * return the error.
+ 	 */
+-	media_entity_graph_walk_start(graph, entity_err);
++	media_entity_graph_walk_start(graph, &entity_err->pads[0]);
+ 
+ 	while ((entity_err = media_entity_graph_walk_next(graph))) {
+ 		/* don't let the stream_count go negative */
+@@ -548,7 +547,7 @@ void __media_entity_pipeline_stop(struct media_entity *entity)
+ 
+ 
+ 	WARN_ON(!pipe->streaming_count);
+-	media_entity_graph_walk_start(graph, entity);
++	media_entity_graph_walk_start(graph, &entity->pads[0]);
+ 
+ 	while ((entity = media_entity_graph_walk_next(graph))) {
+ 		/* don't let the stream_count go negative */
+diff --git a/drivers/media/v4l2-core/v4l2-mc.c b/drivers/media/v4l2-core/v4l2-mc.c
+index 8bef433..03d59d7 100644
+--- a/drivers/media/v4l2-core/v4l2-mc.c
++++ b/drivers/media/v4l2-core/v4l2-mc.c
+@@ -260,7 +260,7 @@ static int pipeline_pm_use_count(struct media_entity *entity,
+ {
+ 	int use = 0;
+ 
+-	media_entity_graph_walk_start(graph, entity);
++	media_entity_graph_walk_start(graph, &entity->pads[0]);
+ 
+ 	while ((entity = media_entity_graph_walk_next(graph))) {
+ 		if (is_media_entity_v4l2_video_device(entity))
+@@ -323,7 +323,7 @@ static int pipeline_pm_power(struct media_entity *entity, int change,
+ 	if (!change)
+ 		return 0;
+ 
+-	media_entity_graph_walk_start(graph, entity);
++	media_entity_graph_walk_start(graph, &entity->pads[0]);
+ 
+ 	while (!ret && (entity = media_entity_graph_walk_next(graph)))
+ 		if (is_media_entity_v4l2_subdev(entity))
+@@ -332,7 +332,7 @@ static int pipeline_pm_power(struct media_entity *entity, int change,
+ 	if (!ret)
+ 		return ret;
+ 
+-	media_entity_graph_walk_start(graph, first);
++	media_entity_graph_walk_start(graph, &first->pads[0]);
+ 
+ 	while ((first = media_entity_graph_walk_next(graph))
+ 	       && first != entity)
+diff --git a/include/media/media-entity.h b/include/media/media-entity.h
+index 4de7d15..d9b41da 100644
+--- a/include/media/media-entity.h
++++ b/include/media/media-entity.h
+@@ -871,7 +871,7 @@ bool media_entity_has_route(struct media_entity *entity, unsigned int sink,
+  * using media_entity_graph_walk_cleanup().
+  */
+ void media_entity_graph_walk_start(struct media_entity_graph *graph,
+-				   struct media_entity *entity);
++				   struct media_pad *pad);
+ 
+ /**
+  * media_entity_graph_walk_next - Get the next entity in the graph
+-- 
+2.7.4
+

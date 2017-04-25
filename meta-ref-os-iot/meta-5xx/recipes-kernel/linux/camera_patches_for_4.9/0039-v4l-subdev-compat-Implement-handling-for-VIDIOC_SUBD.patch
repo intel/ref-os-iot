@@ -1,0 +1,138 @@
+From b4431329b4f2d41aeec6f1d3c0ef54df95a440d0 Mon Sep 17 00:00:00 2001
+From: Sakari Ailus <sakari.ailus@linux.intel.com>
+Date: Mon, 19 Sep 2016 18:38:18 +0300
+Subject: [PATCH 39/42] v4l: subdev: compat: Implement handling for
+ VIDIOC_SUBDEV_[GS]_ROUTING
+
+Implement compat IOCTL handling for VIDIOC_SUBDEV_G_ROUTING and
+VIDIOC_SUBDEV_S_ROUTING IOCTLs.
+
+Change-Id: Ibbfaaba07a55bb2cb3411a766a76fa120b203fd3
+Tracked-On: https://jira01.devtools.intel.com/browse/OAM-40022
+Original-Tracked-On: ICSF-1152
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+Signed-off-by: Jouni Ukkonen <jouni.ukkonen@intel.com>
+Signed-off-by: Samu Onkalo <samu.onkalo@intel.com>
+Reviewed-on: https://android.intel.com/547176
+Reviewed-by: Koskinen, Ilkka <ilkka.koskinen@intel.com>
+Tested-by: Tao, Wei <wei.tao@intel.com>
+Reviewed-by: Meng, WeiX <weix.meng@intel.com>
+Tested-by: Meng, WeiX <weix.meng@intel.com>
+Reviewed-on: https://android.intel.com:443/551143
+---
+ drivers/media/v4l2-core/v4l2-compat-ioctl32.c | 64 +++++++++++++++++++++++++++
+ 1 file changed, 64 insertions(+)
+
+diff --git a/drivers/media/v4l2-core/v4l2-compat-ioctl32.c b/drivers/media/v4l2-core/v4l2-compat-ioctl32.c
+index 69fec8f..6e0247d 100644
+--- a/drivers/media/v4l2-core/v4l2-compat-ioctl32.c
++++ b/drivers/media/v4l2-core/v4l2-compat-ioctl32.c
+@@ -781,6 +781,54 @@ static int put_v4l2_event32(struct v4l2_event *kp, struct v4l2_event32 __user *u
+ 	return 0;
+ }
+ 
++struct v4l2_subdev_routing32 {
++	compat_caddr_t routes;
++	__u32 num_routes;
++	__u32 reserved[5];
++};
++
++static int get_v4l2_subdev_routing(struct v4l2_subdev_routing *kp,
++				   struct v4l2_subdev_routing32 __user *up)
++{
++	compat_caddr_t p;
++
++	if (!access_ok(VERIFY_READ, up, sizeof(*up)) ||
++	    get_user(p, &up->routes) ||
++	    get_user(kp->num_routes, &up->num_routes) ||
++	    !access_ok(VERIFY_READ, up->reserved, sizeof(*up->reserved)) ||
++	    kp->num_routes > U32_MAX / sizeof(*kp->routes))
++		return -EFAULT;
++
++	kp->routes = compat_ptr(p);
++
++	if (!access_ok(VERIFY_READ, kp->routes,
++		       kp->num_routes * (u32)sizeof(*kp->routes)))
++		return -EFAULT;
++
++	return 0;
++}
++
++static int put_v4l2_subdev_routing(struct v4l2_subdev_routing *kp,
++				   struct v4l2_subdev_routing32 __user *up)
++{
++	struct v4l2_subdev_route __user *uroutes;
++	compat_caddr_t p;
++
++	if (!access_ok(VERIFY_WRITE, up, sizeof(*up)) ||
++	    get_user(p, &up->routes) ||
++	    put_user(kp->num_routes, &up->num_routes) ||
++	    !access_ok(VERIFY_WRITE, up->reserved, sizeof(*up->reserved)))
++		return -EFAULT;
++
++	uroutes = compat_ptr(p);
++
++	if (!access_ok(VERIFY_WRITE, uroutes,
++		       kp->num_routes * sizeof(*kp->routes)))
++		return -EFAULT;
++
++	return 0;
++}
++
+ struct v4l2_edid32 {
+ 	__u32 pad;
+ 	__u32 start_block;
+@@ -843,6 +891,8 @@ static int put_v4l2_edid32(struct v4l2_edid *kp, struct v4l2_edid32 __user *up)
+ #define VIDIOC_STREAMOFF32	_IOW ('V', 19, s32)
+ #define VIDIOC_G_INPUT32	_IOR ('V', 38, s32)
+ #define VIDIOC_S_INPUT32	_IOWR('V', 39, s32)
++#define VIDIOC_SUBDEV_G_ROUTING32 _IOWR('V', 38, struct v4l2_subdev_routing32)
++#define VIDIOC_SUBDEV_S_ROUTING32 _IOWR('V', 39, struct v4l2_subdev_routing32)
+ #define VIDIOC_G_OUTPUT32	_IOR ('V', 46, s32)
+ #define VIDIOC_S_OUTPUT32	_IOWR('V', 47, s32)
+ 
+@@ -858,6 +908,7 @@ static long do_video_ioctl(struct file *file, unsigned int cmd, unsigned long ar
+ 		struct v4l2_event v2ev;
+ 		struct v4l2_create_buffers v2crt;
+ 		struct v4l2_edid v2edid;
++		struct v4l2_subdev_routing subdev_routing;
+ 		unsigned long vx;
+ 		int vi;
+ 	} karg;
+@@ -886,6 +937,8 @@ static long do_video_ioctl(struct file *file, unsigned int cmd, unsigned long ar
+ 	case VIDIOC_STREAMOFF32: cmd = VIDIOC_STREAMOFF; break;
+ 	case VIDIOC_G_INPUT32: cmd = VIDIOC_G_INPUT; break;
+ 	case VIDIOC_S_INPUT32: cmd = VIDIOC_S_INPUT; break;
++	case VIDIOC_SUBDEV_G_ROUTING32: cmd = VIDIOC_SUBDEV_G_ROUTING; break;
++	case VIDIOC_SUBDEV_S_ROUTING32: cmd = VIDIOC_SUBDEV_S_ROUTING; break;
+ 	case VIDIOC_G_OUTPUT32: cmd = VIDIOC_G_OUTPUT; break;
+ 	case VIDIOC_S_OUTPUT32: cmd = VIDIOC_S_OUTPUT; break;
+ 	case VIDIOC_CREATE_BUFS32: cmd = VIDIOC_CREATE_BUFS; break;
+@@ -909,6 +962,12 @@ static long do_video_ioctl(struct file *file, unsigned int cmd, unsigned long ar
+ 		compatible_arg = 0;
+ 		break;
+ 
++	case VIDIOC_SUBDEV_G_ROUTING:
++	case VIDIOC_SUBDEV_S_ROUTING:
++		err = get_v4l2_subdev_routing(&karg.subdev_routing, up);
++		compatible_arg = 0;
++		break;
++
+ 	case VIDIOC_G_EDID:
+ 	case VIDIOC_S_EDID:
+ 		err = get_v4l2_edid32(&karg.v2edid, up);
+@@ -987,6 +1046,11 @@ static long do_video_ioctl(struct file *file, unsigned int cmd, unsigned long ar
+ 		if (put_v4l2_ext_controls32(&karg.v2ecs, up))
+ 			err = -EFAULT;
+ 		break;
++
++	case VIDIOC_SUBDEV_G_ROUTING:
++	case VIDIOC_SUBDEV_S_ROUTING:
++		err = put_v4l2_subdev_routing(&karg.subdev_routing, up);
++		break;
+ 	}
+ 	if (err)
+ 		return err;
+-- 
+2.7.4
+

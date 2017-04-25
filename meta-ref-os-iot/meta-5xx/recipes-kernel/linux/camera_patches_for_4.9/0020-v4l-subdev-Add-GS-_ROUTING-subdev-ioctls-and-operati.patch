@@ -1,0 +1,169 @@
+From bbcbfd7e8d3345e1bdc560462f1c47cc2bdb508f Mon Sep 17 00:00:00 2001
+From: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+Date: Wed, 22 Mar 2017 08:30:24 +0530
+Subject: [PATCH 20/42] v4l: subdev: Add [GS]_ROUTING subdev ioctls and
+ operations
+
+add get/set_routing subdev ioctls and helper functions.
+
+Signed-off-by: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+Signed-off-by: Michal Simek <michal.simek@xilinx.com>
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+---
+ drivers/media/v4l2-core/v4l2-ioctl.c  | 18 ++++++++++++++++
+ drivers/media/v4l2-core/v4l2-subdev.c | 28 ++++++++++++++++++++++++
+ include/media/v4l2-subdev.h           |  4 ++++
+ include/uapi/linux/v4l2-subdev.h      | 40 +++++++++++++++++++++++++++++++++++
+ 4 files changed, 90 insertions(+)
+
+diff --git a/drivers/media/v4l2-core/v4l2-ioctl.c b/drivers/media/v4l2-core/v4l2-ioctl.c
+index 5891d85..a70346b 100644
+--- a/drivers/media/v4l2-core/v4l2-ioctl.c
++++ b/drivers/media/v4l2-core/v4l2-ioctl.c
+@@ -18,6 +18,7 @@
+ #include <linux/kernel.h>
+ #include <linux/version.h>
+ 
++#include <linux/v4l2-subdev.h>
+ #include <linux/videodev2.h>
+ 
+ #include <media/v4l2-common.h>
+@@ -2844,6 +2845,23 @@ static int check_array_args(unsigned int cmd, void *parg, size_t *array_size,
+ 		}
+ 		break;
+ 	}
++
++	case VIDIOC_SUBDEV_G_ROUTING:
++	case VIDIOC_SUBDEV_S_ROUTING: {
++		struct v4l2_subdev_routing *route = parg;
++
++		if (route->num_routes > 0) {
++			if (route->num_routes > 256)
++				return -EINVAL;
++
++			*user_ptr = (void __user *)route->routes;
++			*kernel_ptr = (void *)&route->routes;
++			*array_size = sizeof(struct v4l2_subdev_route)
++				    * route->num_routes;
++			ret = 1;
++		}
++		break;
++	}
+ 	}
+ 
+ 	return ret;
+diff --git a/drivers/media/v4l2-core/v4l2-subdev.c b/drivers/media/v4l2-core/v4l2-subdev.c
+index 22f6d35..90bba55 100644
+--- a/drivers/media/v4l2-core/v4l2-subdev.c
++++ b/drivers/media/v4l2-core/v4l2-subdev.c
+@@ -453,7 +453,35 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg)
+ 
+ 	case VIDIOC_SUBDEV_S_DV_TIMINGS:
+ 		return v4l2_subdev_call(sd, video, s_dv_timings, arg);
++
++	case VIDIOC_SUBDEV_G_ROUTING:
++		return v4l2_subdev_call(sd, pad, get_routing, arg);
++
++	case VIDIOC_SUBDEV_S_ROUTING: {
++		struct v4l2_subdev_routing *route = arg;
++		unsigned int i;
++
++		if (route->num_routes > sd->entity.num_pads)
++			return -EINVAL;
++
++		for (i = 0; i < route->num_routes; ++i) {
++			unsigned int sink = route->routes[i].sink_pad;
++			unsigned int source = route->routes[i].source_pad;
++			struct media_pad *pads = sd->entity.pads;
++
++			if (sink >= sd->entity.num_pads ||
++			    source >= sd->entity.num_pads)
++				return -EINVAL;
++
++			if (!(pads[sink].flags & MEDIA_PAD_FL_SINK) ||
++			    !(pads[source].flags & MEDIA_PAD_FL_SOURCE))
++				return -EINVAL;
++		}
++
++		return v4l2_subdev_call(sd, pad, set_routing, route);
++	}
+ #endif
++
+ 	default:
+ 		return v4l2_subdev_call(sd, core, ioctl, cmd, arg);
+ 	}
+diff --git a/include/media/v4l2-subdev.h b/include/media/v4l2-subdev.h
+index ce1946d..30a8f5d 100644
+--- a/include/media/v4l2-subdev.h
++++ b/include/media/v4l2-subdev.h
+@@ -725,6 +725,10 @@ struct v4l2_subdev_pad_ops {
+ 	 */
+ 	int (*set_frame_desc)(struct v4l2_subdev *sd, unsigned int pad,
+ 			      struct v4l2_mbus_frame_desc *fd);
++	int (*get_routing)(struct v4l2_subdev *sd,
++			   struct v4l2_subdev_routing *route);
++	int (*set_routing)(struct v4l2_subdev *sd,
++			   struct v4l2_subdev_routing *route);
+ };
+ 
+ /**
+diff --git a/include/uapi/linux/v4l2-subdev.h b/include/uapi/linux/v4l2-subdev.h
+index 8c833a7..5e29237 100644
+--- a/include/uapi/linux/v4l2-subdev.h
++++ b/include/uapi/linux/v4l2-subdev.h
+@@ -164,6 +164,44 @@ struct v4l2_subdev_selection {
+ 	__u32 reserved[7];
+ };
+ 
++#define V4L2_SUBDEV_ROUTE_FL_ACTIVE	(1 << 0)
++#define V4L2_SUBDEV_ROUTE_FL_IMMUTABLE	(1 << 1)
++
++/**
++ * struct v4l2_subdev_route - A signal route inside a subdev
++ * @sink_pad: the sink pad
++ * @sink_stream: the sink stream
++ * @source_pad: the source pad
++ * @source_stream: the source stream
++ * @flags: route flags:
++ *
++ *	V4L2_SUBDEV_ROUTE_FL_ACTIVE: Is the stream in use or not? An
++ *	active stream will start when streaming is enabled on a video
++ *	node. Set by the user.
++ *
++ *	V4L2_SUBDEV_ROUTE_FL_IMMUTABLE: Is the stream immutable, i.e.
++ *	can it be activated and inactivated? Set by the driver.
++ */
++struct v4l2_subdev_route {
++	__u32 sink_pad;
++	__u32 sink_stream;
++	__u32 source_pad;
++	__u32 source_stream;
++	__u32 flags;
++	__u32 reserved[5];
++};
++
++/**
++ * struct v4l2_subdev_routing - Routing information
++ * @routes: the routes array
++ * @num_routes: the total number of routes in the routes array
++ */
++struct v4l2_subdev_routing {
++	struct v4l2_subdev_route *routes;
++	__u32 num_routes;
++	__u32 reserved[5];
++};
++
+ /* Backwards compatibility define --- to be removed */
+ #define v4l2_subdev_edid v4l2_edid
+ 
+@@ -186,5 +224,7 @@ struct v4l2_subdev_selection {
+ #define VIDIOC_SUBDEV_ENUM_DV_TIMINGS		_IOWR('V', 98, struct v4l2_enum_dv_timings)
+ #define VIDIOC_SUBDEV_QUERY_DV_TIMINGS		_IOR('V', 99, struct v4l2_dv_timings)
+ #define VIDIOC_SUBDEV_DV_TIMINGS_CAP		_IOWR('V', 100, struct v4l2_dv_timings_cap)
++#define VIDIOC_SUBDEV_G_ROUTING			_IOWR('V', 38, struct v4l2_subdev_routing)
++#define VIDIOC_SUBDEV_S_ROUTING			_IOWR('V', 39, struct v4l2_subdev_routing)
+ 
+ #endif
+-- 
+2.7.4
+

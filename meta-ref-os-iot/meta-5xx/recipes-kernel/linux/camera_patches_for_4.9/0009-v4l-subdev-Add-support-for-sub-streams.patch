@@ -1,0 +1,147 @@
+From 7262b9ab20c4f6a57ef061008d1912fae08dc0dd Mon Sep 17 00:00:00 2001
+From: Sakari Ailus <sakari.ailus@linux.intel.com>
+Date: Wed, 18 Dec 2013 12:11:31 +0200
+Subject: [PATCH 09/42] v4l: subdev: Add support for sub-streams
+
+The stream id tells which stream the IOCTLs address.
+
+The concept of stream ID makes it possible to differentiate between several
+streams that traverse the same image pipeline but the properties of which
+are different.
+
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+---
+ drivers/media/v4l2-core/v4l2-subdev.c |  6 ++++++
+ include/media/v4l2-subdev.h           |  2 ++
+ include/uapi/linux/v4l2-subdev.h      | 20 +++++++++++++++-----
+ 3 files changed, 23 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/media/v4l2-core/v4l2-subdev.c b/drivers/media/v4l2-core/v4l2-subdev.c
+index 34a1e7c..22f6d35 100644
+--- a/drivers/media/v4l2-core/v4l2-subdev.c
++++ b/drivers/media/v4l2-core/v4l2-subdev.c
+@@ -138,6 +138,9 @@ static int check_format(struct v4l2_subdev *sd,
+ 	if (format->pad >= sd->entity.num_pads)
+ 		return -EINVAL;
+ 
++	if (!(sd->flags & V4L2_SUBDEV_FL_HAS_SUBSTREAMS) && format->stream)
++		return -EINVAL;
++
+ 	return 0;
+ }
+ 
+@@ -163,6 +166,9 @@ static int check_selection(struct v4l2_subdev *sd,
+ 	if (sel->pad >= sd->entity.num_pads)
+ 		return -EINVAL;
+ 
++	if (!(sd->flags & V4L2_SUBDEV_FL_HAS_SUBSTREAMS) && sel->stream)
++		return -EINVAL;
++
+ 	return 0;
+ }
+ 
+diff --git a/include/media/v4l2-subdev.h b/include/media/v4l2-subdev.h
+index cf778c5..6ef3c86 100644
+--- a/include/media/v4l2-subdev.h
++++ b/include/media/v4l2-subdev.h
+@@ -742,6 +742,8 @@ struct v4l2_subdev_internal_ops {
+ #define V4L2_SUBDEV_FL_HAS_DEVNODE		(1U << 2)
+ /* Set this flag if this subdev generates events. */
+ #define V4L2_SUBDEV_FL_HAS_EVENTS		(1U << 3)
++/* Set this flag if this sub-device supports substreams. */
++#define V4L2_SUBDEV_FL_HAS_SUBSTREAMS		(1U << 4)
+ 
+ struct regulator_bulk_data;
+ 
+diff --git a/include/uapi/linux/v4l2-subdev.h b/include/uapi/linux/v4l2-subdev.h
+index dbce2b554..8c833a7 100644
+--- a/include/uapi/linux/v4l2-subdev.h
++++ b/include/uapi/linux/v4l2-subdev.h
+@@ -43,12 +43,14 @@ enum v4l2_subdev_format_whence {
+  * @which: format type (from enum v4l2_subdev_format_whence)
+  * @pad: pad number, as reported by the media API
+  * @format: media bus format (format code and frame size)
++ * @stream: sub-stream id
+  */
+ struct v4l2_subdev_format {
+ 	__u32 which;
+ 	__u32 pad;
+ 	struct v4l2_mbus_framefmt format;
+-	__u32 reserved[8];
++	__u32 stream;
++	__u32 reserved[7];
+ };
+ 
+ /**
+@@ -56,12 +58,14 @@ struct v4l2_subdev_format {
+  * @which: format type (from enum v4l2_subdev_format_whence)
+  * @pad: pad number, as reported by the media API
+  * @rect: pad crop rectangle boundaries
++ * @stream: sub-stream id
+  */
+ struct v4l2_subdev_crop {
+ 	__u32 which;
+ 	__u32 pad;
+ 	struct v4l2_rect rect;
+-	__u32 reserved[8];
++	__u32 stream;
++	__u32 reserved[7];
+ };
+ 
+ /**
+@@ -70,13 +74,15 @@ struct v4l2_subdev_crop {
+  * @index: format index during enumeration
+  * @code: format code (MEDIA_BUS_FMT_ definitions)
+  * @which: format type (from enum v4l2_subdev_format_whence)
++ * @stream: sub-stream id
+  */
+ struct v4l2_subdev_mbus_code_enum {
+ 	__u32 pad;
+ 	__u32 index;
+ 	__u32 code;
+ 	__u32 which;
+-	__u32 reserved[8];
++	__u32 stream;
++	__u32 reserved[7];
+ };
+ 
+ /**
+@@ -85,6 +91,7 @@ struct v4l2_subdev_mbus_code_enum {
+  * @index: format index during enumeration
+  * @code: format code (MEDIA_BUS_FMT_ definitions)
+  * @which: format type (from enum v4l2_subdev_format_whence)
++ * @stream: sub-stream id
+  */
+ struct v4l2_subdev_frame_size_enum {
+ 	__u32 index;
+@@ -95,7 +102,8 @@ struct v4l2_subdev_frame_size_enum {
+ 	__u32 min_height;
+ 	__u32 max_height;
+ 	__u32 which;
+-	__u32 reserved[8];
++	__u32 stream;
++	__u32 reserved[7];
+ };
+ 
+ /**
+@@ -139,6 +147,7 @@ struct v4l2_subdev_frame_interval_enum {
+  *	    defined in v4l2-common.h; V4L2_SEL_TGT_* .
+  * @flags: constraint flags, defined in v4l2-common.h; V4L2_SEL_FLAG_*.
+  * @r: coordinates of the selection window
++ * @stream: sub-stream id
+  * @reserved: for future use, set to zero for now
+  *
+  * Hardware may use multiple helper windows to process a video stream.
+@@ -151,7 +160,8 @@ struct v4l2_subdev_selection {
+ 	__u32 target;
+ 	__u32 flags;
+ 	struct v4l2_rect r;
+-	__u32 reserved[8];
++	__u32 stream;
++	__u32 reserved[7];
+ };
+ 
+ /* Backwards compatibility define --- to be removed */
+-- 
+2.7.4
+

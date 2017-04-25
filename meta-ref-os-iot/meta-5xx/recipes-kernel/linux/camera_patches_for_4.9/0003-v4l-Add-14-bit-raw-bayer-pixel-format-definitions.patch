@@ -1,0 +1,44 @@
+From 43e2f24fe6a3b2cb5d1ffebf25e937f1ec26280b Mon Sep 17 00:00:00 2001
+From: Sakari Ailus <sakari.ailus@linux.intel.com>
+Date: Wed, 22 Mar 2017 05:19:08 +0530
+Subject: [PATCH 03/42] v4l: Add 14-bit raw bayer pixel format definitions
+
+The formats added by this patch are:
+
+	V4L2_PIX_FMT_SBGGR14
+	V4L2_PIX_FMT_SGBRG14
+	V4L2_PIX_FMT_SGRBG14
+	V4L2_PIX_FMT_SRGGB14
+
+Change-Id: If17b2965213fd801bd309409feb85d502dca31fa
+Signed-off-by: Jouni Ukkonen <jouni.ukkonen@intel.com>
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+Reviewed-on: https://android.intel.com/513660
+Reviewed-by: Ailus, Sakari <sakari.ailus@intel.com>
+Reviewed-by: Onkalo, Samu <samu.onkalo@intel.com>
+Tested-by: Tao, Wei <wei.tao@intel.com>
+Reviewed-by: Laakso, Antti <antti.laakso@intel.com>
+Reviewed-by: Meng, WeiX <weix.meng@intel.com>
+Tested-by: Meng, WeiX <weix.meng@intel.com>
+---
+ include/uapi/linux/videodev2.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index a9e42f6..d727710 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -589,6 +589,10 @@ struct v4l2_pix_format {
+ #define V4L2_PIX_FMT_SGBRG12P v4l2_fourcc('p', 'G', 'C', 'C')
+ #define V4L2_PIX_FMT_SGRBG12P v4l2_fourcc('p', 'g', 'C', 'C')
+ #define V4L2_PIX_FMT_SRGGB12P v4l2_fourcc('p', 'R', 'C', 'C')
++#define V4L2_PIX_FMT_SBGGR14 v4l2_fourcc('B', 'G', '1', '4') /* 14  BGBG.. GRGR.. */
++#define V4L2_PIX_FMT_SGBRG14 v4l2_fourcc('G', 'B', '1', '4') /* 14  GBGB.. RGRG.. */
++#define V4L2_PIX_FMT_SGRBG14 v4l2_fourcc('B', 'A', '1', '4') /* 14  GRGR.. BGBG.. */
++#define V4L2_PIX_FMT_SRGGB14 v4l2_fourcc('R', 'G', '1', '4') /* 14  RGRG.. GBGB.. */
+ #define V4L2_PIX_FMT_SBGGR16 v4l2_fourcc('B', 'Y', 'R', '2') /* 16  BGBG.. GRGR.. */
+ 
+ /* compressed formats */
+-- 
+2.7.4
+

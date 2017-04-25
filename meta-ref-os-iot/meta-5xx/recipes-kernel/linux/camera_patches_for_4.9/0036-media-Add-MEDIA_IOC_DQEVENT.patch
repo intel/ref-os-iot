@@ -1,0 +1,296 @@
+From c2e9cb7e8a178bcb15bcbd537d7c5e549b39958b Mon Sep 17 00:00:00 2001
+From: Sakari Ailus <sakari.ailus@linux.intel.com>
+Date: Thu, 23 Mar 2017 09:22:18 +0530
+Subject: [PATCH 36/42] media: Add MEDIA_IOC_DQEVENT
+
+Events on a media device tell about completion of requests.
+Blocking and non-blocking operation is supported.
+
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+---
+ drivers/media/media-device.c | 101 ++++++++++++++++++++++++++++++++++++++++++-
+ include/media/media-device.h |  11 ++++-
+ include/uapi/linux/media.h   |  18 +++++++-
+ 3 files changed, 126 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/media/media-device.c b/drivers/media/media-device.c
+index 3336f13..25f0089 100644
+--- a/drivers/media/media-device.c
++++ b/drivers/media/media-device.c
+@@ -23,6 +23,7 @@
+ /* We need to access legacy defines from linux/media.h */
+ #define __NEED_MEDIA_LEGACY_API
+ 
++#include <linux/atomic.h>
+ #include <linux/compat.h>
+ #include <linux/export.h>
+ #include <linux/idr.h>
+@@ -32,6 +33,7 @@
+ #include <linux/types.h>
+ #include <linux/pci.h>
+ #include <linux/usb.h>
++#include <linux/wait.h>
+ 
+ #include <media/media-device.h>
+ #include <media/media-devnode.h>
+@@ -51,6 +53,11 @@ static char *__request_state[] = {
+ struct media_device_fh {
+ 	struct media_devnode_fh fh;
+ 	struct list_head requests;
++	struct {
++		struct list_head head;
++		wait_queue_head_t wait;
++		atomic_t sequence;
++	} kevents;
+ };
+ 
+ static inline struct media_device_fh *media_device_fh(struct file *filp)
+@@ -107,6 +114,25 @@ void media_device_request_get(struct media_device_request *req)
+ }
+ EXPORT_SYMBOL_GPL(media_device_request_get);
+ 
++static void media_device_request_queue_event(struct media_device *mdev,
++					     struct media_device_request *req,
++					     struct media_device_fh *fh)
++{
++	struct media_kevent *kev = req->kev;
++	struct media_event *ev = &kev->ev;
++
++	lockdep_assert_held(&mdev->req_lock);
++
++	ev->sequence = atomic_inc_return(&fh->kevents.sequence);
++	ev->type = MEDIA_EVENT_TYPE_REQUEST_COMPLETE;
++	ev->req_complete.id = req->id;
++
++	list_add(&kev->list, &fh->kevents.head);
++	req->kev = NULL;
++	req->state = MEDIA_DEVICE_REQUEST_STATE_COMPLETE;
++	wake_up(&fh->kevents.wait);
++}
++
+ static void media_device_request_release(struct kref *kref)
+ {
+ 	struct media_device_request *req =
+@@ -117,6 +143,9 @@ static void media_device_request_release(struct kref *kref)
+ 
+ 	ida_simple_remove(&mdev->req_ids, req->id);
+ 
++	kfree(req->kev);
++	req->kev = NULL;
++
+ 	mdev->ops->req_free(mdev, req);
+ }
+ 
+@@ -132,6 +161,7 @@ static int media_device_request_alloc(struct media_device *mdev,
+ {
+ 	struct media_device_fh *fh = media_device_fh(filp);
+ 	struct media_device_request *req;
++	struct media_kevent *kev;
+ 	unsigned long flags;
+ 	int id = ida_simple_get(&mdev->req_ids, 1, 0, GFP_KERNEL);
+ 	int ret;
+@@ -141,16 +171,23 @@ static int media_device_request_alloc(struct media_device *mdev,
+ 		return id;
+ 	}
+ 
++	kev = kzalloc(sizeof(*kev), GFP_KERNEL);
++	if (!kev) {
++		ret = -ENOMEM;
++		goto out_ida_simple_remove;
++	}
++
+ 	req = mdev->ops->req_alloc(mdev);
+ 	if (!req) {
+ 		ret = -ENOMEM;
+-		goto out_ida_simple_remove;
++		goto out_kev_free;
+ 	}
+ 
+ 	req->mdev = mdev;
+ 	req->id = id;
+ 	req->filp = filp;
+ 	req->state = MEDIA_DEVICE_REQUEST_STATE_IDLE;
++	req->kev = kev;
+ 	kref_init(&req->kref);
+ 
+ 	spin_lock_irqsave(&mdev->req_lock, flags);
+@@ -164,6 +201,9 @@ static int media_device_request_alloc(struct media_device *mdev,
+ 
+ 	return 0;
+ 
++out_kev_free:
++	kfree(kev);
++
+ out_ida_simple_remove:
+ 	ida_simple_remove(&mdev->req_ids, id);
+ 
+@@ -237,6 +277,8 @@ void media_device_request_complete(struct media_device *mdev,
+ 		 */
+ 		list_del(&req->list);
+ 		list_del(&req->fh_list);
++			media_device_request_queue_event(
++				mdev, req, media_device_fh(filp));
+ 		req->filp = NULL;
+ 	}
+ 
+@@ -362,6 +404,9 @@ static int media_device_open(struct file *filp)
+ 		return -ENOMEM;
+ 
+ 	INIT_LIST_HEAD(&fh->requests);
++	INIT_LIST_HEAD(&fh->kevents.head);
++	init_waitqueue_head(&fh->kevents.wait);
++	atomic_set(&fh->kevents.sequence, -1);
+ 	filp->private_data = &fh->fh;
+ 
+ 	return 0;
+@@ -385,6 +430,15 @@ static int media_device_close(struct file *filp)
+ 		spin_lock_irq(&mdev->req_lock);
+ 	}
+ 
++	while (!list_empty(&fh->kevents.head)) {
++		struct media_kevent *kev =
++			list_first_entry(&fh->kevents.head, typeof(*kev), list);
++
++		list_del(&kev->list);
++		spin_unlock_irq(&mdev->req_lock);
++		kfree(kev);
++		spin_lock_irq(&mdev->req_lock);
++	}
+ 	spin_unlock_irq(&mdev->req_lock);
+ 
+ 	kfree(fh);
+@@ -701,6 +755,49 @@ static long media_device_get_topology(struct media_device *mdev,
+ 	return ret;
+ }
+ 
++static struct media_kevent *opportunistic_dqevent(struct media_device *mdev,
++						  struct file *filp)
++{
++	struct media_device_fh *fh = media_device_fh(filp);
++	struct media_kevent *kev = NULL;
++	unsigned long flags;
++
++	spin_lock_irqsave(&mdev->req_lock, flags);
++	if (!list_empty(&fh->kevents.head)) {
++		kev = list_last_entry(&fh->kevents.head,
++				      struct media_kevent, list);
++		list_del(&kev->list);
++	}
++	spin_unlock_irqrestore(&mdev->req_lock, flags);
++
++	return kev;
++}
++
++static int media_device_dqevent(struct media_device *mdev,
++				struct file *filp,
++				struct media_event *ev)
++{
++	struct media_device_fh *fh = media_device_fh(filp);
++	struct media_kevent *kev;
++
++	if (filp->f_flags & O_NONBLOCK) {
++		kev = opportunistic_dqevent(mdev, filp);
++		if (!kev)
++			return -ENODATA;
++	} else {
++		int ret = wait_event_interruptible(
++			fh->kevents.wait,
++			(kev = opportunistic_dqevent(mdev, filp)));
++		if (ret == -ERESTARTSYS)
++			return ret;
++	}
++
++	*ev = kev->ev;
++	kfree(kev);
++
++	return 0;
++}
++
+ static long copy_arg_from_user(void *karg, void __user *uarg, unsigned int cmd)
+ {
+ 	/* All media IOCTLs are _IOWR() */
+@@ -751,7 +848,7 @@ static const struct media_ioctl_info ioctl_info[] = {
+ 	MEDIA_IOC(SETUP_LINK, media_device_setup_link, MEDIA_IOC_FL_GRAPH_MUTEX),
+ 	MEDIA_IOC(G_TOPOLOGY, media_device_get_topology, MEDIA_IOC_FL_GRAPH_MUTEX),
+ 	MEDIA_IOC(REQUEST_CMD, media_device_request_cmd, 0),
+-
++	MEDIA_IOC(DQEVENT, media_device_dqevent, 0),
+ };
+ 
+ static long media_device_ioctl(struct file *filp, unsigned int cmd,
+diff --git a/include/media/media-device.h b/include/media/media-device.h
+index 3545923..06b86b5 100644
+--- a/include/media/media-device.h
++++ b/include/media/media-device.h
+@@ -31,9 +31,12 @@
+ #include <media/media-devnode.h>
+ #include <media/media-entity.h>
+ 
+-struct ida;
++#include <uapi/linux/media.h>
++
+ struct device;
++struct file;
+ struct media_device;
++struct media_device_fh;
+ 
+ enum media_device_request_state {
+ 	MEDIA_DEVICE_REQUEST_STATE_IDLE,
+@@ -56,6 +59,7 @@ struct media_device_request {
+ 	u32 id;
+ 	struct media_device *mdev;
+ 	struct file *filp;
++	struct media_kevent *kev;
+ 	struct kref kref;
+ 	struct list_head list;
+ 	struct list_head fh_list;
+@@ -99,6 +103,11 @@ struct media_device_ops {
+ 			 struct media_device_request *req);
+ };
+ 
++struct media_kevent {
++	struct list_head list;
++	struct media_event ev;
++};
++
+ /**
+  * struct media_device - Media device
+  * @dev:	Parent device
+diff --git a/include/uapi/linux/media.h b/include/uapi/linux/media.h
+index 14fdcd7..b79a743 100644
+--- a/include/uapi/linux/media.h
++++ b/include/uapi/linux/media.h
+@@ -409,6 +409,22 @@ struct __attribute__ ((packed)) media_request_cmd {
+ 	__u32 request;
+ };
+ 
++struct __attribute__ ((packed)) media_event_request_complete {
++	__u32 id;
++};
++
++#define MEDIA_EVENT_TYPE_REQUEST_COMPLETE	1
++
++struct __attribute__ ((packed)) media_event {
++	__u32 type;
++	__u32 sequence;
++	__u32 reserved[4];
++
++	union {
++		struct media_event_request_complete req_complete;
++	};
++};
++
+ /* ioctls */
+ 
+ #define MEDIA_IOC_DEVICE_INFO		_IOWR('|', 0x00, struct media_device_info)
+@@ -417,6 +433,6 @@ struct __attribute__ ((packed)) media_request_cmd {
+ #define MEDIA_IOC_SETUP_LINK		_IOWR('|', 0x03, struct media_link_desc)
+ #define MEDIA_IOC_G_TOPOLOGY		_IOWR('|', 0x04, struct media_v2_topology)
+ #define MEDIA_IOC_REQUEST_CMD		_IOWR('|', 0x05, struct media_request_cmd)
+-
++#define MEDIA_IOC_DQEVENT			_IOWR('|', 0x06, struct media_event)
+ 
+ #endif /* __LINUX_MEDIA_H */
+-- 
+2.7.4
+

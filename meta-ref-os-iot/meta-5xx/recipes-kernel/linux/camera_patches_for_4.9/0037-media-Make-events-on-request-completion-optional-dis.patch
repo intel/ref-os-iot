@@ -1,0 +1,111 @@
+From f997fafc29b15d2e9405311800af0fe3c81e1908 Mon Sep 17 00:00:00 2001
+From: Sakari Ailus <sakari.ailus@linux.intel.com>
+Date: Thu, 23 Mar 2017 09:26:26 +0530
+Subject: [PATCH 37/42] media: Make events on request completion optional,
+ disabled by default
+
+Add flags to requests. The first defined flag, MEDIA_REQ_FL_COMPLETE_EVENT
+is used to tell whether to queue an event on request completion.
+Unless the flag is set, no event is generated when a request
+completes.
+
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+---
+ drivers/media/media-device.c |  9 ++++++---
+ include/media/media-device.h |  2 ++
+ include/uapi/linux/media.h   | 10 ++++++++++
+ 3 files changed, 18 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/media/media-device.c b/drivers/media/media-device.c
+index 25f0089..48be0b6 100644
+--- a/drivers/media/media-device.c
++++ b/drivers/media/media-device.c
+@@ -277,6 +277,8 @@ void media_device_request_complete(struct media_device *mdev,
+ 		 */
+ 		list_del(&req->list);
+ 		list_del(&req->fh_list);
++		/* If the user asked for an event, let's queue one. */
++		if (req->flags & MEDIA_REQ_FL_COMPLETE_EVENT)
+ 			media_device_request_queue_event(
+ 				mdev, req, media_device_fh(filp));
+ 		req->filp = NULL;
+@@ -296,7 +298,7 @@ EXPORT_SYMBOL_GPL(media_device_request_complete);
+ 
+ static int media_device_request_queue_apply(
+ 	struct media_device *mdev, struct media_device_request *req,
+-	int (*fn)(struct media_device *mdev,
++	u32 req_flags, int (*fn)(struct media_device *mdev,
+ 		struct media_device_request *req), bool queue)
+ {
+ 	char *str = queue ? "queue" : "apply";
+@@ -314,6 +316,7 @@ static int media_device_request_queue_apply(
+ 			str, req->id, request_state(req->state));
+ 	} else {
+ 		req->state = MEDIA_DEVICE_REQUEST_STATE_QUEUED;
++		req->flags = req_flags;
+ 	}
+ 	spin_unlock_irqrestore(&mdev->req_lock, flags);
+ 
+@@ -361,13 +364,13 @@ static long media_device_request_cmd(struct media_device *mdev,
+ 		break;
+ 
+ 	case MEDIA_REQ_CMD_APPLY:
+-		ret = media_device_request_queue_apply(mdev, req,
++		ret = media_device_request_queue_apply(mdev, req, cmd->flags,
+ 					mdev->ops->req_apply,
+ 					false);
+ 		break;
+ 
+ 	case MEDIA_REQ_CMD_QUEUE:
+-		ret = media_device_request_queue_apply(mdev, req,
++		ret = media_device_request_queue_apply(mdev, req, cmd->flags,
+ 					mdev->ops->req_queue,
+ 					true);
+ 		break;
+diff --git a/include/media/media-device.h b/include/media/media-device.h
+index 06b86b5..5cac83f 100644
+--- a/include/media/media-device.h
++++ b/include/media/media-device.h
+@@ -54,6 +54,7 @@ enum media_device_request_state {
+  * @fh_list: List entry in the media file handle requests list
+  * @state: The state of the request, MEDIA_DEVICE_REQUEST_STATE_*,
+  *	   access to state serialised by mdev->req_lock
++ * @flags: Request specific flags, MEDIA_REQ_FL_*
+  */
+ struct media_device_request {
+ 	u32 id;
+@@ -64,6 +65,7 @@ struct media_device_request {
+ 	struct list_head list;
+ 	struct list_head fh_list;
+ 	enum media_device_request_state state;
++	u32 flags;
+ };
+ 
+ /**
+diff --git a/include/uapi/linux/media.h b/include/uapi/linux/media.h
+index b79a743..9bef315 100644
+--- a/include/uapi/linux/media.h
++++ b/include/uapi/linux/media.h
+@@ -404,9 +404,19 @@ struct media_v2_topology {
+ #define MEDIA_REQ_CMD_APPLY		2
+ #define MEDIA_REQ_CMD_QUEUE		3
+ 
++#define MEDIA_REQ_FL_COMPLETE_EVENT	(1 << 0)
++
++#ifdef __KERNEL__
++struct __attribute__ ((packed)) media_request_cmd_0 {
++	__u32 cmd;
++	__u32 request;
++};
++#endif
++
+ struct __attribute__ ((packed)) media_request_cmd {
+ 	__u32 cmd;
+ 	__u32 request;
++	__u32 flags;
+ };
+ 
+ struct __attribute__ ((packed)) media_event_request_complete {
+-- 
+2.7.4
+

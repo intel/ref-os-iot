@@ -1,0 +1,38 @@
+From 161a904203d0efbb19bba40232e351907171d559 Mon Sep 17 00:00:00 2001
+From: Sakari Ailus <sakari.ailus@linux.intel.com>
+Date: Wed, 22 Mar 2017 04:57:26 +0530
+Subject: [PATCH 01/42] v4l: Add packed Bayer raw12 pixel formats
+
+These formats are compressed 12-bit raw bayer formats with four
+different pixel orders. They are similar to 10-bit variants.
+The formats added by this patch are
+
+	V4L2_PIX_FMT_SBGGR12P
+	V4L2_PIX_FMT_SGBRG12P
+	V4L2_PIX_FMT_SGRBG12P
+	V4L2_PIX_FMT_SRGGB12P
+
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+---
+ include/uapi/linux/videodev2.h | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 7f34d3c..a9e42f6 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -584,6 +584,11 @@ struct v4l2_pix_format {
+ #define V4L2_PIX_FMT_SGBRG12 v4l2_fourcc('G', 'B', '1', '2') /* 12  GBGB.. RGRG.. */
+ #define V4L2_PIX_FMT_SGRBG12 v4l2_fourcc('B', 'A', '1', '2') /* 12  GRGR.. BGBG.. */
+ #define V4L2_PIX_FMT_SRGGB12 v4l2_fourcc('R', 'G', '1', '2') /* 12  RGRG.. GBGB.. */
++	/* 12bit raw bayer packed, 6 bytes for every 4 pixels */
++#define V4L2_PIX_FMT_SBGGR12P v4l2_fourcc('p', 'B', 'C', 'C')
++#define V4L2_PIX_FMT_SGBRG12P v4l2_fourcc('p', 'G', 'C', 'C')
++#define V4L2_PIX_FMT_SGRBG12P v4l2_fourcc('p', 'g', 'C', 'C')
++#define V4L2_PIX_FMT_SRGGB12P v4l2_fourcc('p', 'R', 'C', 'C')
+ #define V4L2_PIX_FMT_SBGGR16 v4l2_fourcc('B', 'Y', 'R', '2') /* 16  BGBG.. GRGR.. */
+ 
+ /* compressed formats */
+-- 
+2.7.4
+

@@ -1,0 +1,85 @@
+From ca2498c1a1f922ce8fcec16a21cee5c7805b8a36 Mon Sep 17 00:00:00 2001
+From: Sakari Ailus <sakari.ailus@linux.intel.com>
+Date: Thu, 23 Mar 2017 09:07:53 +0530
+Subject: [PATCH 34/42] media: Only requests in IDLE state may be deleted
+
+Prevent deleting queued requests. Also mark deleted requests as such by
+adding a new state for them.
+
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+---
+ drivers/media/media-device.c | 20 ++++++++++++++++----
+ include/media/media-device.h |  1 +
+ 2 files changed, 17 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/media/media-device.c b/drivers/media/media-device.c
+index ba8a266..8a785a1 100644
+--- a/drivers/media/media-device.c
++++ b/drivers/media/media-device.c
+@@ -41,6 +41,7 @@
+ static char *__request_state[] = {
+ 	"IDLE",
+ 	"QUEUED",
++	"DELETED"
+ };
+ 
+ #define request_state(i)			\
+@@ -168,12 +169,22 @@ static int media_device_request_alloc(struct media_device *mdev,
+ 	return ret;
+ }
+ 
+-static void media_device_request_delete(struct media_device *mdev,
+-				       struct media_device_request *req)
++static int media_device_request_delete(struct media_device *mdev,
++			struct media_device_request *req)
+ {
+ 	unsigned long flags;
+ 
+ 	spin_lock_irqsave(&mdev->req_lock, flags);
++
++	if (req->state != MEDIA_DEVICE_REQUEST_STATE_IDLE) {
++		spin_unlock_irqrestore(&mdev->req_lock, flags);
++		dev_dbg(mdev->dev, "request: can't delete %u, state %s\n",
++			req->id, request_state(req->state));
++		return -EINVAL;
++	}
++
++	req->state = MEDIA_DEVICE_REQUEST_STATE_DELETED;
++
+ 	if (req->filp) {
+ 		/*
+ 		 * If the file handle is gone by now the
+@@ -188,6 +199,8 @@ static void media_device_request_delete(struct media_device *mdev,
+ 	spin_unlock_irqrestore(&mdev->req_lock, flags);
+ 
+ 	media_device_request_put(req);
++
++	return 0;
+ }
+ 
+ static int media_device_request_queue_apply(
+@@ -253,8 +266,7 @@ static long media_device_request_cmd(struct media_device *mdev,
+ 		break;
+ 
+ 	case MEDIA_REQ_CMD_DELETE:
+-		media_device_request_delete(mdev, req);
+-		ret = 0;
++		ret = media_device_request_delete(mdev, req);
+ 		break;
+ 
+ 	case MEDIA_REQ_CMD_APPLY:
+diff --git a/include/media/media-device.h b/include/media/media-device.h
+index 8de9b97..6347262 100644
+--- a/include/media/media-device.h
++++ b/include/media/media-device.h
+@@ -38,6 +38,7 @@ struct media_device;
+ enum media_device_request_state {
+ 	MEDIA_DEVICE_REQUEST_STATE_IDLE,
+ 	MEDIA_DEVICE_REQUEST_STATE_QUEUED,
++	MEDIA_DEVICE_REQUEST_STATE_DELETED
+ };
+ 
+ /**
+-- 
+2.7.4
+

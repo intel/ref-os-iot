@@ -1,0 +1,30 @@
+From e5547d5a0610cdf579d970d057e4dd8c499d62b1 Mon Sep 17 00:00:00 2001
+From: Tommi Franttila <tommi.franttila@intel.com>
+Date: Thu, 1 Dec 2016 12:17:21 +0200
+Subject: [PATCH 02/42] v4l: Packed Bayer raw12 pixel formats
+
+Added missing pixel formats to v4l_fill_fmtdesc.
+
+Signed-off-by: Tommi Franttila <tommi.franttila@intel.com>
+---
+ drivers/media/v4l2-core/v4l2-ioctl.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/media/v4l2-core/v4l2-ioctl.c b/drivers/media/v4l2-core/v4l2-ioctl.c
+index c52d94c..e69e3ee 100644
+--- a/drivers/media/v4l2-core/v4l2-ioctl.c
++++ b/drivers/media/v4l2-core/v4l2-ioctl.c
+@@ -1218,6 +1218,10 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
+ 	case V4L2_PIX_FMT_SGBRG12:	descr = "12-bit Bayer GBGB/RGRG"; break;
+ 	case V4L2_PIX_FMT_SGRBG12:	descr = "12-bit Bayer GRGR/BGBG"; break;
+ 	case V4L2_PIX_FMT_SRGGB12:	descr = "12-bit Bayer RGRG/GBGB"; break;
++	case V4L2_PIX_FMT_SBGGR12P:     descr = "12-bit Bayer BGBG/GRGR Packed"; break;
++	case V4L2_PIX_FMT_SGBRG12P:     descr = "12-bit Bayer GBGB/RGRG Packed"; break;
++	case V4L2_PIX_FMT_SGRBG12P:     descr = "12-bit Bayer GRGR/BGBG Packed"; break;
++	case V4L2_PIX_FMT_SRGGB12P:     descr = "12-bit Bayer RGRG/GBGB Packed"; break;
+ 	case V4L2_PIX_FMT_SBGGR10P:	descr = "10-bit Bayer BGBG/GRGR Packed"; break;
+ 	case V4L2_PIX_FMT_SGBRG10P:	descr = "10-bit Bayer GBGB/RGRG Packed"; break;
+ 	case V4L2_PIX_FMT_SGRBG10P:	descr = "10-bit Bayer GRGR/BGBG Packed"; break;
+-- 
+2.7.4
+

@@ -1,0 +1,53 @@
+From efa39accf4d6d19422649927a77f14cdb1010d34 Mon Sep 17 00:00:00 2001
+From: Hans Verkuil <hans.verkuil@cisco.com>
+Date: Wed, 22 Mar 2017 08:04:17 +0530
+Subject: [PATCH 18/42] vb1: Add allow_requests flag
+
+The driver has to set allow_requests explicitly in order to allow
+queuing or preparing buffers for a specific request ID.
+
+Signed-off-by: Hans Verkuil <hans.verkuil@cisco.com>
+---
+ drivers/media/v4l2-core/videobuf2-v4l2.c | 5 +++++
+ include/media/videobuf2-core.h           | 2 ++
+ 2 files changed, 7 insertions(+)
+
+diff --git a/drivers/media/v4l2-core/videobuf2-v4l2.c b/drivers/media/v4l2-core/videobuf2-v4l2.c
+index 8af9596..c26bf25 100644
+--- a/drivers/media/v4l2-core/videobuf2-v4l2.c
++++ b/drivers/media/v4l2-core/videobuf2-v4l2.c
+@@ -179,6 +179,11 @@ static int vb2_queue_or_prepare_buf(struct vb2_queue *q, struct v4l2_buffer *b,
+ 		return -EINVAL;
+ 	}
+ 
++	if (!q->allow_requests && b->request) {
++		dprintk(1, "%s: unsupported request ID\n", opname);
++		return -EINVAL;
++	}
++
+ 	return __verify_planes_array(q->bufs[b->index], b);
+ }
+ 
+diff --git a/include/media/videobuf2-core.h b/include/media/videobuf2-core.h
+index ac5898a..228a2ba 100644
+--- a/include/media/videobuf2-core.h
++++ b/include/media/videobuf2-core.h
+@@ -430,6 +430,7 @@ struct vb2_buf_ops {
+  * @fileio_read_once:		report EOF after reading the first buffer
+  * @fileio_write_immediately:	queue buffer after each write() call
+  * @allow_zero_bytesused:	allow bytesused == 0 to be passed to the driver
++ * @allow_requests:		allow request != 0 to be passed to the driver
+  * @quirk_poll_must_check_waiting_for_buffers: Return POLLERR at poll when QBUF
+  *              has not been called. This is a vb1 idiom that has been adopted
+  *              also by vb2.
+@@ -498,6 +499,7 @@ struct vb2_queue {
+ 	unsigned			fileio_read_once:1;
+ 	unsigned			fileio_write_immediately:1;
+ 	unsigned			allow_zero_bytesused:1;
++	unsigned			allow_requests:1;
+ 	unsigned		   quirk_poll_must_check_waiting_for_buffers:1;
+ 
+ 	struct mutex			*lock;
+-- 
+2.7.4
+

@@ -1,0 +1,28 @@
+From d35e2ba724ac0657245bcdad2e8d68e9a260dc12 Mon Sep 17 00:00:00 2001
+From: Sakari Ailus <sakari.ailus@linux.intel.com>
+Date: Wed, 22 Mar 2017 06:03:23 +0530
+Subject: [PATCH 08/42] media: v4l: Add 32-long vector YUV format define
+
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+---
+ include/uapi/linux/videodev2.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 481ffac..e891162 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -556,6 +556,10 @@ struct v4l2_pix_format {
+ #define V4L2_PIX_FMT_YUV444M v4l2_fourcc('Y', 'M', '2', '4') /* 24  YUV444 planar */
+ #define V4L2_PIX_FMT_YVU444M v4l2_fourcc('Y', 'M', '4', '2') /* 24  YVU444 planar */
+ 
++/* Vector YUV formats */
++#define V4L2_PIX_FMT_YYUV422_V32 v4l2_fourcc('y', 'V', '3', '2')
++#define V4L2_PIX_FMT_YYUV420_V32 v4l2_fourcc('y', '0', '3', '2')
++
+ /* Bayer formats - see http://www.siliconimaging.com/RGB%20Bayer.htm */
+ #define V4L2_PIX_FMT_SBGGR8  v4l2_fourcc('B', 'A', '8', '1') /*  8  BGBG.. GRGR.. */
+ #define V4L2_PIX_FMT_SGBRG8  v4l2_fourcc('G', 'B', 'R', 'G') /*  8  GBGB.. RGRG.. */
+-- 
+2.7.4
+

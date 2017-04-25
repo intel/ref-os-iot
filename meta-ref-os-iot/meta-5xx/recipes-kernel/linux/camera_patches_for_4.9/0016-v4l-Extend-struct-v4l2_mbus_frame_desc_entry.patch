@@ -1,0 +1,51 @@
+From b551f7a82136bc5acd8ad5aa495906af81bae253 Mon Sep 17 00:00:00 2001
+From: Sakari Ailus <sakari.ailus@linux.intel.com>
+Date: Wed, 22 Mar 2017 07:40:59 +0530
+Subject: [PATCH 16/42] v4l: Extend struct v4l2_mbus_frame_desc_entry
+
+Add bpp fields and bus-specific information (CSI-2).
+
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+---
+ include/media/v4l2-subdev.h | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/include/media/v4l2-subdev.h b/include/media/v4l2-subdev.h
+index bc2edc2..5575fa1 100644
+--- a/include/media/v4l2-subdev.h
++++ b/include/media/v4l2-subdev.h
+@@ -285,6 +285,18 @@ struct v4l2_subdev_audio_ops {
+ 	int (*s_stream)(struct v4l2_subdev *sd, int enable);
+ };
+ 
++/**
++ * struct v4l2_mbus_frame_desc_entry_csi2
++ *
++ * @channel: CSI-2 virtual channel
++ * @data_type: CSI-2 data type ID
++ */
++struct v4l2_mbus_frame_desc_entry_csi2 {
++	u8 channel;
++	u8 data_type;
++};
++
++
+ /* Indicates the @length field specifies maximum data length. */
+ #define V4L2_MBUS_FRAME_DESC_FL_LEN_MAX		(1U << 0)
+ /*
+@@ -304,8 +316,12 @@ struct v4l2_subdev_audio_ops {
+  */
+ struct v4l2_mbus_frame_desc_entry {
+ 	u16 flags;
++	u8 bpp;
+ 	u32 pixelcode;
+ 	u32 length;
++	union {
++		struct v4l2_mbus_frame_desc_entry_csi2 csi2;
++	} bus;
+ };
+ 
+ #define V4L2_FRAME_DESC_ENTRY_MAX	4
+-- 
+2.7.4
+

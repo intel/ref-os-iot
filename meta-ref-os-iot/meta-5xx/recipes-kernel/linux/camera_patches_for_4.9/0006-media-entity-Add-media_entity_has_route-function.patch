@@ -1,0 +1,75 @@
+From 38768173bae83623f904d30522836d005fee730e Mon Sep 17 00:00:00 2001
+From: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+Date: Wed, 22 Mar 2017 05:54:55 +0530
+Subject: [PATCH 06/42] media: entity: Add media_entity_has_route() function
+
+This is a wrapper around the media entity has_route operation.
+
+Signed-off-by: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+Signed-off-by: Michal Simek <michal.simek@xilinx.com>
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+Signed-off-by: Jianxu Zheng <jian.xu.zheng@intel.com>
+---
+ drivers/media/media-entity.c | 31 +++++++++++++++++++++++++++++++
+ include/media/media-entity.h |  3 +++
+ 2 files changed, 34 insertions(+)
+
+diff --git a/drivers/media/media-entity.c b/drivers/media/media-entity.c
+index c68239e..28139ed 100644
+--- a/drivers/media/media-entity.c
++++ b/drivers/media/media-entity.c
+@@ -242,6 +242,37 @@ EXPORT_SYMBOL_GPL(media_entity_pads_init);
+  * Graph traversal
+  */
+ 
++/**
++ * media_entity_has_route - Check if two entity pads are connected internally
++ * @entity: The entity
++ * @pad0: The first pad index
++ * @pad1: The second pad index
++ *
++ * This function can be used to check whether two pads of an entity are
++ * connected internally in the entity.
++ *
++ * The caller must hold entity->source->parent->mutex.
++ *
++ * Return: true if the pads are connected internally and false otherwise.
++ */
++bool media_entity_has_route(struct media_entity *entity, unsigned int pad0,
++			    unsigned int pad1)
++{
++	if (pad0 >= entity->num_pads || pad1 >= entity->num_pads)
++		return false;
++
++	if (pad0 == pad1)
++		return true;
++
++	if (!entity->ops || !entity->ops->has_route)
++		return true;
++
++	return entity->ops->has_route(entity, pad0, pad1);
++}
++EXPORT_SYMBOL_GPL(media_entity_has_route);
++
++
++
+ static struct media_entity *
+ media_entity_other(struct media_entity *entity, struct media_link *link)
+ {
+diff --git a/include/media/media-entity.h b/include/media/media-entity.h
+index 8f9fc85..5fb3f06 100644
+--- a/include/media/media-entity.h
++++ b/include/media/media-entity.h
+@@ -851,6 +851,9 @@ void media_entity_graph_walk_cleanup(struct media_entity_graph *graph);
+  */
+ void media_entity_put(struct media_entity *entity);
+ 
++bool media_entity_has_route(struct media_entity *entity, unsigned int sink,
++			    unsigned int source);
++
+ /**
+  * media_entity_graph_walk_start - Start walking the media graph at a
+  *	given entity
+-- 
+2.7.4
+

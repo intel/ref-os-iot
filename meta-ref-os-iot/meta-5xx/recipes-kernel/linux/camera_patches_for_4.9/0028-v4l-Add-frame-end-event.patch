@@ -1,0 +1,37 @@
+From d6fb795b518551df581c4a6bf782450c730a1acd Mon Sep 17 00:00:00 2001
+From: Sakari Ailus <sakari.ailus@linux.intel.com>
+Date: Wed, 22 Mar 2017 10:01:31 +0530
+Subject: [PATCH 28/42] v4l: Add frame end event
+
+Add an event to signal frame end. This is not necessarily the same timestamp
+git showas the video buffer done timestamp, and can be also subscribed by other
+processes than the one controlling streaming and buffer (de)queueing.
+
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+---
+ include/uapi/linux/videodev2.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 2f50d9f..03ed8e2 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -2107,6 +2107,7 @@ struct v4l2_streamparm {
+ #define V4L2_EVENT_FRAME_SYNC			4
+ #define V4L2_EVENT_SOURCE_CHANGE		5
+ #define V4L2_EVENT_MOTION_DET			6
++#define V4L2_EVENT_FRAME_END			7
+ #define V4L2_EVENT_PRIVATE_START		0x08000000
+ 
+ /* Payload for V4L2_EVENT_VSYNC */
+@@ -2134,6 +2135,7 @@ struct v4l2_event_ctrl {
+ 	__s32 default_value;
+ };
+ 
++/* V4L2_EVENT_FRAME_SYNC or V4L2_EVENT_FRAME_END */
+ struct v4l2_event_frame_sync {
+ 	__u32 frame_sequence;
+ };
+-- 
+2.7.4
+

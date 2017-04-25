@@ -1,0 +1,82 @@
+From 9f86a152aa27aa6d50acd0140d7967efcd27877c Mon Sep 17 00:00:00 2001
+From: Juha Alanen <juha.alanen@intel.com>
+Date: Wed, 18 Jan 2017 13:28:17 +0200
+Subject: [PATCH] Add Kconfig for Intel IPU4 driver
+
+Signed-off-by: Juha Alanen <juha.alanen@intel.com>
+---
+ drivers/media/Kconfig     |  1 +
+ drivers/media/Kconfig.ipu | 50 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 51 insertions(+)
+ create mode 100644 drivers/media/Kconfig.ipu
+
+diff --git a/drivers/media/Kconfig b/drivers/media/Kconfig
+index 3ef3d6c6bbf8..3d9892d11cfd 100644
+--- a/drivers/media/Kconfig
++++ b/drivers/media/Kconfig
+@@ -216,5 +216,6 @@ config MEDIA_ATTACH
+ source "drivers/media/i2c/Kconfig"
+ source "drivers/media/tuners/Kconfig"
+ source "drivers/media/dvb-frontends/Kconfig"
++source "drivers/media/Kconfig.ipu"
+ 
+ endif # MEDIA_SUPPORT
+diff --git a/drivers/media/Kconfig.ipu b/drivers/media/Kconfig.ipu
+new file mode 100644
+index 000000000000..0d2c44628b90
+--- /dev/null
++++ b/drivers/media/Kconfig.ipu
+@@ -0,0 +1,50 @@
++config VIDEO_INTEL_IPU4
++	tristate "Intel intel-ipu4 driver"
++	depends on ACPI
++	select IOMMU_API
++	select IOMMU_IOVA
++	select X86_DEV_DMA_OPS if X86
++	select VIDEOBUF2_DMA_CONTIG
++	select PHYS_ADDR_T_64BIT
++	select COMMON_CLK
++	---help---
++	Say Y here!
++
++choice
++	prompt "intel-ipu4 hardware type"
++	depends on VIDEO_INTEL_IPU4
++	default VIDEO_INTEL_IPU4_SOC
++
++config VIDEO_INTEL_IPU4_SOC
++	bool "Compile for SOC"
++
++config VIDEO_INTEL_IPU4_FPGA
++	bool "Compile for FPGA"
++
++config VIDEO_INTEL_IPU4_ISYS_FPGA
++	bool "Compile for ISYS-only FPGA"
++
++config VIDEO_INTEL_IPU4_PSYS_FPGA
++	bool "Compile for PSYS-only FPGA"
++
++endchoice
++
++config VIDEO_INTEL_IPU4_DEBUG
++	tristate "User space interface for firmware testing"
++	depends on VIDEO_INTEL_IPU4
++config INTEL_IPU4_BXT_GT_PDATA
++	tristate "Enable built in platform data for Broxton-GT"
++	---help---
++	Pre-ACPI system platform data is compiled inside kernel
++config VIDEO_CRLMODULE
++	tristate "CRL Module sensor support"
++	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
++	depends on MEDIA_CAMERA_SUPPORT
++	---help---
++	  This is a generic driver for CRL based camera modules.
++config VIDEO_DW9714
++	tristate "dw9714 voice coil support"
++	select REGMAP_I2C
++	depends on I2C && VIDEO_V4L2
++	---help---
++	This is a driver for the DW9714 camera lens voice coil.
+-- 
+2.11.0
+

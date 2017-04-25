@@ -1,0 +1,25 @@
+From e142b099568eca2ccefeda4b3e870b31a44aed15 Mon Sep 17 00:00:00 2001
+From: Sakari Ailus <sakari.ailus@linux.intel.com>
+Date: Fri, 8 Jan 2016 10:53:05 +0200
+Subject: [PATCH 12/42] Add number of mipi lanes control
+
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+---
+ include/uapi/linux/v4l2-controls.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/uapi/linux/v4l2-controls.h b/include/uapi/linux/v4l2-controls.h
+index b6a357a..b0d91b0 100644
+--- a/include/uapi/linux/v4l2-controls.h
++++ b/include/uapi/linux/v4l2-controls.h
+@@ -882,6 +882,7 @@ enum v4l2_jpeg_chroma_subsampling {
+ #define V4L2_CID_TEST_PATTERN_GREENR		(V4L2_CID_IMAGE_SOURCE_CLASS_BASE + 5)
+ #define V4L2_CID_TEST_PATTERN_BLUE		(V4L2_CID_IMAGE_SOURCE_CLASS_BASE + 6)
+ #define V4L2_CID_TEST_PATTERN_GREENB		(V4L2_CID_IMAGE_SOURCE_CLASS_BASE + 7)
++#define V4L2_CID_MIPI_LANES			(V4L2_CID_IMAGE_SOURCE_CLASS_BASE + 64)
+ 
+ 
+ /* Image processing controls */
+-- 
+2.7.4
+

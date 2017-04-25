@@ -1,0 +1,72 @@
+From 27e2dac7f39df32b09bd12e0f76c48993eb36a8c Mon Sep 17 00:00:00 2001
+From: Sakari Ailus <sakari.ailus@linux.intel.com>
+Date: Thu, 23 Mar 2017 08:59:42 +0530
+Subject: [PATCH 32/42] media: Add media device request state
+
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+---
+ drivers/media/media-device.c | 8 ++++++++
+ include/media/media-device.h | 7 +++++++
+ 2 files changed, 15 insertions(+)
+
+diff --git a/drivers/media/media-device.c b/drivers/media/media-device.c
+index 9f6efc5..e95ea22 100644
+--- a/drivers/media/media-device.c
++++ b/drivers/media/media-device.c
+@@ -38,6 +38,13 @@
+ #include <media/media-entity.h>
+ 
+ #ifdef CONFIG_MEDIA_CONTROLLER
++static char *__request_state[] = {
++	"IDLE",
++	"QUEUED",
++};
++
++#define request_state(i)			\
++	((i) < ARRAY_SIZE(__request_state) ? __request_state[i] : "UNKNOWN")
+ 
+ struct media_device_fh {
+ 	struct media_devnode_fh fh;
+@@ -141,6 +148,7 @@ static int media_device_request_alloc(struct media_device *mdev,
+ 	req->mdev = mdev;
+ 	req->id = id;
+ 	req->filp = filp;
++	req->state = MEDIA_DEVICE_REQUEST_STATE_IDLE;
+ 	kref_init(&req->kref);
+ 
+ 	spin_lock_irqsave(&mdev->req_lock, flags);
+diff --git a/include/media/media-device.h b/include/media/media-device.h
+index 07b6a5e..8de9b97 100644
+--- a/include/media/media-device.h
++++ b/include/media/media-device.h
+@@ -35,6 +35,10 @@ struct ida;
+ struct device;
+ struct media_device;
+ 
++enum media_device_request_state {
++	MEDIA_DEVICE_REQUEST_STATE_IDLE,
++	MEDIA_DEVICE_REQUEST_STATE_QUEUED,
++};
+ 
+ /**
+  * struct media_device_request - Media device request
+@@ -43,6 +47,8 @@ struct media_device;
+  * @kref: Reference count
+  * @list: List entry in the media device requests list
+  * @fh_list: List entry in the media file handle requests list
++ * @state: The state of the request, MEDIA_DEVICE_REQUEST_STATE_*,
++ *	   access to state serialised by mdev->req_lock
+  */
+ struct media_device_request {
+ 	u32 id;
+@@ -51,6 +57,7 @@ struct media_device_request {
+ 	struct kref kref;
+ 	struct list_head list;
+ 	struct list_head fh_list;
++	enum media_device_request_state state;
+ };
+ 
+ /**
+-- 
+2.7.4
+
