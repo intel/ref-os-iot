@@ -1,0 +1,47 @@
+From 63b24bd577007de52a79c1146d56d86cb9316d59 Mon Sep 17 00:00:00 2001
+From: Petri Ahonen <petri.ahonen@intel.com>
+Date: Thu, 22 Dec 2016 16:06:11 +0200
+Subject: [PATCH 06/11] FIXME: work around wide char initialization issues
+
+- disable magic identification string
+- disable writing inside ESP partition
+---
+ kernelflinger.c     | 2 +-
+ libfastboot/flash.c | 2 ++
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/kernelflinger.c b/kernelflinger.c
+index e3e6808..da4ef56 100644
+--- a/kernelflinger.c
++++ b/kernelflinger.c
+@@ -59,7 +59,7 @@
+ #include "slot.h"
+ 
+ /* Ensure this is embedded in the EFI binary somewhere */
+-static const CHAR16 __attribute__((used)) magic[] = L"### kernelflinger ###";
++//static const CHAR16 __attribute__((used)) magic[] = L"### kernelflinger ###";
+ 
+ /* Default max wait time for console reset in units of milliseconds if no EFI
+  * variable is set for this platform.
+diff --git a/libfastboot/flash.c b/libfastboot/flash.c
+index 3764141..661b742 100644
+--- a/libfastboot/flash.c
++++ b/libfastboot/flash.c
+@@ -430,12 +430,14 @@ EFI_STATUS flash(VOID *data, UINTN size, CHAR16 *label)
+ {
+ 	UINTN i;
+ 
++#if 0
+ #ifndef USER
+ 	/* special case for writing inside esp partition */
+ 	CHAR16 esp[] = L"/ESP/";
+ 	if (!StrnCmp(esp, label, StrLen(esp)))
+ 		return flash_into_esp(data, size, &label[ARRAY_SIZE(esp) - 1]);
+ #endif
++#endif
+ 	/* special cases */
+ 	for (i = 0; i < ARRAY_SIZE(LABEL_EXCEPTIONS); i++)
+ 		if (!StrCmp(LABEL_EXCEPTIONS[i].name, label))
+-- 
+2.7.4
+

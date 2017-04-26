@@ -1,0 +1,32 @@
+From 78ef14bff97a119a31f019e54b41443c01ba3541 Mon Sep 17 00:00:00 2001
+From: Petri Ahonen <petri.ahonen@intel.com>
+Date: Thu, 29 Dec 2016 14:11:07 +0200
+Subject: [PATCH 08/11] disable boot signature
+
+%% original patch: 0004-disable-boot-signature.patch
+---
+ libfastboot/hashes.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/libfastboot/hashes.c b/libfastboot/hashes.c
+index 959dfac..81b838c 100644
+--- a/libfastboot/hashes.c
++++ b/libfastboot/hashes.c
+@@ -498,12 +498,14 @@ static EFI_STATUS get_bootimage_len(struct gpt_partition_interface *gparti,
+ 		goto out;
+ 	}
+ 
++#ifndef LINUX
+ 	bs = get_boot_signature(footer, BOOT_SIGNATURE_MAX_SIZE);
+ 	if (bs) {
+ 		*len += bs->total_size;
+ 		free_boot_signature(bs);
+ 	} else
+ 		debug(L"boot image doesn't seem to have a signature");
++#endif
+ 
+ 	debug(L"total boot image size %d", *len);
+ 
+-- 
+2.7.4
+

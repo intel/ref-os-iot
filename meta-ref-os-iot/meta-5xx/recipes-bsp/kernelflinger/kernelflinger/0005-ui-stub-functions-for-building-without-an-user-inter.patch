@@ -1,0 +1,112 @@
+From 12bb254ce5e0b1fe7589bebcfbaa8ba68d98d7f7 Mon Sep 17 00:00:00 2001
+From: Petri Ahonen <petri.ahonen@intel.com>
+Date: Thu, 22 Dec 2016 17:52:19 +0200
+Subject: [PATCH 05/11] ui stub functions for building without an user
+ interface
+
+---
+ libkernelflinger/no_ui.c | 91 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 91 insertions(+)
+
+diff --git a/libkernelflinger/no_ui.c b/libkernelflinger/no_ui.c
+index f6767de..ad301aa 100644
+--- a/libkernelflinger/no_ui.c
++++ b/libkernelflinger/no_ui.c
+@@ -70,3 +70,94 @@ void ui_wait_for_key_release(void)
+ {
+ 	/* Nothing to do */
+ }
++
++ui_events_t ui_keycode_to_event(UINT16 keycode)
++{
++	switch (keycode) {
++	case SCAN_UP:
++	case SCAN_PAGE_UP:
++	case SCAN_HOME:
++	case SCAN_RIGHT:
++		return EV_UP;
++	case SCAN_DOWN:
++	case SCAN_PAGE_DOWN:
++	case SCAN_END:
++	case SCAN_LEFT:
++		return EV_DOWN;
++#ifdef USE_POWER_BUTTON
++		case SCAN_POWER:
++			return EV_POWER;
++#endif
++	default:
++		return EV_NONE;
++	}
++}
++
++EFI_STATUS ui_init(UINTN *width_p, UINTN *height_p)
++{
++	return EFI_SUCCESS;
++}
++
++EFI_STATUS ui_clear_screen()
++{
++	return EFI_SUCCESS;
++}
++ui_image_t *ui_image_get(const char *name)
++{
++	return NULL;
++}
++EFI_STATUS ui_image_draw_scale(ui_image_t *image, UINTN x, UINTN y, UINTN width, UINTN height)
++{
++	return EFI_SUCCESS;
++}
++EFI_STATUS ui_display_texts(const ui_textline_t **texts, UINTN x, UINTN y,
++			    UINTN linesarea, UINTN colsarea) {
++
++	return EFI_SUCCESS;
++}
++
++ui_events_t ui_wait_for_event(UINTN timeout_secs, ui_events_t expected)
++{
++	return EV_TIMEOUT;
++}
++EFI_STATUS ui_clear_area(UINTN x, UINTN y, UINTN width, UINTN height)
++{
++	return EFI_SUCCESS;
++}
++
++ui_boot_menu_t *ui_boot_menu_create(ui_boot_action_t *actions)
++{
++        return NULL;
++}
++
++EFI_STATUS ui_boot_menu_draw(ui_boot_menu_t *menu, UINTN x, UINTN *y, UINTN max_width)
++{
++	return EFI_SUCCESS;
++}
++enum boot_target ui_boot_menu_event_handler(ui_boot_menu_t *menu, ui_events_t event)
++{
++	return UNKNOWN_TARGET;
++}
++void ui_boot_menu_free(ui_boot_menu_t *menu)
++{
++
++}
++ui_events_t ui_read_input(void)
++{
++        return EV_NONE;
++}
++
++BOOLEAN ui_enforce_key_held(UINT32 milliseconds, ui_events_t event)
++{
++	return FALSE;
++}
++
++EFI_STATUS ui_image_draw(ui_image_t *image, UINTN x, UINTN y)
++{
++	return EFI_SUCCESS;
++}
++
++EFI_STATUS ui_display_vendor_splash(VOID)
++{
++	return EFI_SUCCESS;
++}
+-- 
+2.7.4
+

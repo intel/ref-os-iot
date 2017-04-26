@@ -1,0 +1,272 @@
+From 61d141795125f82f4471cfe4c673f8af16eba333 Mon Sep 17 00:00:00 2001
+From: Petri Ahonen <petri.ahonen@intel.com>
+Date: Wed, 26 Apr 2017 15:54:26 +0300
+Subject: [PATCH 03/11] autoconf and automake
+
+---
+ Makefile.am                  | 61 ++++++++++++++++++++++++++++++++++++++++++++
+ configure.ac                 | 47 ++++++++++++++++++++++++++++++++++
+ libefitcp/Makefile.am        | 13 ++++++++++
+ libefiusb/Makefile.am        | 14 ++++++++++
+ libfastboot/Makefile.am      | 22 ++++++++++++++++
+ libkernelflinger/Makefile.am | 36 ++++++++++++++++++++++++++
+ libtransport/Makefile.am     | 12 +++++++++
+ 7 files changed, 205 insertions(+)
+ create mode 100644 Makefile.am
+ create mode 100644 configure.ac
+ create mode 100644 libefitcp/Makefile.am
+ create mode 100644 libefiusb/Makefile.am
+ create mode 100644 libfastboot/Makefile.am
+ create mode 100644 libkernelflinger/Makefile.am
+ create mode 100644 libtransport/Makefile.am
+
+diff --git a/Makefile.am b/Makefile.am
+new file mode 100644
+index 0000000..4535a81
+--- /dev/null
++++ b/Makefile.am
+@@ -0,0 +1,61 @@
++lib_LTLIBRARIES = libkernelflingerefiapp.la
++libkernelflingerefiapp_la_SOURCES = \
++	kernelflinger.c \
++	ux.c
++
++libkernelflingerefiapp_la_SOURCES += \
++	unittest.c
++
++libkernelflingerefiapp_la_CFLAGS = \
++	@EFI_CFLAGS@ \
++	-I@EFI_INCLUDEDIR@ \
++	-I@EFI_INCLUDEDIR@/x86_64 \
++	-I$(srcdir)/include/libfastboot \
++	-I$(srcdir)/include/libkernelflinger
++
++libkernelflingerefiapp_la_LDFLAGS = \
++	@EFI_LDFLAGS@
++
++libkernelflingerefiapp_la_LIBADD = \
++	libtransport/libtransport.la \
++	libkernelflinger/libkernelflinger.la \
++	libefiusb/libefiusb.la \
++	libefitcp/libefitcp.la \
++	libfastboot/libfastboot.la \
++	@EFI_LIBDIR@/crt0-efi-x86_64.o
++
++SUBDIRS = \
++	libfastboot \
++	libkernelflinger \
++	libtransport \
++	libefiusb \
++	libefitcp
++
++ACLOCAL_AMFLAGS = -I m4
++
++all:	kernelflinger.efi
++
++kernelflinger.efi: libkernelflingerefiapp.la libkernelflingerefiapp.so
++	objcopy -j .text -j .sdata -j .data -j .dynamic -j .dynsym -j .rel \
++        -j .rela -j .reloc --target=efi-app-x86_64 libkernelflingerefiapp.so $@
++
++libkernelflingerefiapp.so:	$(libkernelflingerefiapp_la_OBJECTS) $(libkernelflingerefiapp_la_DEPENDENCIES) $(EXTRA_libkernelflingerefiapp_la_DEPENDENCIES)
++	$(LD) \
++	-L@EFI_LIBDIR@ \
++	-nostdlib --no-undefined --fatal-warnings -Bsymbolic -znocombreloc \
++	-shared \
++	-T@EFI_LIBDIR@/elf_x86_64_efi.lds \
++	--whole-archive @EFI_LIBDIR@/crt0-efi-x86_64.o  \
++	--no-whole-archive \
++	.libs/libkernelflingerefiapp_la-kernelflinger.o \
++	.libs/libkernelflingerefiapp_la-ux.o \
++	.libs/libkernelflingerefiapp_la-unittest.o \
++	--start-group libtransport/.libs/libtransport.a \
++		libkernelflinger/.libs/libkernelflinger.a \
++		libefiusb/.libs/libefiusb.a \
++		libefitcp/.libs/libefitcp.a \
++		libfastboot/.libs/libfastboot.a \
++		-lefi \
++		-lgnuefi \
++	--end-group \
++	-o $@
+diff --git a/configure.ac b/configure.ac
+new file mode 100644
+index 0000000..589592a
+--- /dev/null
++++ b/configure.ac
+@@ -0,0 +1,47 @@
++AC_INIT([kernelflinger], 4.1B)
++AM_INIT_AUTOMAKE
++AC_CONFIG_MACRO_DIRS([m4])
++AC_PROG_CC
++AC_PROG_LIBTOOL
++AC_CHECK_LIB(gnuefi, _relocate)
++AC_CHECK_LIB(efi, InitializeLib)
++AC_CHECK_HEADERS([efi/efi.h])
++
++EFI_ROOT=/usr
++AC_ARG_WITH(
++    gnu-efi,
++    AS_HELP_STRING(
++	[--with-gnu-efi=DIR],
++	[gnu-efi library installation prefix]
++    ),
++    [
++	EFI_ROOT="$withval"
++    ]
++)
++
++EFI_LIBDIR=$EFI_ROOT/lib
++EFI_INCLUDEDIR=$EFI_ROOT/include/efi
++
++AC_SUBST([EFI_LIBDIR])
++AC_SUBST([EFI_INCLUDEDIR])
++
++EFI_CFLAGS="\
++	-DEFI_FUNCTION_WRAPPER -DGNU_EFI_USE_MS_ABI \
++	-DTARGET_BOOTLOADER_BOARD_NAME=\\\"5xx\\\" \
++	-nostdlib \
++	-fno-builtin-log \
++	-DLINUX \
++	-maccumulate-outgoing-args -mno-mmx -fno-builtin -fno-tree-loop-distribute-patterns -ffreestanding -fno-stack-check \
++	-O2 -fpic -Wall -fshort-wchar -fno-strict-aliasing -fno-merge-constants -mno-red-zone -fno-stack-protector"
++
++AC_SUBST([EFI_CFLAGS])
++
++EFI_LDFLAGS="\
++	-Wl,-nostdlib \
++	-Wl,-T${EFI_LIBDIR}/elf_x86_64_efi.lds \
++	-Wl,-Bsymbolic"
++
++AC_SUBST([EFI_LDFLAGS])
++
++AC_CONFIG_FILES([Makefile libkernelflinger/Makefile libfastboot/Makefile libtransport/Makefile libefiusb/Makefile libefitcp/Makefile])
++AC_OUTPUT
+diff --git a/libefitcp/Makefile.am b/libefitcp/Makefile.am
+new file mode 100644
+index 0000000..ef097c8
+--- /dev/null
++++ b/libefitcp/Makefile.am
+@@ -0,0 +1,13 @@
++noinst_LTLIBRARIES = libefitcp.la
++
++libefitcp_la_CFLAGS = \
++	@EFI_CFLAGS@ \
++	-I@EFI_INCLUDEDIR@ \
++	-I@EFI_INCLUDEDIR@/x86_64 \
++	-I$(top_srcdir)/include/libkernelflinger \
++	-I$(top_srcdir)/include/libtransport \
++	-I$(top_srcdir)/include/libefitcp
++
++libefitcp_la_SOURCES = \
++	tcp.c
++
+diff --git a/libefiusb/Makefile.am b/libefiusb/Makefile.am
+new file mode 100644
+index 0000000..882e540
+--- /dev/null
++++ b/libefiusb/Makefile.am
+@@ -0,0 +1,14 @@
++noinst_LTLIBRARIES = libefiusb.la
++
++libefiusb_la_CFLAGS = \
++	@EFI_CFLAGS@ \
++	-I@EFI_INCLUDEDIR@ \
++	-I@EFI_INCLUDEDIR@/x86_64 \
++	-I$(top_srcdir)/include/libkernelflinger \
++	-I$(top_srcdir)/include/libtransport \
++	-I$(top_srcdir)/include/libefiusb \
++	-I$(srcdir)/protocol
++
++libefiusb_la_SOURCES = \
++	usb.c
++
+diff --git a/libfastboot/Makefile.am b/libfastboot/Makefile.am
+new file mode 100644
+index 0000000..6ec23eb
+--- /dev/null
++++ b/libfastboot/Makefile.am
+@@ -0,0 +1,22 @@
++noinst_LTLIBRARIES = libfastboot.la
++
++libfastboot_la_CFLAGS = \
++	@EFI_CFLAGS@ \
++	-I@EFI_INCLUDEDIR@ \
++	-I@EFI_INCLUDEDIR@/x86_64 \
++	-I$(top_srcdir)/include/libkernelflinger \
++	-I$(top_srcdir)/include/libfastboot \
++	-I$(top_srcdir)/include/libtransport \
++	-I$(top_srcdir)/include/libefiusb \
++	-I$(top_srcdir)/include/libefitcp
++
++libfastboot_la_SOURCES = \
++	fastboot_transport.c \
++	fastboot.c \
++	fastboot_oem.c \
++	fastboot_flashing.c \
++	flash.c \
++	sparse.c \
++	info.c \
++	bootmgr.c \
++	bootloader.c
+diff --git a/libkernelflinger/Makefile.am b/libkernelflinger/Makefile.am
+new file mode 100644
+index 0000000..b8bc52f
+--- /dev/null
++++ b/libkernelflinger/Makefile.am
+@@ -0,0 +1,36 @@
++noinst_LTLIBRARIES = libkernelflinger.la
++
++libkernelflinger_la_CFLAGS = \
++	@EFI_CFLAGS@ \
++	-I@EFI_INCLUDEDIR@ \
++	-I@EFI_INCLUDEDIR@/x86_64 \
++	-I$(top_srcdir)/include/libfastboot \
++	-I$(top_srcdir)/include/libkernelflinger
++
++libkernelflinger_la_SOURCES = \
++	no_ui.c \
++	ui_color.c \
++	efilinux.c \
++	acpi.c \
++	lib.c \
++	options.c \
++	vars.c \
++	log.c \
++	em.c \
++	gpt.c \
++	storage.c \
++	pci.c \
++	mmc.c \
++	ufs.c \
++	sdcard.c \
++	sdio.c \
++	sata.c \
++	uefi_utils.c \
++	targets.c \
++	smbios.c \
++	oemvars.c \
++	text_parser.c \
++	watchdog.c \
++	life_cycle.c \
++	qsort.c
++
+diff --git a/libtransport/Makefile.am b/libtransport/Makefile.am
+new file mode 100644
+index 0000000..79bc150
+--- /dev/null
++++ b/libtransport/Makefile.am
+@@ -0,0 +1,12 @@
++noinst_LTLIBRARIES = libtransport.la
++
++libtransport_la_CFLAGS = \
++	@EFI_CFLAGS@ \
++	-I@EFI_INCLUDEDIR@ \
++	-I@EFI_INCLUDEDIR@/x86_64 \
++	-I$(top_srcdir)/include/libkernelflinger \
++	-I$(top_srcdir)/include/libtransport
++
++libtransport_la_SOURCES = \
++	transport.c
++
+-- 
+2.7.4
+

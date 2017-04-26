@@ -1,0 +1,30 @@
+From 84b8402f4d2729803a04e591b7cf4d7f1472c38a Mon Sep 17 00:00:00 2001
+From: Petri Ahonen <petri.ahonen@intel.com>
+Date: Fri, 30 Dec 2016 10:59:02 +0200
+Subject: [PATCH 09/11] Use Linux for boot target names
+
+---
+ libkernelflinger/targets.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/libkernelflinger/targets.c b/libkernelflinger/targets.c
+index eb2be03..02a0263 100644
+--- a/libkernelflinger/targets.c
++++ b/libkernelflinger/targets.c
+@@ -38,8 +38,13 @@ static struct target {
+         const CHAR16 *name;
+         const CHAR16 *description;
+ } TARGETS[] = {
++#ifndef LINUX
+         { NORMAL_BOOT,    L"",           L"Android" },
+         { NORMAL_BOOT,    L"boot",       L"Android" },
++#else
++        { NORMAL_BOOT,    L"",           L"Linux" },
++        { NORMAL_BOOT,    L"boot",       L"Linux" },
++#endif
+         { RECOVERY,       L"recovery",   L"Recovery OS" },
+         { FASTBOOT,       L"bootloader", L"Fastboot mode" },
+         { FASTBOOT,       L"fastboot",   L"Fastboot mode" },
+-- 
+2.7.4
+

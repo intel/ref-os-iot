@@ -1,0 +1,724 @@
+From 8090120767711dfc398e8cf2be60bca56f317106 Mon Sep 17 00:00:00 2001
+From: Petri Ahonen <petri.ahonen@intel.com>
+Date: Thu, 22 Dec 2016 16:03:18 +0200
+Subject: [PATCH 07/11] disable Android specific code
+
+---
+ installer.c                     |  2 ++
+ kernelflinger.c                 | 29 +++++++++++++++++++++++++++++
+ libfastboot/fastboot.c          | 18 ++++++++++++++++++
+ libfastboot/fastboot_flashing.c | 10 ++++++++++
+ libfastboot/fastboot_oem.c      | 28 ++++++++++++++++++++++++++++
+ libfastboot/flash.c             | 12 ++++++++++++
+ libfastboot/hashes.c            |  2 ++
+ libkernelflinger/lib.c          |  2 ++
+ libkernelflinger/security.c     | 10 ++++++++++
+ libkernelflinger/slot.c         |  2 ++
+ 10 files changed, 115 insertions(+)
+
+diff --git a/installer.c b/installer.c
+index 46cf207..6b31363 100644
+--- a/installer.c
++++ b/installer.c
+@@ -46,7 +46,9 @@
+ #include "fastboot.h"
+ #include "fastboot_oem.h"
+ #include "text_parser.h"
++#ifndef LINUX
+ #include "android.h"
++#endif
+ #include "slot.h"
+ 
+ static BOOLEAN last_cmd_succeeded;
+diff --git a/kernelflinger.c b/kernelflinger.c
+index da4ef56..adf63a6 100644
+--- a/kernelflinger.c
++++ b/kernelflinger.c
+@@ -42,7 +42,9 @@
+ #include "vars.h"
+ #include "lib.h"
+ #include "security.h"
++#ifndef LINUX
+ #include "android.h"
++#endif
+ #include "ux.h"
+ #include "options.h"
+ #include "power.h"
+@@ -173,6 +175,7 @@ static enum boot_target check_magic_key(VOID)
+ }
+ 
+ 
++#ifndef LINUX
+ static enum boot_target check_bcb(CHAR16 **target_path, BOOLEAN *oneshot)
+ {
+         EFI_STATUS ret;
+@@ -256,13 +259,17 @@ out:
+         return t;
+ }
+ 
++#endif
+ 
++#ifndef LINUX
+ static enum boot_target check_loader_entry_one_shot(VOID)
+ {
+         EFI_STATUS ret;
+         CHAR16 *target;
+         enum boot_target bt;
++#endif
+ 
++#ifndef LINUX
+         debug(L"checking %s", LOADER_ENTRY_ONESHOT);
+         target = get_efi_variable_str(&loader_guid, LOADER_ENTRY_ONESHOT);
+ 
+@@ -292,6 +299,7 @@ static enum boot_target check_loader_entry_one_shot(VOID)
+         FreePool(target);
+         return bt;
+ }
++#endif
+ 
+ static BOOLEAN reset_is_due_to_watchdog_or_panic()
+ {
+@@ -555,6 +563,7 @@ static enum boot_target choose_boot_target(CHAR16 **target_path, BOOLEAN *onesho
+         if (ret != NORMAL_BOOT)
+                 goto out;
+ 
++#ifndef LINUX
+         debug(L"Bootlogic: Check BCB...");
+         ret = check_bcb(target_path, oneshot);
+         if (ret != NORMAL_BOOT)
+@@ -565,6 +574,7 @@ static enum boot_target choose_boot_target(CHAR16 **target_path, BOOLEAN *onesho
+         if (ret != DNX && ret != NORMAL_BOOT)
+                 goto out;
+ 
++#endif
+         debug(L"Bootlogic: Check battery level...");
+         ret = check_battery();
+         if (ret == POWER_OFF)
+@@ -580,6 +590,7 @@ out:
+         return ret;
+ }
+ 
++#ifndef LINUX
+ /* Validate an image.
+  *
+  * Parameters:
+@@ -712,6 +723,7 @@ static EFI_STATUS load_boot_image(
+ 
+         return ret;
+ }
++#endif
+ 
+ 
+ /* Chainload another EFI application on the ESP with the specified path,
+@@ -749,13 +761,16 @@ static EFI_STATUS enter_efi_binary(CHAR16 *path, BOOLEAN delete)
+ #define OEMVARS_MAGIC           "#OEMVARS\n"
+ #define OEMVARS_MAGIC_SZ        9
+ 
++#ifndef LINUX
+ static EFI_STATUS set_image_oemvars_nocheck(VOID *bootimage,
+                                             const EFI_GUID *restricted_guid)
+ {
+         VOID *oemvars;
+         UINT32 osz;
+         EFI_STATUS ret;
++#endif
+ 
++#ifndef LINUX
+         ret = get_bootimage_2nd(bootimage, &oemvars, &osz);
+         if (ret == EFI_SUCCESS && osz > OEMVARS_MAGIC_SZ &&
+             !memcmp(oemvars, OEMVARS_MAGIC, OEMVARS_MAGIC_SZ)) {
+@@ -764,7 +779,9 @@ static EFI_STATUS set_image_oemvars_nocheck(VOID *bootimage,
+                                                         osz - OEMVARS_MAGIC_SZ,
+                                                         restricted_guid);
+         }
++#endif
+ 
++#ifndef LINUX
+ #ifdef HAL_AUTODETECT
+         ret = get_bootimage_blob(bootimage, BLOB_TYPE_OEMVARS, &oemvars, &osz);
+         if (EFI_ERROR(ret)) {
+@@ -866,6 +883,7 @@ static EFI_STATUS load_image(VOID *bootimage, UINT8 boot_state,
+ 
+         return ret;
+ }
++#endif
+ 
+ static VOID die(VOID)
+ {
+@@ -900,6 +918,7 @@ static VOID enter_fastboot_mode(UINT8 boot_state)
+                         break;
+                 }
+ 
++#ifndef LINUX
+                 if (bootimage) {
+                         /* 'fastboot boot' case, only allowed on unlocked devices.
+                          * check just to make sure */
+@@ -911,6 +930,7 @@ static VOID enter_fastboot_mode(UINT8 boot_state)
+                         bootimage = NULL;
+                         continue;
+                 }
++#endif
+ 
+                 if (efiimage) {
+                         ret = uefi_call_wrapper(BS->LoadImage, 6, FALSE, g_parent_image,
+@@ -1062,6 +1082,7 @@ static VOID boot_error(enum ux_error_code error_code, UINT8 boot_state,
+ }
+ 
+ #ifdef BOOTLOADER_POLICY_EFI_VAR
++#ifndef LINUX
+ /* Flash the OEMVARS that include the bootloader policy.  */
+ static void flash_bootloader_policy(void)
+ {
+@@ -1095,6 +1116,7 @@ out:
+         FreePool(bootimage);
+ }
+ #endif
++#endif
+ 
+ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *sys_table)
+ {
+@@ -1144,12 +1166,14 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *sys_table)
+                                 NULL);
+         }
+ 
++#ifndef LINUX
+         ret = slot_init();
+         if (EFI_ERROR(ret)) {
+                 efi_perror(ret, L"Slot management initialization failed");
+                 return ret;
+         }
+ 
++#endif
+         /* No UX prompts before this point, do not want to interfere
+          * with magic key detection */
+         boot_target = choose_boot_target(&target_path, &oneshot);
+@@ -1218,6 +1242,7 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *sys_table)
+                 flash_bootloader_policy();
+ #endif
+ 
++#ifndef LINUX
+         if (boot_target == FASTBOOT) {
+                 debug(L"entering Fastboot mode");
+                 enter_fastboot_mode(boot_state);
+@@ -1296,6 +1321,10 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *sys_table)
+         }
+ 
+         bootloader_recover_mode(boot_state);
++#else
++	debug(L"entering Fastboot mode");
++	enter_fastboot_mode(boot_state);
++#endif
+ 
+         return EFI_INVALID_PARAMETER;
+ }
+diff --git a/libfastboot/fastboot.c b/libfastboot/fastboot.c
+index a998a77..5180b9a 100644
+--- a/libfastboot/fastboot.c
++++ b/libfastboot/fastboot.c
+@@ -39,7 +39,9 @@
+ #include <ui.h>
+ #include <em.h>
+ #include <transport.h>
++#ifndef LINUX
+ #include <slot.h>
++#endif
+ 
+ #include "uefi_utils.h"
+ #include "gpt.h"
+@@ -318,6 +320,7 @@ static EFI_STATUS publish_part(CHAR16 *part_name, UINT64 size, EFI_GUID *guid)
+ 	int len;
+ 	UINTN i;
+ 	struct descriptor *desc;
++#ifndef LINUX
+ 	const CHAR16 *parent_label;
+ 
+ 	parent_label = slot_base(part_name);
+@@ -332,6 +335,7 @@ static EFI_STATUS publish_part(CHAR16 *part_name, UINT64 size, EFI_GUID *guid)
+ 		if (EFI_ERROR(ret))
+ 			return ret;
+ 	}
++#endif
+ 
+ 	for (i = 0; i < ARRAY_SIZE(descriptors); i++) {
+ 		desc = &descriptors[i];
+@@ -351,6 +355,7 @@ static EFI_STATUS publish_part(CHAR16 *part_name, UINT64 size, EFI_GUID *guid)
+ 	return ret;
+ }
+ 
++#ifndef LINUX
+ static EFI_STATUS publish_slots(void)
+ {
+ 	struct descriptor {
+@@ -405,6 +410,7 @@ static EFI_STATUS publish_slots(void)
+ 
+ 	return EFI_SUCCESS;
+ }
++#endif
+ 
+ static EFI_STATUS publish_partsize(void)
+ {
+@@ -613,6 +619,7 @@ EFI_STATUS refresh_partition_var(void)
+ 	delete_var_starting_with("slot-");
+ 	delete_var_starting_with("current-slot");
+ 
++#ifndef LINUX
+ 	ret = slot_reset();
+ 	if (EFI_ERROR(ret)) {
+ 		efi_perror(ret, L"Failed to reset A/B slot management");
+@@ -623,6 +630,7 @@ EFI_STATUS refresh_partition_var(void)
+ 	if (EFI_ERROR(ret))
+ 		return ret;
+ 
++#endif
+ 	return publish_partsize();
+ }
+ 
+@@ -698,9 +706,11 @@ static void cmd_erase(INTN argc, CHAR8 **argv)
+ 		return;
+ 	}
+ 
++#ifndef LINUX
+ 	if (!StrCmp(label, SLOT_STORAGE_PART))
+ 		slot_restore();
+ 
++#endif
+ 	FreePool(label);
+ 	ui_print(L"Erase done.");
+ 	fastboot_okay("");
+@@ -788,6 +798,7 @@ static void cmd_reboot_bootloader(__attribute__((__unused__)) INTN argc,
+ 	fastboot_reboot(FASTBOOT, L"Rebooting to bootloader ...");
+ }
+ 
++#ifndef LINUX
+ static void cmd_set_active(INTN argc, CHAR8 **argv)
+ {
+ 	EFI_STATUS ret;
+@@ -809,6 +820,7 @@ static void cmd_set_active(INTN argc, CHAR8 **argv)
+ 
+ 	fastboot_okay("");
+ }
++#endif
+ 
+ static struct fastboot_cmd *get_cmd(cmdlist_t list, const char *name)
+ {
+@@ -1051,8 +1063,12 @@ static struct fastboot_cmd COMMANDS[] = {
+ 	{ "boot",		UNLOCKED,	cmd_boot },
+ 	{ "continue",		LOCKED,		cmd_continue },
+ 	{ "reboot",		LOCKED,		cmd_reboot },
++#ifndef LINUX
+ 	{ "reboot-bootloader",	LOCKED,		cmd_reboot_bootloader },
+ 	{ "set_active",		UNLOCKED,	cmd_set_active }
++#else
++	{ "reboot-bootloader",	LOCKED,		cmd_reboot_bootloader }
++#endif
+ };
+ 
+ static EFI_STATUS fastboot_init()
+@@ -1124,10 +1140,12 @@ static EFI_STATUS fastboot_init()
+ 	if (EFI_ERROR(ret))
+ 		goto error;
+ 
++#ifndef LINUX
+ 	ret = publish_slots();
+ 	if (EFI_ERROR(ret))
+ 		goto error;
+ 
++#endif
+ 	/* Register commands */
+ 	for (i = 0; i < ARRAY_SIZE(COMMANDS); i++) {
+ 		ret = fastboot_register(&COMMANDS[i]);
+diff --git a/libfastboot/fastboot_flashing.c b/libfastboot/fastboot_flashing.c
+index 3e76eed..90e37a5 100644
+--- a/libfastboot/fastboot_flashing.c
++++ b/libfastboot/fastboot_flashing.c
+@@ -39,7 +39,9 @@
+ #include "fastboot_ui.h"
+ #include "gpt.h"
+ #include "intel_variables.h"
++#ifndef LINUX
+ #include "android.h"
++#endif
+ 
+ static cmdlist_t cmdlist;
+ 
+@@ -55,7 +57,11 @@ static EFI_STATUS fastboot_flashing_publish(void)
+ 	if (EFI_ERROR(ret))
+ 		return ret;
+ 
++#ifndef LINUX
+ 	return publish_intel_variables();
++#else
++	return ret;
++#endif
+ }
+ 
+ EFI_STATUS change_device_state(enum device_state new_state, BOOLEAN interactive)
+@@ -182,6 +188,7 @@ static enum unlock_ability get_unlock_ability(void)
+ 	return frp_allows_unlock() ? UNLOCK_ALLOWED : NO_UNLOCK_FRP;
+ }
+ 
++#ifndef LINUX
+ static void cmd_unlock(__attribute__((__unused__)) INTN argc,
+ 		       __attribute__((__unused__)) CHAR8 **argv)
+ {
+@@ -211,6 +218,7 @@ static void cmd_unlock(__attribute__((__unused__)) INTN argc,
+ #endif
+ 	}
+ }
++#endif
+ 
+ static void cmd_get_unlock_ability(__attribute__((__unused__)) INTN argc,
+ 				   __attribute__((__unused__)) CHAR8 **argv)
+@@ -243,7 +251,9 @@ static void cmd_flashing(INTN argc, CHAR8 **argv)
+ 
+ static struct fastboot_cmd COMMANDS[] = {
+ 	{ "lock",		LOCKED,	cmd_lock },
++#ifndef LINUX
+ 	{ "unlock",		LOCKED,	cmd_unlock },
++#endif
+ 	{ "get_unlock_ability",	LOCKED,	cmd_get_unlock_ability }
+ };
+ 
+diff --git a/libfastboot/fastboot_oem.c b/libfastboot/fastboot_oem.c
+index 31429a5..9f27b7d 100644
+--- a/libfastboot/fastboot_oem.c
++++ b/libfastboot/fastboot_oem.c
+@@ -47,15 +47,20 @@
+ #include "authenticated_action.h"
+ 
+ #include "fastboot_oem.h"
++#ifndef LINUX
+ #include "intel_variables.h"
++#endif
+ #include "text_parser.h"
+ 
++#ifndef LINUX
+ #define OFF_MODE_CHARGE		"off-mode-charge"
+ #define CRASH_EVENT_MENU	"crash-event-menu"
++#endif
+ #define SLOT_FALLBACK		"slot-fallback"
+ 
+ static cmdlist_t cmdlist;
+ 
++#ifndef LINUX
+ static EFI_STATUS fastboot_oem_publish(void)
+ {
+ 	EFI_STATUS ret;
+@@ -67,6 +72,7 @@ static EFI_STATUS fastboot_oem_publish(void)
+ 	return publish_intel_variables();
+ }
+ 
++#endif
+ static EFI_STATUS cmd_oem_set_boolean(INTN argc, CHAR8 **argv,
+ 				      char *name, EFI_STATUS (*set_fun)(BOOLEAN value))
+ {
+@@ -85,11 +91,16 @@ static EFI_STATUS cmd_oem_set_boolean(INTN argc, CHAR8 **argv,
+ 
+         ret = set_fun(!strcmp(argv[1], (CHAR8* )"1"));
+ 	if (EFI_ERROR(ret))
++#ifndef LINUX
+ 		fastboot_fail("Failed to set %a", OFF_MODE_CHARGE);
++#else
++		fastboot_fail("Failed to set %a", name);
++#endif
+ 
+ 	return ret;
+ }
+ 
++#ifndef LINUX
+ static void cmd_oem_off_mode_charge(INTN argc, CHAR8 **argv)
+ {
+ 	EFI_STATUS ret;
+@@ -104,7 +115,9 @@ static void cmd_oem_off_mode_charge(INTN argc, CHAR8 **argv)
+ 	else
+ 		fastboot_okay("");
+ }
++#endif
+ 
++#ifndef LINUX
+ static void cmd_oem_crash_event_menu(INTN argc, CHAR8 **argv)
+ {
+ 	EFI_STATUS ret;
+@@ -119,6 +132,7 @@ static void cmd_oem_crash_event_menu(INTN argc, CHAR8 **argv)
+ 	else
+ 		fastboot_okay("");
+ }
++#endif
+ 
+ static void cmd_oem_setvar(INTN argc, CHAR8 **argv)
+ {
+@@ -176,6 +190,7 @@ static void cmd_oem_reboot(INTN argc, CHAR8 **argv)
+ 	fastboot_reboot(bt, L"Rebooting to requested target ...");
+ }
+ 
++#ifndef LINUX
+ static void cmd_oem_garbage_disk(__attribute__((__unused__)) INTN argc,
+ 				 __attribute__((__unused__)) CHAR8 **argv)
+ {
+@@ -186,6 +201,7 @@ static void cmd_oem_garbage_disk(__attribute__((__unused__)) INTN argc,
+ 	else
+ 		fastboot_fail("Garbage disk failed, %r", ret);
+ }
++#endif
+ 
+ static struct oem_hash {
+ 	const CHAR16 *name;
+@@ -206,6 +222,7 @@ static struct oem_hash {
+ 	{ VENDOR_LABEL,		get_fs_hash,		FALSE }
+ };
+ 
++#ifndef LINUX
+ static void cmd_oem_gethashes(INTN argc, CHAR8 **argv)
+ {
+ 	EFI_STATUS ret;
+@@ -231,6 +248,7 @@ static void cmd_oem_gethashes(INTN argc, CHAR8 **argv)
+ 
+ 	fastboot_okay("");
+ }
++#endif
+ 
+ #ifndef USER
+ static void cmd_oem_set_storage(INTN argc, CHAR8 **argv)
+@@ -450,13 +468,19 @@ static void cmd_oem_get_action_nonce(INTN argc, __attribute__((__unused__)) CHAR
+ #endif
+ 
+ static struct fastboot_cmd COMMANDS[] = {
++#ifndef LINUX
+ 	{ OFF_MODE_CHARGE,		LOCKED,		cmd_oem_off_mode_charge  },
++#endif
+ 	/* The following commands are not part of the Google
+ 	 * requirements.  They are provided for engineering and
+ 	 * provisioning purpose only.  */
++#ifndef LINUX
+ 	{ CRASH_EVENT_MENU,		LOCKED,		cmd_oem_crash_event_menu  },
++#endif
+ 	{ "setvar",			UNLOCKED,	cmd_oem_setvar  },
++#ifndef LINUX
+ 	{ "garbage-disk",		UNLOCKED,	cmd_oem_garbage_disk  },
++#endif
+ 	{ "reboot",			LOCKED,		cmd_oem_reboot  },
+ #ifndef USER
+ 	{ "set-storage",		LOCKED,		cmd_oem_set_storage  },
+@@ -466,7 +490,9 @@ static struct fastboot_cmd COMMANDS[] = {
+ 	{ SLOT_FALLBACK,		LOCKED,		cmd_oem_disable_slot_fallback },
+ 	{ "erase-efivars",		LOCKED,		cmd_oem_erase_efivars },
+ #endif
++#ifndef LINUX
+ 	{ "get-hashes",			LOCKED,		cmd_oem_gethashes  },
++#endif
+ 	{ "get-provisioning-logs",	LOCKED,		cmd_oem_get_logs },
+ #ifdef BOOTLOADER_POLICY
+ 	{ "get-action-nonce",		LOCKED,		cmd_oem_get_action_nonce }
+@@ -480,10 +506,12 @@ EFI_STATUS fastboot_oem_init(void)
+ 	EFI_STATUS ret;
+ 	UINTN i;
+ 
++#ifndef LINUX
+ 	ret = fastboot_oem_publish();
+ 	if (EFI_ERROR(ret))
+ 		return ret;
+ 
++#endif
+ 	for (i = 0; i < ARRAY_SIZE(COMMANDS); i++) {
+ 		ret = fastboot_register_into(&cmdlist, &COMMANDS[i]);
+ 		if (EFI_ERROR(ret))
+diff --git a/libfastboot/flash.c b/libfastboot/flash.c
+index 661b742..4ebc3a7 100644
+--- a/libfastboot/flash.c
++++ b/libfastboot/flash.c
+@@ -36,7 +36,9 @@
+ #include <efilib.h>
+ #include <lib.h>
+ #include <fastboot.h>
++#ifndef LINUX
+ #include <android.h>
++#endif
+ #include <slot.h>
+ 
+ #include "uefi_utils.h"
+@@ -240,6 +242,7 @@ static EFI_STATUS flash_ifwi(VOID *data, UINTN size)
+ 	return flash_into_esp(data, size, L"ifwi.bin");
+ }
+ 
++#ifndef LINUX
+ static EFI_STATUS flash_new_bootimage(VOID *kernel, UINTN kernel_size,
+ 				      VOID *ramdisk, UINTN ramdisk_size)
+ {
+@@ -309,7 +312,9 @@ static EFI_STATUS flash_new_bootimage(VOID *kernel, UINTN kernel_size,
+ 			pagealign(bootimage, bootimage->kernel_size);
+ 		ramdisk_size = bootimage->ramdisk_size;
+ 	}
++#endif
+ 
++#ifndef LINUX
+ 	new_size = bootimage_size(bootimage)
+ 		- pagealign(bootimage, bootimage->kernel_size)
+ 		+ pagealign(bootimage, kernel_size)
+@@ -370,6 +375,7 @@ static EFI_STATUS flash_ramdisk(VOID *data, UINTN size)
+ 
+ static CHAR16 *DM_VERITY_PARTITIONS[] =
+ 	{ SYSTEM_LABEL, VENDOR_LABEL, OEM_LABEL };
++#endif
+ 
+ EFI_STATUS flash_partition(VOID *data, UINTN size, CHAR16 *label)
+ {
+@@ -398,10 +404,12 @@ EFI_STATUS flash_partition(VOID *data, UINTN size, CHAR16 *label)
+ 			return ret;
+ 	}
+ 
++#ifndef LINUX
+ 	for (i = 0; i < ARRAY_SIZE(DM_VERITY_PARTITIONS); i++)
+ 		if (!StrCmp(DM_VERITY_PARTITIONS[i], label))
+ 			return slot_set_verity_corrupted(FALSE);
+ 
++#endif
+ 	return EFI_SUCCESS;
+ }
+ 
+@@ -418,8 +426,10 @@ static struct label_exception {
+ 	{ L"sfu", flash_sfu },
+ 	{ L"ifwi", flash_ifwi },
+ 	{ L"oemvars", flash_oemvars },
++#ifndef LINUX
+ 	{ L"kernel", flash_kernel },
+ 	{ L"ramdisk", flash_ramdisk },
++#endif
+ 	{ BOOTLOADER_LABEL, flash_bootloader },
+ #ifdef BOOTLOADER_POLICY
+ 	{ CONVERT_TO_WIDE(ACTION_AUTHORIZATION), authenticated_action }
+@@ -523,6 +533,7 @@ EFI_STATUS erase_by_label(CHAR16 *label)
+ 	return EFI_SUCCESS;
+ }
+ 
++#ifndef LINUX
+ EFI_STATUS garbage_disk(void)
+ {
+ 	struct gpt_partition_interface gparti;
+@@ -557,3 +568,4 @@ EFI_STATUS garbage_disk(void)
+ 	FreePool(chunk);
+ 	return gpt_refresh();
+ }
++#endif
+diff --git a/libfastboot/hashes.c b/libfastboot/hashes.c
+index 78eb404..959dfac 100644
+--- a/libfastboot/hashes.c
++++ b/libfastboot/hashes.c
+@@ -41,7 +41,9 @@
+ #include "fastboot.h"
+ #include "uefi_utils.h"
+ #include "gpt.h"
++#ifndef LINUX
+ #include "android.h"
++#endif
+ #include "signature.h"
+ #include "security.h"
+ 
+diff --git a/libkernelflinger/lib.c b/libkernelflinger/lib.c
+index a29ac30..f1478e6 100644
+--- a/libkernelflinger/lib.c
++++ b/libkernelflinger/lib.c
+@@ -980,6 +980,7 @@ VOID cpuid(UINT32 op, UINT32 reg[4])
+ #endif
+ }
+ 
++#ifndef LINUX
+ EFI_STATUS generate_random_numbers(CHAR8 *data, UINTN size)
+ {
+ #define RDRAND_SUPPORT (1 << 30)
+@@ -1003,6 +1004,7 @@ EFI_STATUS generate_random_numbers(CHAR8 *data, UINTN size)
+ 
+         return EFI_SUCCESS;
+ }
++#endif
+ 
+ BOOLEAN no_device_unlock()
+ {
+diff --git a/libkernelflinger/security.c b/libkernelflinger/security.c
+index 1924780..6376342 100644
+--- a/libkernelflinger/security.c
++++ b/libkernelflinger/security.c
+@@ -42,7 +42,9 @@
+ #include <openssl/crypto.h>
+ 
+ #include "security.h"
++#ifndef LINUX
+ #include "android.h"
++#endif
+ #include "signature.h"
+ #include "lib.h"
+ #include "vars.h"
+@@ -60,6 +62,7 @@
+  * We say we have an os secure boot when the boot state is green. */
+ #define OS_SECURE_BOOT_VAR      L"OsSecureBoot"
+ 
++#ifndef LINUX
+ /* operating system version and security patch level; for
+      * version "A.B.C" and patch level "Y-M-D":
+      * ver = A << 14 | B << 7 | C         (7 bits for each of A, B, C)
+@@ -73,6 +76,7 @@ union android_version {
+         UINT32 month:4;
+      } __attribute__((packed)) split;
+ };
++#endif
+ 
+ static VOID pr_error_openssl(void)
+ {
+@@ -364,6 +368,7 @@ EFI_STATUS pub_key_sha1(X509 *cert, UINT8 **hash_p)
+         return pub_key_hash(cert, hash_p, EVP_sha1());
+ }
+ 
++#ifndef LINUX
+ UINT8 verify_android_boot_image(IN VOID *bootimage, IN VOID *der_cert,
+                                 IN UINTN cert_size, OUT CHAR16 *target,
+                                 OUT X509 **verifier_cert)
+@@ -455,6 +460,7 @@ out:
+ 
+         return verify_state;
+ }
++#endif
+ 
+ /* UEFI specification 2.4. Section 3.3
+    The platform firmware is operating in secure boot mode if the value
+@@ -725,6 +731,7 @@ static EFI_STATUS get_x509_name_entry(X509 *cert, int nid, char **value)
+ 
+ #define KEY_ID_SEPARATOR ":#"
+ 
++#ifndef LINUX
+ EFI_STATUS get_android_verity_key_id(X509 *cert, char **value)
+ {
+         EFI_STATUS ret;
+@@ -785,7 +792,9 @@ EFI_STATUS get_rot_data(IN VOID * bootimage, IN UINT8 boot_state, IN X509 *verif
+ 
+         if (!bootimage)
+                 return EFI_INVALID_PARAMETER;
++#endif
+ 
++#ifndef LINUX
+         boot_image_header = (struct boot_img_hdr *)bootimage;
+ 
+         /* Initialize the rot data structure */
+@@ -821,6 +830,7 @@ EFI_STATUS get_rot_data(IN VOID * bootimage, IN UINT8 boot_state, IN X509 *verif
+         }
+         return ret;
+ }
++#endif
+ 
+ /* vim: softtabstop=8:shiftwidth=8:expandtab
+  */
+diff --git a/libkernelflinger/slot.c b/libkernelflinger/slot.c
+index 7f825cc..44ec9e6 100644
+--- a/libkernelflinger/slot.c
++++ b/libkernelflinger/slot.c
+@@ -33,7 +33,9 @@
+ #include <lib.h>
+ #include <vars.h>
+ #include <gpt.h>
++#ifndef LINUX
+ #include <android.h>
++#endif
+ #include <slot.h>
+ #include <kernelflinger-endian.h>
+ 
+-- 
+2.7.4
+

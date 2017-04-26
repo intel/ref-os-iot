@@ -1,0 +1,33 @@
+From 4493dea0db2a10406263210396551d572f1dd260 Mon Sep 17 00:00:00 2001
+From: Petri Ahonen <petri.ahonen@intel.com>
+Date: Thu, 29 Dec 2016 10:33:12 +0200
+Subject: [PATCH 10/11] FIXME: disable boot device detection
+
+%% original patch: 0003-FIXME-disable-boot-device-detection.patch
+---
+ kernelflinger.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/kernelflinger.c b/kernelflinger.c
+index adf63a6..a5ac9f6 100644
+--- a/kernelflinger.c
++++ b/kernelflinger.c
+@@ -1149,6 +1149,7 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *sys_table)
+         }
+         g_disk_device = g_loaded_image->DeviceHandle;
+ 
++#if 0
+         /* loaded from mass storage (not DnX) */
+         if (g_disk_device) {
+                 ret = storage_set_boot_device(g_disk_device);
+@@ -1165,6 +1166,7 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *sys_table)
+                 uefi_call_wrapper(RT->ResetSystem, 4, resetType, EFI_SUCCESS, 0,
+                                 NULL);
+         }
++#endif
+ 
+ #ifndef LINUX
+         ret = slot_init();
+-- 
+2.7.4
+

@@ -1,0 +1,32 @@
+From 32ca856aebe1d921204b2168c7de7e901b1e82f4 Mon Sep 17 00:00:00 2001
+From: Petri Ahonen <petri.ahonen@intel.com>
+Date: Thu, 22 Dec 2016 15:04:53 +0200
+Subject: [PATCH 01/11] blank placeholders
+
+%% original patch: 0001-blank-placeholders.patch
+---
+ AUTHORS   | 0
+ ChangeLog | 0
+ NEWS      | 0
+ README    | 0
+ 4 files changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 AUTHORS
+ create mode 100644 ChangeLog
+ create mode 100644 NEWS
+ create mode 100644 README
+
+diff --git a/AUTHORS b/AUTHORS
+new file mode 100644
+index 0000000..e69de29
+diff --git a/ChangeLog b/ChangeLog
+new file mode 100644
+index 0000000..e69de29
+diff --git a/NEWS b/NEWS
+new file mode 100644
+index 0000000..e69de29
+diff --git a/README b/README
+new file mode 100644
+index 0000000..e69de29
+-- 
+2.7.4
+

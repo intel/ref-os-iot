@@ -1,0 +1,178 @@
+From 086556a90b6623819da652e01d0ca38127dff283 Mon Sep 17 00:00:00 2001
+From: Petri Ahonen <petri.ahonen@intel.com>
+Date: Thu, 22 Dec 2016 15:53:23 +0200
+Subject: [PATCH 04/11] work around endian.h file name conflict
+
+%% original patch: 0005-work-around-endian.h-file-name-conflict.patch
+---
+ include/libkernelflinger/endian.h               | 54 -------------------------
+ include/libkernelflinger/kernelflinger-endian.h | 54 +++++++++++++++++++++++++
+ libfastboot/fastboot_transport.c                |  2 +-
+ libkernelflinger/protocol/ufs.h                 |  2 +-
+ libkernelflinger/slot.c                         |  2 +-
+ 5 files changed, 57 insertions(+), 57 deletions(-)
+ delete mode 100644 include/libkernelflinger/endian.h
+ create mode 100644 include/libkernelflinger/kernelflinger-endian.h
+
+diff --git a/include/libkernelflinger/endian.h b/include/libkernelflinger/endian.h
+deleted file mode 100644
+index 0a7f6a4..0000000
+--- a/include/libkernelflinger/endian.h
++++ /dev/null
+@@ -1,54 +0,0 @@
+-/*
+- * Copyright (c) 2015, Intel Corporation
+- * All rights reserved.
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met:
+- *
+- *    * Redistributions of source code must retain the above copyright
+- *      notice, this list of conditions and the following disclaimer.
+- *    * Redistributions in binary form must reproduce the above copyright
+- *      notice, this list of conditions and the following disclaimer
+- *      in the documentation and/or other materials provided with the
+- *      distribution.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+- * OF THE POSSIBILITY OF SUCH DAMAGE.
+- *
+- * This file defines bootlogic data structures, try to keep it without
+- * any external definitions in order to ease export of it.
+- */
+-
+-#ifndef _ENDIAN_H_
+-#define _ENDIAN_H_
+-
+-#include <efi.h>
+-
+-#define htobe16 __builtin_bswap16
+-#define htobe32 __builtin_bswap32
+-#define htobe64 __builtin_bswap64
+-
+-#define be16toh __builtin_bswap16
+-#define be32toh __builtin_bswap32
+-#define be64toh __builtin_bswap64
+-
+-#define le32toh(x) (x)
+-#define htole32(x) (x)
+-
+-typedef UINT8 __be8;
+-typedef UINT16 __be16;
+-typedef UINT32 __be32;
+-typedef UINT64 __be64;
+-
+-#endif	/* _ENDIAN_H_ */
+diff --git a/include/libkernelflinger/kernelflinger-endian.h b/include/libkernelflinger/kernelflinger-endian.h
+new file mode 100644
+index 0000000..0a7f6a4
+--- /dev/null
++++ b/include/libkernelflinger/kernelflinger-endian.h
+@@ -0,0 +1,54 @@
++/*
++ * Copyright (c) 2015, Intel Corporation
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ *    * Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *    * Redistributions in binary form must reproduce the above copyright
++ *      notice, this list of conditions and the following disclaimer
++ *      in the documentation and/or other materials provided with the
++ *      distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
++ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
++ * OF THE POSSIBILITY OF SUCH DAMAGE.
++ *
++ * This file defines bootlogic data structures, try to keep it without
++ * any external definitions in order to ease export of it.
++ */
++
++#ifndef _ENDIAN_H_
++#define _ENDIAN_H_
++
++#include <efi.h>
++
++#define htobe16 __builtin_bswap16
++#define htobe32 __builtin_bswap32
++#define htobe64 __builtin_bswap64
++
++#define be16toh __builtin_bswap16
++#define be32toh __builtin_bswap32
++#define be64toh __builtin_bswap64
++
++#define le32toh(x) (x)
++#define htole32(x) (x)
++
++typedef UINT8 __be8;
++typedef UINT16 __be16;
++typedef UINT32 __be32;
++typedef UINT64 __be64;
++
++#endif	/* _ENDIAN_H_ */
+diff --git a/libfastboot/fastboot_transport.c b/libfastboot/fastboot_transport.c
+index dedb1ae..82f8f62 100644
+--- a/libfastboot/fastboot_transport.c
++++ b/libfastboot/fastboot_transport.c
+@@ -31,7 +31,7 @@
+  */
+ 
+ #include <lib.h>
+-#include <endian.h>
++#include <kernelflinger-endian.h>
+ #include <fastboot.h>
+ #include <usb.h>
+ #include <tcp.h>
+diff --git a/libkernelflinger/protocol/ufs.h b/libkernelflinger/protocol/ufs.h
+index 7e4973e..d6e8eca 100644
+--- a/libkernelflinger/protocol/ufs.h
++++ b/libkernelflinger/protocol/ufs.h
+@@ -33,7 +33,7 @@
+ #ifndef _UFS_PROTOCOL_H_
+ #define _UFS_PROTOCOL_H_
+ 
+-#include <endian.h>
++#include <kernelflinger-endian.h>
+ 
+ #define CDB_LENGTH			10
+ #define BLOCK_TIMEOUT			10000	/* 100ns units => 1ms by block */
+diff --git a/libkernelflinger/slot.c b/libkernelflinger/slot.c
+index 23725dc..7f825cc 100644
+--- a/libkernelflinger/slot.c
++++ b/libkernelflinger/slot.c
+@@ -35,7 +35,7 @@
+ #include <gpt.h>
+ #include <android.h>
+ #include <slot.h>
+-#include <endian.h>
++#include <kernelflinger-endian.h>
+ 
+ /* Constants.  */
+ const CHAR16 *SLOT_STORAGE_PART = MISC_LABEL;
+-- 
+2.7.4
+

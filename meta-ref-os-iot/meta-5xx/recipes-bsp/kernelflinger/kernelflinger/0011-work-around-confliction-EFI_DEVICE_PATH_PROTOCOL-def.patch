@@ -1,0 +1,31 @@
+From 78a6df10ad66add20556baf677b8a2aac4726c5d Mon Sep 17 00:00:00 2001
+From: Petri Ahonen <petri.ahonen@intel.com>
+Date: Tue, 25 Apr 2017 12:38:40 +0300
+Subject: [PATCH 11/11] work around confliction EFI_DEVICE_PATH_PROTOCOL
+ definitions
+
+---
+ libkernelflinger/protocol/CardInfo.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/libkernelflinger/protocol/CardInfo.h b/libkernelflinger/protocol/CardInfo.h
+index 0a61adc..93a03a2 100644
+--- a/libkernelflinger/protocol/CardInfo.h
++++ b/libkernelflinger/protocol/CardInfo.h
+@@ -72,11 +72,13 @@ typedef struct {
+ 	UINT8  Command_Status;
+ } TASK_FILE;
+ 
++#ifndef LINUX
+ typedef struct {
+ 	UINT8 Type;
+ 	UINT8 SubType;
+ 	UINT8 Length[2];
+ } EFI_DEVICE_PATH_PROTOCOL;
++#endif
+ 
+ typedef struct {
+ 	UINT16  Reserved0[10];
+-- 
+2.7.4
+
