@@ -1,0 +1,42 @@
+From 3e41a06d1d72db7db45ffe3d41e61bc28fd185f8 Mon Sep 17 00:00:00 2001
+From: Soren Friis <soren.friis@intel.com>
+Date: Mon, 24 Apr 2017 09:41:41 +0300
+Subject: [PATCH] Camera Adapter: Add support for up to four cameras
+
+The Y-cable HW configuration allows having four ov5670
+camera modules attached. Increase the hard-coded camera
+names and the max amount.
+
+Change-Id: Ia40fcfe760de36e6ff17d686f9f687ecb0c4aef9
+Signed-off-by: Soren Friis <soren.friis@intel.com>
+---
+ icamera_adapter/ICameraAdapter.cpp | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/ICameraAdapter.cpp b/ICameraAdapter.cpp
+index 5063824..583ca6b 100644
+--- a/ICameraAdapter.cpp
++++ b/ICameraAdapter.cpp
+@@ -46,7 +46,7 @@ extern gralloc_module_t GRALLOC_HAL_MODULE_INFO_SYM;
+  * Mostly a wrapper which calls into ICameraAdapter. */
+ namespace icamera {
+ 
+-#define MAX_CAMERAS 2
++#define MAX_CAMERAS 4
+ #define CLEAR(x) memset (&(x), 0, sizeof (x))
+ #define ALIGN16(x) (((x) + 15) & ~15)
+ 
+@@ -74,7 +74,9 @@ __attribute__ ((init_priority (101))) static Parameters sParameters[MAX_CAMERAS]
+ static ICameraAdapter* sCamAdapters[MAX_CAMERAS];
+ static const char *sCameraNames[MAX_CAMERAS] = {
+         "camera0",
+-        "camera1"
++        "camera1",
++        "camera2",
++        "camera3"
+ };
+ 
+ int get_number_of_cameras()
+-- 
+2.7.4
+
