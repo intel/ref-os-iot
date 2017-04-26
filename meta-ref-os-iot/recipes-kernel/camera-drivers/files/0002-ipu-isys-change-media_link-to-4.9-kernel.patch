@@ -1,0 +1,49 @@
+From 32d9dcb785200918348de7eca316ceb4ffa3a40a Mon Sep 17 00:00:00 2001
+From: Jouni Ukkonen <jouni.ukkonen@intel.com>
+Date: Wed, 5 Apr 2017 18:29:33 +0300
+Subject: [PATCH 2/7] ipu isys: change media_link to 4.9 kernel
+
+media_create_pad_link is used instead of
+media_entity_create_link
+
+Change-Id: I5c39c21b3e8c6a1df814e0206638c306685f9061
+Tracked-On:
+Signed-off-by: Jouni Ukkonen <jouni.ukkonen@intel.com>
+---
+ drivers/media/pci/intel-ipu4/intel-ipu4-isys.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu4-isys.c b/drivers/media/pci/intel-ipu4/intel-ipu4-isys.c
+index 210fbbd..cca4ec0 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu4-isys.c
++++ b/drivers/media/pci/intel-ipu4/intel-ipu4-isys.c
+@@ -820,7 +820,7 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
+ 
+ 		for (j = CSI2_PAD_SOURCE(0);
+ 		     j < (NR_OF_CSI2_SOURCE_PADS + CSI2_PAD_SOURCE(0)); j++) {
+-			rval = media_entity_create_link(
++			rval = media_create_pad_link(
+ 				&isys->csi2[i].asd.sd.entity, j,
+ 				&isys->csi2_be.asd.sd.entity,
+ 				CSI2_BE_PAD_SINK, 0);
+@@ -832,7 +832,7 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
+ 
+ 			for (k = CSI2_BE_SOC_PAD_SINK(0);
+ 				k < NR_OF_CSI2_BE_SOC_SINK_PADS; k++) {
+-				rval = media_entity_create_link(
++				rval = media_create_pad_link(
+ 					&isys->csi2[i].asd.sd.entity, j,
+ 				&isys->csi2_be_soc.asd.sd.entity,
+ 					k, MEDIA_LNK_FL_DYNAMIC);
+@@ -858,7 +858,7 @@ static int isys_register_subdevices(struct intel_ipu4_isys *isys)
+ 
+ 		for (k = CSI2_BE_SOC_PAD_SINK(0);
+ 		     k < NR_OF_CSI2_BE_SOC_SINK_PADS; k++) {
+-			rval = media_entity_create_link(
++			rval = media_create_pad_link(
+ 				&isys->tpg[i].asd.sd.entity, TPG_PAD_SOURCE,
+ 				&isys->csi2_be_soc.asd.sd.entity,
+ 							k, 0);
+-- 
+2.7.4
+

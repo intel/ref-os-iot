@@ -1,0 +1,28 @@
+From e7923f6f052023370bc19e29fa439d6caeceb06b Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Tue, 2 May 2017 14:05:19 +0300
+Subject: [PATCH 7/7] Add 2ms delay for imx-214 after deasserting reset
+
+According to the specification, there has to be minimum 1ms
+delay after deasserting reset line, before the first i2c command.
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/media/i2c/crlmodule/crl_imx214_configuration.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/media/i2c/crlmodule/crl_imx214_configuration.h b/drivers/media/i2c/crlmodule/crl_imx214_configuration.h
+index bf94552..368777a 100644
+--- a/drivers/media/i2c/crlmodule/crl_imx214_configuration.h
++++ b/drivers/media/i2c/crlmodule/crl_imx214_configuration.h
+@@ -1371,6 +1371,7 @@ static struct crl_power_seq_entity imx214_power_items[] = {
+ 		.type = CRL_POWER_ETY_GPIO_FROM_PDATA,
+ 		.val = 1,
+ 		.undo_val = 0,
++		.delay = 2000,
+ 	},
+ };
+ 
+-- 
+2.7.4
+

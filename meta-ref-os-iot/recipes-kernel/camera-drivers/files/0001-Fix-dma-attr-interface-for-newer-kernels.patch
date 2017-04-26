@@ -1,0 +1,396 @@
+From fc687fad424f7729d16aee405835d79c4de1c454 Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Wed, 5 Apr 2017 17:33:36 +0300
+Subject: [PATCH 1/7] Fix dma attr interface for newer kernels
+
+DMA attr interface modified to be compatible with 4.9 kernel
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/media/pci/intel-ipu4/intel-ipu4-dma.c      | 40 ++++++++++++++++++++++
+ drivers/media/pci/intel-ipu4/intel-ipu4-isys-isa.c | 28 ++++++++++-----
+ .../media/pci/intel-ipu4/intel-ipu4-isys-video.c   | 29 ++++++++++++----
+ drivers/media/pci/intel-ipu4/intel-ipu4-isys.c     | 31 +++++++++++++++--
+ drivers/media/pci/intel-ipu4/intel-ipu4-psys.c     | 21 +++++++++---
+ 5 files changed, 125 insertions(+), 24 deletions(-)
+
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu4-dma.c b/drivers/media/pci/intel-ipu4/intel-ipu4-dma.c
+index ee5f3be..37822e8 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu4-dma.c
++++ b/drivers/media/pci/intel-ipu4/intel-ipu4-dma.c
+@@ -27,9 +27,17 @@
+ #include "intel-ipu4-dma.h"
+ #include "intel-ipu4-mmu.h"
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 8, 0)
++#define dma_get_attr(a, b) ((a) & (b))
++#endif
++
+ /* Begin of things adapted from arch/arm/mm/dma-mapping.c */
+ static void __dma_clear_buffer(struct page *page, size_t size,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 			       struct dma_attrs *attrs)
++#else
++			       unsigned long attrs)
++#endif
+ {
+ 	/*
+ 	 * Ensure that the allocated pages are zeroed, and that any data
+@@ -56,7 +64,11 @@ static void __dma_clear_buffer(struct page *page, size_t size,
+ }
+ 
+ static struct page **__iommu_alloc_buffer(struct device *dev, size_t size,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 					  gfp_t gfp, struct dma_attrs *attrs)
++#else
++					  gfp_t gfp, unsigned long attrs)
++#endif
+ {
+ 	struct page **pages;
+ 	int count = size >> PAGE_SHIFT;
+@@ -106,7 +118,11 @@ error:
+ }
+ 
+ static int __iommu_free_buffer(struct device *dev, struct page **pages,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 			       size_t size, struct dma_attrs *attrs)
++#else
++			       size_t size, unsigned long attrs)
++#endif
+ {
+ 	int count = size >> PAGE_SHIFT;
+ 	int array_size = count * sizeof(struct page *);
+@@ -160,7 +176,11 @@ static void intel_ipu4_dma_sync_sg_for_cpu(
+ 
+ static void *intel_ipu4_dma_alloc(struct device *dev, size_t size,
+ 			       dma_addr_t *dma_handle, gfp_t gfp,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 			       struct dma_attrs *attrs)
++#else
++			       unsigned long attrs)
++#endif
+ {
+ 	struct device *aiommu = to_intel_ipu4_bus_device(dev)->iommu;
+ 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(aiommu);
+@@ -220,7 +240,11 @@ out_free_iova:
+ }
+ 
+ static void intel_ipu4_dma_free(struct device *dev, size_t size, void *vaddr,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 				dma_addr_t dma_handle, struct dma_attrs *attrs)
++#else
++				dma_addr_t dma_handle, unsigned long attrs)
++#endif
+ {
+ 	struct device *aiommu = to_intel_ipu4_bus_device(dev)->iommu;
+ 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(aiommu);
+@@ -252,7 +276,11 @@ static void intel_ipu4_dma_free(struct device *dev, size_t size, void *vaddr,
+ 
+ static int intel_ipu4_dma_mmap(struct device *dev, struct vm_area_struct *vma,
+ 			void *addr, dma_addr_t iova, size_t size,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 			struct dma_attrs *attrs)
++#else
++			unsigned long attrs)
++#endif
+ {
+ 	struct vm_struct *area = find_vm_area(addr);
+ 	size_t count = PAGE_ALIGN(size) >> PAGE_SHIFT;
+@@ -277,7 +305,11 @@ static int intel_ipu4_dma_mmap(struct device *dev, struct vm_area_struct *vma,
+ static void intel_ipu4_dma_unmap_sg(struct device *dev,
+ 				struct scatterlist *sglist,
+ 				int nents, enum dma_data_direction dir,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 				struct dma_attrs *attrs)
++#else
++				unsigned long attrs)
++#endif
+ {
+ 	struct device *aiommu = to_intel_ipu4_bus_device(dev)->iommu;
+ 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(aiommu);
+@@ -303,7 +335,11 @@ static void intel_ipu4_dma_unmap_sg(struct device *dev,
+ 
+ static int intel_ipu4_dma_map_sg(struct device *dev, struct scatterlist *sglist,
+ 			      int nents, enum dma_data_direction dir,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 			      struct dma_attrs *attrs)
++#else
++			      unsigned long attrs)
++#endif
+ {
+ 	struct device *aiommu = to_intel_ipu4_bus_device(dev)->iommu;
+ 	struct intel_ipu4_mmu *mmu = dev_get_drvdata(aiommu);
+@@ -367,7 +403,11 @@ out_fail:
+ */
+ static int intel_ipu4_dma_get_sgtable(struct device *dev, struct sg_table *sgt,
+ 				void *cpu_addr, dma_addr_t handle, size_t size,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 				struct dma_attrs *attrs)
++#else
++				unsigned long attrs)
++#endif
+ {
+ 	struct vm_struct *area = find_vm_area(cpu_addr);
+ 	int n_pages;
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu4-isys-isa.c b/drivers/media/pci/intel-ipu4/intel-ipu4-isys-isa.c
+index 4fd62db..1864906 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu4-isys-isa.c
++++ b/drivers/media/pci/intel-ipu4/intel-ipu4-isys-isa.c
+@@ -393,20 +393,24 @@ static int isa_config_buf_init(struct vb2_buffer *vb)
+ 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
+ 	struct intel_ipu4_isys_isa_buffer *isa_buf =
+ 		vb2_buffer_to_intel_ipu4_isys_isa_buffer(vb);
+-	struct dma_attrs attrs;
+ 	int rval;
+-
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++	struct dma_attrs attrs;
++	init_dma_attrs(&attrs);
++	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
++#endif
+ 	rval = isa_3a_buf_init(vb);
+ 	if (rval)
+ 		return rval;
+ 
+-	init_dma_attrs(&attrs);
+-	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
+-
+ 	isa_buf->pgl.common_pg =
+ 		dma_alloc_attrs(&av->isys->adev->dev, PGL_SIZE << 1,
+ 				&isa_buf->pgl.iova, GFP_KERNEL | __GFP_ZERO,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 				&attrs);
++#else
++				DMA_ATTR_NON_CONSISTENT);
++#endif
+ 
+ 	dev_dbg(&av->isys->adev->dev,
+ 		"buf_init: index %u, cpu addr %p, dma addr %pad\n",
+@@ -432,7 +436,11 @@ static void isa_config_buf_cleanup(struct vb2_buffer *vb)
+ 	struct intel_ipu4_isys_video *av = intel_ipu4_isys_queue_to_video(aq);
+ 	struct intel_ipu4_isys_isa_buffer *isa_buf =
+ 		vb2_buffer_to_intel_ipu4_isys_isa_buffer(vb);
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 	struct dma_attrs attrs;
++	init_dma_attrs(&attrs);
++	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
++#endif
+ 
+ 	dev_dbg(&av->isys->adev->dev,
+ 		"buf_cleanup: index %u, cpu addr %p, dma addr %pad\n",
+@@ -445,11 +453,13 @@ static void isa_config_buf_cleanup(struct vb2_buffer *vb)
+ 	if (!isa_buf->pgl.pg)
+ 		return;
+ 
+-	init_dma_attrs(&attrs);
+-	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
+-
+ 	dma_free_attrs(&av->isys->adev->dev, PGL_SIZE << 1,
+-		       isa_buf->pgl.common_pg, isa_buf->pgl.iova, &attrs);
++		       isa_buf->pgl.common_pg, isa_buf->pgl.iova,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++		       &attrs);
++#else
++		       DMA_ATTR_NON_CONSISTENT);
++#endif
+ 
+ 	isa_3a_buf_cleanup(vb);
+ }
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu4-isys-video.c b/drivers/media/pci/intel-ipu4/intel-ipu4-isys-video.c
+index 6e49302..2b7b853 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu4-isys-video.c
++++ b/drivers/media/pci/intel-ipu4/intel-ipu4-isys-video.c
+@@ -776,11 +776,13 @@ static void short_packet_queue_destroy(struct intel_ipu4_isys_pipeline *ip)
+ {
+ 	struct intel_ipu4_isys_video *av =
+ 		container_of(ip, struct intel_ipu4_isys_video, ip);
+-	struct dma_attrs attrs;
+ 	unsigned int i;
+-
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++	struct dma_attrs attrs;
+ 	init_dma_attrs(&attrs);
+ 	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
++#endif
++
+ 	if (!ip->short_packet_bufs)
+ 		return;
+ 	for (i = 0; i < INTEL_IPU_ISYS_SHORT_PACKET_BUFFER_NUM; i++) {
+@@ -788,7 +790,12 @@ static void short_packet_queue_destroy(struct intel_ipu4_isys_pipeline *ip)
+ 			dma_free_attrs(&av->isys->adev->dev,
+ 				ip->short_packet_buffer_size,
+ 				ip->short_packet_bufs[i].buffer,
+-				ip->short_packet_bufs[i].dma_addr, &attrs);
++				ip->short_packet_bufs[i].dma_addr,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++				&attrs);
++#else
++				DMA_ATTR_NON_CONSISTENT);
++#endif
+ 	}
+ 	kfree(ip->short_packet_bufs);
+ 	ip->short_packet_bufs = NULL;
+@@ -799,10 +806,14 @@ static int short_packet_queue_setup(struct intel_ipu4_isys_pipeline *ip)
+ 	struct intel_ipu4_isys_video *av =
+ 		container_of(ip, struct intel_ipu4_isys_video, ip);
+ 	struct v4l2_subdev_format source_fmt = {0};
+-	struct dma_attrs attrs;
+ 	unsigned int i;
+ 	int rval;
+ 	size_t buf_size;
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++	struct dma_attrs attrs;
++	init_dma_attrs(&attrs);
++	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
++#endif
+ 
+ 	INIT_LIST_HEAD(&ip->pending_interlaced_bufs);
+ 	ip->cur_field = V4L2_FIELD_TOP;
+@@ -825,8 +836,6 @@ static int short_packet_queue_setup(struct intel_ipu4_isys_pipeline *ip)
+ 	/* Initialize short packet queue. */
+ 	INIT_LIST_HEAD(&ip->short_packet_incoming);
+ 	INIT_LIST_HEAD(&ip->short_packet_active);
+-	init_dma_attrs(&attrs);
+-	dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
+ 
+ 	ip->short_packet_bufs =
+ 		kzalloc(sizeof(struct intel_ipu4_isys_private_buffer) *
+@@ -843,7 +852,13 @@ static int short_packet_queue_setup(struct intel_ipu4_isys_pipeline *ip)
+ 		buf->bytesused = buf_size;
+ 		buf->buffer = dma_alloc_attrs(
+ 			&av->isys->adev->dev, buf_size,
+-			&buf->dma_addr, GFP_KERNEL, &attrs);
++			&buf->dma_addr, GFP_KERNEL,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++			&attrs);
++#else
++			DMA_ATTR_NON_CONSISTENT);
++#endif
++
+ 		if (!buf->buffer) {
+ 			short_packet_queue_destroy(ip);
+ 			return -ENOMEM;
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu4-isys.c b/drivers/media/pci/intel-ipu4/intel-ipu4-isys.c
+index 53ab445..210fbbd 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu4-isys.c
++++ b/drivers/media/pci/intel-ipu4/intel-ipu4-isys.c
+@@ -1153,14 +1153,21 @@ static void isys_remove(struct intel_ipu4_bus_device *adev)
+ 
+ 	if (isys->short_packet_source ==
+ 	    INTEL_IPU_ISYS_SHORT_PACKET_FROM_TUNIT) {
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 		struct dma_attrs attrs;
+ 
+ 		init_dma_attrs(&attrs);
+ 		dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
++#endif
+ 		dma_free_attrs(&adev->dev,
+ 			INTEL_IPU_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
+ 			isys->short_packet_trace_buffer,
+-			isys->short_packet_trace_buffer_dma_addr, &attrs);
++			isys->short_packet_trace_buffer_dma_addr,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++			&attrs);
++#else
++			DMA_ATTR_NON_CONSISTENT);
++#endif
+ 	}
+ }
+ 
+@@ -1300,7 +1307,11 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
+ 
+ 	const struct firmware *uninitialized_var(fw);
+ 	int rval = 0;
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 	struct dma_attrs attrs;
++#else
++	unsigned long attrs = 0;
++#endif
+ 
+ 	trace_printk("B|%d|TMWK\n", current->pid);
+ 
+@@ -1321,11 +1332,20 @@ static int isys_probe(struct intel_ipu4_bus_device *adev)
+ 		isys->short_packet_source =
+ 			INTEL_IPU_ISYS_SHORT_PACKET_FROM_TUNIT;
+ 		mutex_init(&isys->short_packet_tracing_mutex);
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 		init_dma_attrs(&attrs);
+ 		dma_set_attr(DMA_ATTR_NON_CONSISTENT, &attrs);
++#else
++		attrs = DMA_ATTR_NON_CONSISTENT;
++#endif
+ 		isys->short_packet_trace_buffer = dma_alloc_attrs(&adev->dev,
+ 			INTEL_IPU_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
+-			&isys->short_packet_trace_buffer_dma_addr, GFP_KERNEL, &attrs);
++			&isys->short_packet_trace_buffer_dma_addr, GFP_KERNEL,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++			&attrs);
++#else
++			attrs);
++#endif
+ 		if (!isys->short_packet_trace_buffer)
+ 			return -ENOMEM;
+ 	} else {
+@@ -1425,7 +1445,12 @@ release_firmware:
+ 		dma_free_attrs(&adev->dev,
+ 			INTEL_IPU_ISYS_SHORT_PACKET_TRACE_BUFFER_SIZE,
+ 			isys->short_packet_trace_buffer,
+-			isys->short_packet_trace_buffer_dma_addr, &attrs);
++			isys->short_packet_trace_buffer_dma_addr,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++			&attrs);
++#else
++			attrs);
++#endif
+ 	}
+ 
+ 	return rval;
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu4-psys.c b/drivers/media/pci/intel-ipu4/intel-ipu4-psys.c
+index 9ab2405..e010d16 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu4-psys.c
++++ b/drivers/media/pci/intel-ipu4/intel-ipu4-psys.c
+@@ -331,16 +331,23 @@ static struct sg_table *intel_ipu4_dma_buf_map(
+ 					enum dma_data_direction dir)
+ {
+ 	struct intel_ipu4_psys_kbuffer *kbuf = attach->priv;
+-	DEFINE_DMA_ATTRS(attrs);
+ 	int ret;
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++	DEFINE_DMA_ATTRS(attrs);
++	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
++#endif
+ 
+ 	ret = intel_ipu4_psys_get_userpages(kbuf);
+ 	if (ret)
+ 		return NULL;
+ 
+-	dma_set_attr(DMA_ATTR_SKIP_CPU_SYNC, &attrs);
+ 	ret = dma_map_sg_attrs(attach->dev, kbuf->sgt->sgl,
+-				kbuf->sgt->orig_nents, dir, &attrs);
++			       kbuf->sgt->orig_nents, dir,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++			       &attrs);
++#else
++			       DMA_ATTR_SKIP_CPU_SYNC);
++#endif
+ 	if (ret < kbuf->sgt->orig_nents) {
+ 		intel_ipu4_psys_put_userpages(kbuf);
+ 		dev_dbg(&kbuf->psys->adev->dev, "buf map failed\n");
+@@ -396,8 +403,12 @@ static void intel_ipu4_dma_buf_release(struct dma_buf *buf)
+ 	kfree(kbuf);
+ }
+ 
+-int intel_ipu4_dma_buf_begin_cpu_access(struct dma_buf *dma_buf, size_t start,
+-					size_t len, enum dma_data_direction dir)
++int intel_ipu4_dma_buf_begin_cpu_access(struct dma_buf *dma_buf,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++					size_t start,
++					size_t len,
++#endif
++					enum dma_data_direction dir)
+ {
+ 	return -ENOTTY;
+ }
+-- 
+2.7.4
+

@@ -1,0 +1,34 @@
+From baa92e9c4275473f86f144d1875658d56e26102c Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Tue, 2 May 2017 13:26:26 +0300
+Subject: [PATCH 6/7] Fix the i2c bus numbering for the newer kernels
+
+The older kernels used i2c bus number from the ACPI decreased by 1.
+This has changed in the newer kernels, so fixing the ipu4 acpi code
+accordingly
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/media/platform/intel-ipu4/intel-ipu4-acpi.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/media/platform/intel-ipu4/intel-ipu4-acpi.c b/drivers/media/platform/intel-ipu4/intel-ipu4-acpi.c
+index f932562..9456d9c 100644
+--- a/drivers/media/platform/intel-ipu4/intel-ipu4-acpi.c
++++ b/drivers/media/platform/intel-ipu4/intel-ipu4-acpi.c
+@@ -317,8 +317,11 @@ static int get_i2c_info(struct device *dev, struct ipu4_i2c_info *i2c, int size)
+ 			dev_err(dev, "No i2c data\n");
+ 			return -ENODEV;
+ 		}
+-
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 		i2c[i].bus = ((data >> 24) & 0xff) - 1;
++#else
++		i2c[i].bus = ((data >> 24) & 0xff);
++#endif
+ 		i2c[i].addr = (data >> 8) & 0xff;
+ 	}
+ 	return num_i2c;
+-- 
+2.7.4
+

@@ -1,0 +1,38 @@
+From e7d9addefe847ab1a7cf2d1bc650c1e29989a30a Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Mon, 24 Apr 2017 14:51:37 +0300
+Subject: [PATCH 3/7] Port csi2_try_fmt for 4.9 kernel
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/media/pci/intel-ipu4/intel-ipu-isys-csi2-common.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu-isys-csi2-common.c b/drivers/media/pci/intel-ipu4/intel-ipu-isys-csi2-common.c
+index 1574483..64386a1 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu-isys-csi2-common.c
++++ b/drivers/media/pci/intel-ipu4/intel-ipu-isys-csi2-common.c
+@@ -610,10 +610,16 @@ static void csi2_set_ffmt(struct v4l2_subdev *sd,
+ static const struct intel_ipu4_isys_pixelformat *csi2_try_fmt(
+ 	struct intel_ipu4_isys_video *av, struct v4l2_pix_format_mplane *mpix)
+ {
+-	struct v4l2_subdev *sd = media_entity_to_v4l2_subdev(
+-				 av->vdev.entity.links[0].source->entity);
+-	struct intel_ipu4_isys_csi2 *csi2 = to_intel_ipu4_isys_csi2(sd);
+-
++	struct intel_ipu4_isys_csi2 *csi2;
++	struct v4l2_subdev *sd;
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++	sd = media_entity_to_v4l2_subdev(
++		av->vdev.entity.links[0].source->entity);
++#else
++	struct media_link *link = list_first_entry(&av->vdev.entity.links, struct media_link,  list);
++	sd = media_entity_to_v4l2_subdev(link->source->entity);
++#endif
++	csi2 = to_intel_ipu4_isys_csi2(sd);
+ 	return intel_ipu4_isys_video_try_fmt_vid_mplane(av, mpix,
+ 		v4l2_ctrl_g_ctrl(csi2->store_csi2_header));
+ }
+-- 
+2.7.4
+

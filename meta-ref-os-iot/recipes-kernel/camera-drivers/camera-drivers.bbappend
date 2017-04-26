@@ -1,0 +1,7 @@
+FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+SRC_URI_append = " file://0001-Fix-dma-attr-interface-for-newer-kernels.patch"
+SRC_URI_append = " file://0002-ipu-isys-change-media_link-to-4.9-kernel.patch"
+SRC_URI_append = " file://0003-Port-csi2_try_fmt-for-4.9-kernel.patch"
+SRC_URI_append = " file://0004-Fixes-to-compile-ipu4-on-4.9-kernel.patch"
+SRC_URI_append = " file://0005-Fix-the-i2c-bus-numbering-for-the-newer-kernels.patch"
+SRC_URI_append = " file://0006-Add-2ms-delay-for-imx-214-after-deasserting-reset.patch"

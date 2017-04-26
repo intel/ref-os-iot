@@ -1,0 +1,179 @@
+From 2fc380e97749fc4cac24ffc8d621471b2882c090 Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Thu, 27 Apr 2017 14:59:19 +0300
+Subject: [PATCH 4/7] Fixes to compile ipu4 on 4.9 kernel
+
+Additional fixes for newer kernels
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ .../pci/intel-ipu4/intel-ipu-isys-csi2-common.c    |  7 ++++---
+ .../media/pci/intel-ipu4/intel-ipu4-isys-queue.c   | 24 ++++++++++++++++++----
+ .../media/pci/intel-ipu4/intel-ipu4-isys-queue.h   |  4 ++++
+ .../media/pci/intel-ipu4/intel-ipu4-isys-subdev.c  |  4 ++++
+ drivers/media/pci/intel-ipu4/intel-ipu4-psys.c     | 11 +++++++++-
+ 5 files changed, 42 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu-isys-csi2-common.c b/drivers/media/pci/intel-ipu4/intel-ipu-isys-csi2-common.c
+index 64386a1..3a9655a 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu-isys-csi2-common.c
++++ b/drivers/media/pci/intel-ipu4/intel-ipu-isys-csi2-common.c
+@@ -19,6 +19,7 @@
+ #include <media/media-entity.h>
+ #include <media/v4l2-device.h>
+ #include <media/v4l2-event.h>
++#include <uapi/linux/media.h>
+ 
+ #include "intel-ipu4.h"
+ #include "intel-ipu4-bus.h"
+@@ -377,7 +378,7 @@ static void csi2_capture_done(struct intel_ipu4_isys_pipeline *ip,
+ 		spin_unlock_irqrestore(&ip->short_packet_queue_lock, flags);
+ 	}
+ 	if (ip->csi2) {
+-		if (ip->csi2->csi2_ops && ip->csi2->csi2_ops->set_stream)
++		if (ip->csi2->csi2_ops && ip->csi2->csi2_ops->csi2_error)
+ 			ip->csi2->csi2_ops->csi2_error(ip->csi2);
+ 	}
+ }
+@@ -412,8 +413,8 @@ static int csi2_link_validate(struct media_link *link)
+ 				media_entity_remote_pad(
+ 				&csi2->asd.pad[CSI2_PAD_SOURCE(i)]);
+ 
+-			if (remote_pad && (remote_pad->entity->type &
+-			    MEDIA_ENT_TYPE_MASK) == MEDIA_ENT_T_V4L2_SUBDEV) {
++			if (remote_pad &&
++			    is_media_entity_v4l2_subdev(remote_pad->entity)) {
+ 				dev_err(&csi2->isys->adev->dev,
+ 					"CSI2 BE requires CSI2 headers.\n");
+ 				return -EINVAL;
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu4-isys-queue.c b/drivers/media/pci/intel-ipu4/intel-ipu4-isys-queue.c
+index 9fb242c..b182416 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu4-isys-queue.c
++++ b/drivers/media/pci/intel-ipu4/intel-ipu4-isys-queue.c
+@@ -33,7 +33,12 @@ static int queue_setup(struct vb2_queue *q,
+ 		       const struct v4l2_format *__fmt,
+ #endif
+ 		       unsigned int *num_buffers, unsigned int *num_planes,
+-		       unsigned int sizes[], void *alloc_ctxs[])
++		       unsigned int sizes[],
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++		       void *alloc_ctxs[])
++#else
++		       struct device *alloc_devs[])
++#endif
+ {
+ 	struct intel_ipu4_isys_queue *aq =
+ 		vb2_queue_to_intel_ipu4_isys_queue(q);
+@@ -72,7 +77,11 @@ static int queue_setup(struct vb2_queue *q,
+ 		if (use_fmt)
+ 			sizes[i] = av->mpix.plane_fmt[i].sizeimage;
+ #endif
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 		alloc_ctxs[i] = aq->ctx;
++#else
++		alloc_devs[i] = q->dev;
++#endif
+ 		dev_dbg(&av->isys->adev->dev,
+ 			"%s: queue setup: plane %d size %u\n",
+ 			av->vdev.name, i, sizes[i]);
+@@ -1482,12 +1491,16 @@ int intel_ipu4_isys_queue_init(struct intel_ipu4_isys_queue *aq)
+ 	if (rval)
+ 		return rval;
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 	aq->ctx = vb2_dma_contig_init_ctx(&isys->adev->dev);
+ 	if (IS_ERR(aq->ctx)) {
+ 		vb2_queue_release(&aq->vbq);
+ 		return PTR_ERR(aq->ctx);
+ 	}
+-
++#else
++	aq->dev = &isys->adev->dev;
++	aq->vbq.dev = &isys->adev->dev;
++#endif
+ 	spin_lock_init(&aq->lock);
+ 	INIT_LIST_HEAD(&aq->active);
+ 	INIT_LIST_HEAD(&aq->incoming);
+@@ -1497,11 +1510,14 @@ int intel_ipu4_isys_queue_init(struct intel_ipu4_isys_queue *aq)
+ 
+ void intel_ipu4_isys_queue_cleanup(struct intel_ipu4_isys_queue *aq)
+ {
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 	if (IS_ERR_OR_NULL(aq->ctx))
+ 		return;
+ 
+ 	vb2_dma_contig_cleanup_ctx(aq->ctx);
+-	vb2_queue_release(&aq->vbq);
+-
+ 	aq->ctx = NULL;
++#else
++	aq->dev = NULL;
++#endif
++	vb2_queue_release(&aq->vbq);
+ }
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu4-isys-queue.h b/drivers/media/pci/intel-ipu4/intel-ipu4-isys-queue.h
+index a61a6f7..ac76597 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu4-isys-queue.h
++++ b/drivers/media/pci/intel-ipu4/intel-ipu4-isys-queue.h
+@@ -42,7 +42,11 @@ enum intel_ipu4_isys_buffer_type {
+ struct intel_ipu4_isys_queue {
+ 	struct list_head node; /* struct intel_ipu4_isys_pipeline.queues */
+ 	struct vb2_queue vbq;
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ 	struct vb2_alloc_ctx *ctx;
++#else
++	struct device *dev;
++#endif
+ 	spinlock_t lock;
+ 	struct list_head active;
+ 	struct list_head incoming;
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu4-isys-subdev.c b/drivers/media/pci/intel-ipu4/intel-ipu4-isys-subdev.c
+index cb8e586..b73327c 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu4-isys-subdev.c
++++ b/drivers/media/pci/intel-ipu4/intel-ipu4-isys-subdev.c
+@@ -527,7 +527,11 @@ int intel_ipu4_isys_subdev_set_routing(struct v4l2_subdev *sd,
+ 	struct intel_ipu4_isys_subdev *asd = to_intel_ipu4_isys_subdev(sd);
+ 	int i, j, ret = 0;
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+ 	WARN_ON(!mutex_is_locked(&sd->entity.parent->graph_mutex));
++#else
++	WARN_ON(!mutex_is_locked(&sd->entity.graph_obj.mdev->graph_mutex));
++#endif
+ 
+ 	for (i = 0; i < min(route->num_routes, asd->nstreams); ++i) {
+ 		struct v4l2_subdev_route *t = &route->routes[i];
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu4-psys.c b/drivers/media/pci/intel-ipu4/intel-ipu4-psys.c
+index e010d16..5f4f278 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu4-psys.c
++++ b/drivers/media/pci/intel-ipu4/intel-ipu4-psys.c
+@@ -27,8 +27,11 @@
+ #include <linux/poll.h>
+ #include <linux/sched.h>
+ #include <linux/uaccess.h>
++#include <linux/version.h>
+ #include <linux/vmalloc.h>
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+ #include <linux/dma-attrs.h>
++#endif
+ 
+ #include <uapi/linux/intel-ipu4-psys.h>
+ 
+@@ -253,7 +256,13 @@ static int intel_ipu4_psys_get_userpages(struct intel_ipu4_psys_kbuffer *kbuf)
+ 			current, current->mm,
+ #endif
+ 			start & PAGE_MASK,
+-				    npages, 1, 0, pages, NULL);
++			npages,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++			1, 0,
++#else
++			FOLL_WRITE,
++#endif
++			pages, NULL);
+ 		if (nr < npages)
+ 			goto error_up_read;
+ 	}
+-- 
+2.7.4
+
