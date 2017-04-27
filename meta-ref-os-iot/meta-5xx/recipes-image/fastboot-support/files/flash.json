@@ -1,0 +1,204 @@
+{
+    "flash": {
+        "commands": [
+            {
+                "description": "Expecting user to manually boot device in dnx_fw",
+                "state": "dnx_fw",
+                "timeout": 60000,
+                "group": "bios",
+                "tool": "waitForDevice"
+            },
+            {
+                "command": "downloadfwos",
+                "description": "Flash BIOS",
+                "flags": 0,
+                "fw_dnx": "${fw_dnx}",
+                "fw_image": "${bios}",
+                "group": "bios",
+                "mandatory": true,
+                "retry": 1,
+                "timeout": 120000,
+                "tool": "dnxFwDownloader"
+            },
+            {
+                "command": "clearrpmb",
+                "description": "Clear RPMB",
+                "device": "emmc",
+                "fw_dnx": "${fw_dnx}",
+                "idx": 0,
+                "mandatory": false,
+                "retry": 1,
+                "timeout": 60000,
+                "group": "bios",
+                "tool": "dnxFwDownloader"
+            },
+            {
+                "command": "startover",
+                "description": "Restarting in OS DnX",
+                "flags": 6,
+                "mandatory": true,
+                "retry": 1,
+				"group": "bios",
+                "timeout": 60000,
+                "tool": "dnxFwDownloader"
+            },
+	    {
+                "description": "Prompt user to enter OS DNX mode",
+		"tool": "notifier",
+		"source": "${OSDNX_prompt}",
+                "group": "os",
+		"duration": 2000
+	    },
+		{
+			"description": "Wait for device to enumerate in OS DNX",
+			"state": "dnx_os",
+			"timeout": 60000,
+			"group": "os",
+			"tool": "waitForDevice"
+		},
+	    {
+		"description": "boot kernelflinger",
+		"tool": "fastboot",
+		"args": "boot ${kernelflinger}",
+                "retry": 1,
+                "timeout": 120000,
+		"group": "os"
+	    },
+            {
+                "description": "pause while kernelflinger usb stack re-enumerates",
+                "duration": 2500,
+                "tool": "sleep",
+		"group": "os"
+            },
+			{
+                "description": "Wait for device to enumerate in POS",
+                "state": "pos",
+                "timeout": 60000,
+                "group": "os",
+                "tool": "waitForDevice"
+            },
+
+	    {
+		"description": "partition storage",
+		"tool": "fastboot",
+		"args": "flash gpt ${gpt}",
+                "retry": 1,
+                "timeout": 30000,
+		"group": "os"
+	    },
+	    {
+		"description": "flash bootloader and kernel",
+		"tool": "fastboot",
+		"args": "flash primary_uefi ${primary_uefi}",
+                "retry": 1,
+                "timeout": 30000,
+		"group": "os"
+	    },
+	    {
+		"description": "flash root filesystem",
+		"tool": "fastboot",
+		"args": "flash rootfs ${rootfs}",
+                "retry": 1,
+                "timeout": 240000,
+		"group": "os"
+	    },
+	    {
+		"description": "reboot into os",
+		"tool": "fastboot",
+		"args": "continue",
+                "retry": 1,
+                "timeout": 30000,
+		"group": "os"
+	    }
+        ],
+        "configurations": {
+            "1 blank": {
+                "brief": "blank",
+                "description": "Flash BIOS and OS",
+               "groupsState": {
+                    "bios": true,
+                    "os": true
+                },
+                "name": "Flash BIOS and OS",
+                "startState": "dnx_fw"
+            },
+            "2 OS only": {
+                "brief": "2ndstageonly",
+                "description": "Flash OS image only, leave BIOS intact.",
+                "groupsState": {
+                    "bios": false,
+                    "os": true
+                },
+                "name": "Flash OS only",
+                "startState": "dnx_os"
+            },
+            "3 BIOS only": {
+                "brief": "flash bios only",
+                "description": "Flash BIOS only, leave OS intact",
+                "groupsState": {
+                    "bios": true,
+                    "os": false
+                },
+                "name": "Flash BIOS only",
+                "startState": "dnx_fw"
+            }
+        },
+        "groups": {
+            "bios": {
+                "description": "flash bios",
+                "name": "flash bios"
+            },
+            "os": {
+                "description": "flash os",
+                "name": "flash os"
+            }
+        },
+        "osplatform": "Linux",
+        "parameters": {
+	    "fw_dnx": {
+                "description": "dnx image",
+                "name": "fw_dnx",
+                "type": "file",
+                "value": "DNX/DNXP_0x1-prod.bin"
+	    },
+            "bios": {
+                "description": "bios image",
+                "name": "bios",
+                "type": "file",
+                "value": "GTPP_C0_IFWI_X64_R_2017_04_27_143748_PROD_DNX.bin"
+            },
+            "primary_uefi": {
+                "description": "primary_uefi",
+                "name": "primary_uefi",
+                "type": "file",
+                "value": "primary_uefi.vfat"
+            },
+            "gpt": {
+                "description": "partition.bin",
+                "name": "gpt",
+                "type": "file",
+                "value": "partition.bin"
+            },
+            "kernelflinger": {
+                "description": "kernelflinger.efi",
+                "name": "kernelflinger",
+                "type": "file",
+                "value": "kernelflinger.efi"
+            },
+	    "rootfs": {
+                "description": "Root file system",
+                "name": "rootfs",
+                "type": "file",
+                "value": "rootfs.ext4"
+            },
+	    "OSDNX_prompt": {
+                "description": "GP button prompt",
+                "name": "FWDNX_prompt",
+                "type": "string",
+                "value": "Hit GP button at BIOS prompt"
+	    }
+        },
+        "version": "3.0"
+    }
+}
+

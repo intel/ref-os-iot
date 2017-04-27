@@ -8,6 +8,7 @@ PR = "r5"
 SRC_URI = " \
 	   file://LICENSE \
 	   file://gpt_ini2bin.py \
+	   file://flash.json \
 	   file://partition.ini \
 	  "
 
@@ -22,6 +23,7 @@ do_deploy () {
 
 	install -d 			${DEPLOYDIR}/fastboot
 	install ${S}/gpt_ini2bin.py	${DEPLOYDIR}/fastboot
+	install ${S}/flash.json		${DEPLOYDIR}/fastboot
 	install ${S}/partition.ini	${DEPLOYDIR}/fastboot
 }
 
