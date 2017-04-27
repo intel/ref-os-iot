@@ -1,0 +1,357 @@
+From 2fb2648c49afe05e758e34edb74bade5271065c5 Mon Sep 17 00:00:00 2001
+From: Soren Friis <soren.friis@intel.com>
+Date: Fri, 2 Jun 2017 14:27:41 +0300
+Subject: [PATCH 2/3] c3:ipu4: Modify ov5670 graph for 720p to use binned
+ output
+
+The existing 720p output resolution for the ov5670 sensor
+was inputting the full sensor resolution to the input
+system and doing the downscaling to 720p as a part of
+the ISP processing.
+
+To save processing power and allow higher framerates
+for multi-camera configurations, change this to do
+binning plus cropping in the sensor so the IPU doesn't
+have to do scaling.
+
+Change-Id: I6fc06ddd7f502bf87fc43cd0b7d4b51832ea0fbb
+Tracked-On:
+Signed-off-by: Soren Friis <soren.friis@intel.com>
+---
+ etc/graph_settings_ov5670A.xml | 42 ++++++++++++++++++++++++++++--------------
+ etc/graph_settings_ov5670B.xml | 42 ++++++++++++++++++++++++++++--------------
+ etc/graph_settings_ov5670C.xml | 42 ++++++++++++++++++++++++++++--------------
+ etc/graph_settings_ov5670D.xml | 42 ++++++++++++++++++++++++++++--------------
+ 4 files changed, 112 insertions(+), 56 deletions(-)
+
+diff --git a/etc/graph_settings_ov5670A.xml b/etc/graph_settings_ov5670A.xml
+index 68e490d..b6274c2 100644
+--- a/etc/graph_settings_ov5670A.xml
++++ b/etc/graph_settings_ov5670A.xml
+@@ -93,6 +93,20 @@
+             <output width="1920" height="1080" left="0" top="0"/>
+         </scaler>
+     </sensor_mode>
++    <sensor_mode name="1280x720_b" id="6" width="1280" height="720" min_fll="720" min_llp="3360" fps="60.0">
++        <pixel_array>
++            <input width="2592" height="1944" left="0" top="0"/>
++            <output width="2560" height="1440" left="16" top="252"/>
++        </pixel_array>
++        <binner h_factor="2" v_factor="2">
++            <input width="2560" height="1440" left="0" top="0"/>
++            <output width="1280" height="720" left="0" top="0"/>
++        </binner>
++        <scaler num_factor="16" denom_factor="16">
++            <input width="1280" height="720" left="0" top="0"/>
++            <output width="1280" height="720" left="0" top="0"/>
++        </scaler>
++    </sensor_mode>
+ </sensor_modes>
+ 
+ <!-- video 2560x1440 (16/9 3.7MP) in secondary pipe -->
+@@ -743,30 +757,30 @@
+     <!-- preview 1280x720 secondary pipe 30 fps DVS OFF -->
+     <settings key="8322" id="100003" active_outputs="1" fps="30" dvs="0">
+         <video0 width="1280" height="720" stream_id="60000"/>
+-        <sensor mode_id="2560x1456_c" vflip="1" hflip="0">
+-            <port_0 width="2560" height="1456" format="BA10"/>
++        <sensor mode_id="1280x720_b" vflip="1" hflip="0">
++            <port_0 width="1280" height="720" format="BA10"/>
+         </sensor>
+         <csi_be_soc>
+-            <output width="2560" height="1456" format="BA10" />
++            <output width="1280" height="720" format="BA10" />
+             <bxt_pixelformatter>
+-                <input width="2560" height="1456" left="0" top="0" right="0" bottom="0" />
+-                <output width="2560" height="1456" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0" />
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </bxt_pixelformatter>
+         </csi_be_soc>
+         <video_isa_preview stream_id="60002">
+-            <scaled_output width="1920" height="1080" />
++            <scaled_output width="1280" height="720" />
+             <non_scaled_output enabled="0"/>
+             <bxt_inputscaler>
+-                <input width="2560" height="1456" left="0" top="0" right="0" bottom="0"/>
+-                <output width="1920" height="1092" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </bxt_inputscaler>
+             <bxt_cropvideo>
+-                <input width="1920" height="1092" left="0" top="6" right="0" bottom="6"/>
+-                <output width="1920" height="1080" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </bxt_cropvideo>
+         </video_isa_preview>
+         <video_pre_gdc stream_id="60002">
+-            <ipu_intermediate width="1920" height="1080" />
++            <ipu_intermediate width="1280" height="1280" />
+         </video_pre_gdc>
+         <video_post_gdc stream_id="60000" hflip="1" vflip="1">
+             <non_scaled_output enabled="0"/>
+@@ -775,11 +789,11 @@
+             <!-- KERNEL SETTINGS -->
+             <!-- resolution info -->
+             <gdc3>
+-                <input width="1920" height="1080" left="192" top="108" right="192" bottom="108"/>
+-                <output width="1536" height="864" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </gdc3>
+             <sc_outputscaler_dp>
+-                <input width="1536" height="864" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+                 <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </sc_outputscaler_dp>
+             <!-- disabled kernels-->
+diff --git a/etc/graph_settings_ov5670B.xml b/etc/graph_settings_ov5670B.xml
+index e53dfb2..6178734 100644
+--- a/etc/graph_settings_ov5670B.xml
++++ b/etc/graph_settings_ov5670B.xml
+@@ -93,6 +93,20 @@
+             <output width="1920" height="1080" left="0" top="0"/>
+         </scaler>
+     </sensor_mode>
++    <sensor_mode name="1280x720_b" id="6" width="1280" height="720" min_fll="720" min_llp="3360" fps="60.0">
++        <pixel_array>
++            <input width="2592" height="1944" left="0" top="0"/>
++            <output width="2560" height="1440" left="16" top="252"/>
++        </pixel_array>
++        <binner h_factor="2" v_factor="2">
++            <input width="2560" height="1440" left="0" top="0"/>
++            <output width="1280" height="720" left="0" top="0"/>
++        </binner>
++        <scaler num_factor="16" denom_factor="16">
++            <input width="1280" height="720" left="0" top="0"/>
++            <output width="1280" height="720" left="0" top="0"/>
++        </scaler>
++    </sensor_mode>
+ </sensor_modes>
+ 
+ <!-- video 2560x1440 (16/9 3.7MP) in secondary pipe -->
+@@ -743,30 +757,30 @@
+     <!-- preview 1280x720 secondary pipe 30 fps DVS OFF -->
+     <settings key="8322" id="100003" active_outputs="1" fps="30" dvs="0">
+         <video0 width="1280" height="720" stream_id="60000"/>
+-        <sensor mode_id="2560x1456_c" vflip="1" hflip="0">
+-            <port_0 width="2560" height="1456" format="BA10"/>
++        <sensor mode_id="1280x720_b" vflip="1" hflip="0">
++            <port_0 width="1280" height="720" format="BA10"/>
+         </sensor>
+         <csi_be_soc>
+-            <output width="2560" height="1456" format="BA10" />
++            <output width="1280" height="720" format="BA10" />
+             <bxt_pixelformatter>
+-                <input width="2560" height="1456" left="0" top="0" right="0" bottom="0" />
+-                <output width="2560" height="1456" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0" />
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </bxt_pixelformatter>
+         </csi_be_soc>
+         <video_isa_preview stream_id="60002">
+-            <scaled_output width="1920" height="1080" />
++            <scaled_output width="1280" height="720" />
+             <non_scaled_output enabled="0"/>
+             <bxt_inputscaler>
+-                <input width="2560" height="1456" left="0" top="0" right="0" bottom="0"/>
+-                <output width="1920" height="1092" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </bxt_inputscaler>
+             <bxt_cropvideo>
+-                <input width="1920" height="1092" left="0" top="6" right="0" bottom="6"/>
+-                <output width="1920" height="1080" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </bxt_cropvideo>
+         </video_isa_preview>
+         <video_pre_gdc stream_id="60002">
+-            <ipu_intermediate width="1920" height="1080" />
++            <ipu_intermediate width="1280" height="1280" />
+         </video_pre_gdc>
+         <video_post_gdc stream_id="60000" hflip="1" vflip="1">
+             <non_scaled_output enabled="0"/>
+@@ -775,11 +789,11 @@
+             <!-- KERNEL SETTINGS -->
+             <!-- resolution info -->
+             <gdc3>
+-                <input width="1920" height="1080" left="192" top="108" right="192" bottom="108"/>
+-                <output width="1536" height="864" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </gdc3>
+             <sc_outputscaler_dp>
+-                <input width="1536" height="864" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+                 <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </sc_outputscaler_dp>
+             <!-- disabled kernels-->
+diff --git a/etc/graph_settings_ov5670C.xml b/etc/graph_settings_ov5670C.xml
+index dbf061e..96a2164 100644
+--- a/etc/graph_settings_ov5670C.xml
++++ b/etc/graph_settings_ov5670C.xml
+@@ -93,6 +93,20 @@
+             <output width="1920" height="1080" left="0" top="0"/>
+         </scaler>
+     </sensor_mode>
++    <sensor_mode name="1280x720_b" id="6" width="1280" height="720" min_fll="720" min_llp="3360" fps="60.0">
++        <pixel_array>
++            <input width="2592" height="1944" left="0" top="0"/>
++            <output width="2560" height="1440" left="16" top="252"/>
++        </pixel_array>
++        <binner h_factor="2" v_factor="2">
++            <input width="2560" height="1440" left="0" top="0"/>
++            <output width="1280" height="720" left="0" top="0"/>
++        </binner>
++        <scaler num_factor="16" denom_factor="16">
++            <input width="1280" height="720" left="0" top="0"/>
++            <output width="1280" height="720" left="0" top="0"/>
++        </scaler>
++    </sensor_mode>
+ </sensor_modes>
+ 
+ <!-- video 2560x1440 (16/9 3.7MP) in secondary pipe -->
+@@ -743,30 +757,30 @@
+     <!-- preview 1280x720 secondary pipe 30 fps DVS OFF -->
+     <settings key="8322" id="100003" active_outputs="1" fps="30" dvs="0">
+         <video0 width="1280" height="720" stream_id="60000"/>
+-        <sensor mode_id="2560x1456_c" vflip="1" hflip="0">
+-            <port_0 width="2560" height="1456" format="BA10"/>
++        <sensor mode_id="1280x720_b" vflip="1" hflip="0">
++            <port_0 width="1280" height="720" format="BA10"/>
+         </sensor>
+         <csi_be_soc>
+-            <output width="2560" height="1456" format="BA10" />
++            <output width="1280" height="720" format="BA10" />
+             <bxt_pixelformatter>
+-                <input width="2560" height="1456" left="0" top="0" right="0" bottom="0" />
+-                <output width="2560" height="1456" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0" />
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </bxt_pixelformatter>
+         </csi_be_soc>
+         <video_isa_preview stream_id="60002">
+-            <scaled_output width="1920" height="1080" />
++            <scaled_output width="1280" height="720" />
+             <non_scaled_output enabled="0"/>
+             <bxt_inputscaler>
+-                <input width="2560" height="1456" left="0" top="0" right="0" bottom="0"/>
+-                <output width="1920" height="1092" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </bxt_inputscaler>
+             <bxt_cropvideo>
+-                <input width="1920" height="1092" left="0" top="6" right="0" bottom="6"/>
+-                <output width="1920" height="1080" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </bxt_cropvideo>
+         </video_isa_preview>
+         <video_pre_gdc stream_id="60002">
+-            <ipu_intermediate width="1920" height="1080" />
++            <ipu_intermediate width="1280" height="1280" />
+         </video_pre_gdc>
+         <video_post_gdc stream_id="60000" hflip="1" vflip="1">
+             <non_scaled_output enabled="0"/>
+@@ -775,11 +789,11 @@
+             <!-- KERNEL SETTINGS -->
+             <!-- resolution info -->
+             <gdc3>
+-                <input width="1920" height="1080" left="192" top="108" right="192" bottom="108"/>
+-                <output width="1536" height="864" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </gdc3>
+             <sc_outputscaler_dp>
+-                <input width="1536" height="864" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+                 <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </sc_outputscaler_dp>
+             <!-- disabled kernels-->
+diff --git a/etc/graph_settings_ov5670D.xml b/etc/graph_settings_ov5670D.xml
+index c4c25e6..c5f5261 100644
+--- a/etc/graph_settings_ov5670D.xml
++++ b/etc/graph_settings_ov5670D.xml
+@@ -93,6 +93,20 @@
+             <output width="1920" height="1080" left="0" top="0"/>
+         </scaler>
+     </sensor_mode>
++    <sensor_mode name="1280x720_b" id="6" width="1280" height="720" min_fll="720" min_llp="3360" fps="60.0">
++        <pixel_array>
++            <input width="2592" height="1944" left="0" top="0"/>
++            <output width="2560" height="1440" left="16" top="252"/>
++        </pixel_array>
++        <binner h_factor="2" v_factor="2">
++            <input width="2560" height="1440" left="0" top="0"/>
++            <output width="1280" height="720" left="0" top="0"/>
++        </binner>
++        <scaler num_factor="16" denom_factor="16">
++            <input width="1280" height="720" left="0" top="0"/>
++            <output width="1280" height="720" left="0" top="0"/>
++        </scaler>
++    </sensor_mode>
+ </sensor_modes>
+ 
+ <!-- video 2560x1440 (16/9 3.7MP) in secondary pipe -->
+@@ -743,30 +757,30 @@
+     <!-- preview 1280x720 secondary pipe 30 fps DVS OFF -->
+     <settings key="8322" id="100003" active_outputs="1" fps="30" dvs="0">
+         <video0 width="1280" height="720" stream_id="60000"/>
+-        <sensor mode_id="2560x1456_c" vflip="1" hflip="0">
+-            <port_0 width="2560" height="1456" format="BA10"/>
++        <sensor mode_id="1280x720_b" vflip="1" hflip="0">
++            <port_0 width="1280" height="720" format="BA10"/>
+         </sensor>
+         <csi_be_soc>
+-            <output width="2560" height="1456" format="BA10" />
++            <output width="1280" height="720" format="BA10" />
+             <bxt_pixelformatter>
+-                <input width="2560" height="1456" left="0" top="0" right="0" bottom="0" />
+-                <output width="2560" height="1456" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0" />
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </bxt_pixelformatter>
+         </csi_be_soc>
+         <video_isa_preview stream_id="60002">
+-            <scaled_output width="1920" height="1080" />
++            <scaled_output width="1280" height="720" />
+             <non_scaled_output enabled="0"/>
+             <bxt_inputscaler>
+-                <input width="2560" height="1456" left="0" top="0" right="0" bottom="0"/>
+-                <output width="1920" height="1092" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </bxt_inputscaler>
+             <bxt_cropvideo>
+-                <input width="1920" height="1092" left="0" top="6" right="0" bottom="6"/>
+-                <output width="1920" height="1080" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </bxt_cropvideo>
+         </video_isa_preview>
+         <video_pre_gdc stream_id="60002">
+-            <ipu_intermediate width="1920" height="1080" />
++            <ipu_intermediate width="1280" height="1280" />
+         </video_pre_gdc>
+         <video_post_gdc stream_id="60000" hflip="1" vflip="1">
+             <non_scaled_output enabled="0"/>
+@@ -775,11 +789,11 @@
+             <!-- KERNEL SETTINGS -->
+             <!-- resolution info -->
+             <gdc3>
+-                <input width="1920" height="1080" left="192" top="108" right="192" bottom="108"/>
+-                <output width="1536" height="864" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
++                <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </gdc3>
+             <sc_outputscaler_dp>
+-                <input width="1536" height="864" left="0" top="0" right="0" bottom="0"/>
++                <input width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+                 <output width="1280" height="720" left="0" top="0" right="0" bottom="0"/>
+             </sc_outputscaler_dp>
+             <!-- disabled kernels-->
+-- 
+2.7.4
+

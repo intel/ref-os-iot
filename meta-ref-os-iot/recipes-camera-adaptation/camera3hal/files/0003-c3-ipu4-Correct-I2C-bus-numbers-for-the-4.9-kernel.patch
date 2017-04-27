@@ -1,0 +1,76 @@
+From 6d035433a49d4960b9aa966ac54be53b815668fe Mon Sep 17 00:00:00 2001
+From: Soren Friis <soren.friis@intel.com>
+Date: Fri, 16 Jun 2017 09:58:23 +0300
+Subject: [PATCH 3/3] c3:ipu4: Correct I2C bus numbers for the 4.9 kernel
+
+The 4.9 kernel versions correct the I2C bus numbers to
+what they actually are. For some reason the 4.4 kernel
+had subtracted 1 from the busses used for the cameras.
+
+Undo this subtracttion of 1 also in the
+camera3_profiles.xml file.
+
+Signed-off-by: Soren Friis <soren.friis@intel.com>
+---
+ etc/camera3_profiles.xml | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/etc/camera3_profiles.xml b/etc/camera3_profiles.xml
+index 591c413..ffec175 100644
+--- a/etc/camera3_profiles.xml
++++ b/etc/camera3_profiles.xml
+@@ -592,9 +592,9 @@
+         </Sensor_info_IPU4>
+ 
+         <MediaCtl_elements_IPU4>
+-            <element name="ov5670 pixel array 8-0036" type="pixel_array"/>
+-            <element name="ov5670 scaler 8-0036" type="scaler"/>
+-            <element name="ov5670 binner 8-0036" type="binner"/>
++            <element name="ov5670 pixel array 9-0036" type="pixel_array"/>
++            <element name="ov5670 scaler 9-0036" type="scaler"/>
++            <element name="ov5670 binner 9-0036" type="binner"/>
+             <element name="Intel IPU4 CSI2 BE" type="back_end"/>
+             <element name="Intel IPU4 CSI-2 0" type="csi_receiver"/>
+             <element name="Intel IPU4 CSI-2 BE RAW" type="soc raw back_end"/>
+@@ -876,9 +876,9 @@
+         </Sensor_info_IPU4>
+ 
+         <MediaCtl_elements_IPU4>
+-            <element name="ov5670 pixel array 8-0010" type="pixel_array"/>
+-            <element name="ov5670 scaler 8-0010" type="scaler"/>
+-            <element name="ov5670 binner 8-0010" type="binner"/>
++            <element name="ov5670 pixel array 9-0010" type="pixel_array"/>
++            <element name="ov5670 scaler 9-0010" type="scaler"/>
++            <element name="ov5670 binner 9-0010" type="binner"/>
+             <element name="Intel IPU4 CSI2 BE" type="back_end"/>
+             <element name="Intel IPU4 CSI-2 2" type="csi_receiver"/>
+             <element name="Intel IPU4 CSI-2 BE RAW" type="soc raw back_end"/>
+@@ -1160,9 +1160,9 @@
+         </Sensor_info_IPU4>
+ 
+         <MediaCtl_elements_IPU4>
+-            <element name="ov5670 pixel array 7-0036" type="pixel_array"/>
+-            <element name="ov5670 scaler 7-0036" type="scaler"/>
+-            <element name="ov5670 binner 7-0036" type="binner"/>
++            <element name="ov5670 pixel array 8-0036" type="pixel_array"/>
++            <element name="ov5670 scaler 8-0036" type="scaler"/>
++            <element name="ov5670 binner 8-0036" type="binner"/>
+             <element name="Intel IPU4 CSI2 BE" type="back_end"/>
+             <element name="Intel IPU4 CSI-2 4" type="csi_receiver"/>
+             <element name="Intel IPU4 CSI-2 BE RAW" type="soc raw back_end"/>
+@@ -1445,9 +1445,9 @@
+         </Sensor_info_IPU4>
+ 
+         <MediaCtl_elements_IPU4>
+-            <element name="ov5670 pixel array 7-0010" type="pixel_array"/>
+-            <element name="ov5670 scaler 7-0010" type="scaler"/>
+-            <element name="ov5670 binner 7-0010" type="binner"/>
++            <element name="ov5670 pixel array 8-0010" type="pixel_array"/>
++            <element name="ov5670 scaler 8-0010" type="scaler"/>
++            <element name="ov5670 binner 8-0010" type="binner"/>
+             <element name="Intel IPU4 CSI2 BE" type="back_end"/>
+             <element name="Intel IPU4 CSI-2 5" type="csi_receiver"/>
+             <element name="Intel IPU4 CSI-2 BE RAW" type="soc raw back_end"/>
+-- 
+2.7.4
+
