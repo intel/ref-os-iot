@@ -380,3 +380,4 @@ iotivity-node@ref-os-iot
 autostart-sketch@intel-arduino
 linux-libc-headers@ref-os-iot
 kernelflinger@5xx
+fastboot-support@5xx
