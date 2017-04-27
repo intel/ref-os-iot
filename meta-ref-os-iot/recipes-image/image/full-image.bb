@@ -31,6 +31,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      java-jdk \
      machinelearning \
      ext2-tools \
+     vulkan \
 "
 
 IMAGE_FEATURES += " \

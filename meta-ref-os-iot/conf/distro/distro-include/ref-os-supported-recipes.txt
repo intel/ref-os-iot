@@ -383,3 +383,5 @@ linux-libc-headers@ref-os-iot
 kernelflinger@5xx
 fastboot-support@5xx
 python-dbus@meta-python
+vulkan@core
+assimp@ros-layer

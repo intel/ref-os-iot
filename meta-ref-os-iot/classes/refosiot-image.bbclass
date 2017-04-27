@@ -8,6 +8,7 @@ FEATURE_PACKAGES_opencl = "\
 			packagegroup-opencl \
 			beignet-570x-dev \
 			opencl-headers-cxx"
+FEATURE_PACKAGES_vulkan = "packagegroup-vulkan"
 FEATURE_PACKAGES_linux-firmware = "linux-firmware"
 FEATURE_PACKAGES_realsense = "\
 			   realsense-sdk \
