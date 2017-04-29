@@ -11,6 +11,7 @@ type_2_guid = {
     'esp' : 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b',
     'linux' : '0fc63daf-8483-4772-8e79-3d69d8477de4',
     'linux-swap' : '0657fd6d-a4ab-43c4-84e5-0933c84b4f4f',
+    'windows-recovery' : 'DE94BBA4-06D1-4D40-A16A-BFD50179D6AC',
 # generated guid for android
     'boot' : '49a4d17f-93a3-45c1-a0de-f50b2ebe2599',
     'recovery' : '4177c722-9e92-4aab-8644-43502bfd5506',
