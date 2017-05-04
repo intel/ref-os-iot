@@ -1,0 +1,547 @@
+From f42d6c4bbd1751033ec3920524dafb7fcb4529bb Mon Sep 17 00:00:00 2001
+From: Tuomas Katila <tuomas.katila@intel.com>
+Date: Wed, 3 May 2017 11:25:07 +0300
+Subject: [PATCH] tests: increase test coverage with error/negative test cases
+
+Signed-off-by: Tuomas Katila <tuomas.katila@intel.com>
+---
+ Makefile.am              |  22 +++-
+ libdummy_icd.c           |  16 ++-
+ run_icd_errors.c         | 266 +++++++++++++++++++++++++++++++++++++++++++++++
+ tests/Makefile.am        |   2 +-
+ tests/testsuite-error.at | 130 +++++++++++++++++++++++
+ tests/testsuite.at       |   1 +
+ 6 files changed, 433 insertions(+), 4 deletions(-)
+ create mode 100644 run_icd_errors.c
+ create mode 100644 tests/testsuite-error.at
+
+diff --git a/Makefile.am b/Makefile.am
+index 5f4d609..08b59e5 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -95,7 +95,7 @@ stamp-generator-dummy: icd_generator.rb
+ # noinst_LTLIBRARIES would be the correct thing but then libtool
+ # only built non shared version :-( So, declaring the libs as
+ # pkglib_LTLIBRARIES and using an install hook to remove them.
+-pkglib_LTLIBRARIES = libdummycl.la libdummycl2.la libdummycl-noext.la
++pkglib_LTLIBRARIES = libdummycl.la libdummycl2.la libdummycl-noext.la libdummyclnogetextfuncadd.la libdummyclnogetplatforminfo.la libdummyclfailclIcdGetPlatformIDsKHR.la
+ install-exec-hook::
+ 	$(RM) -r $(DESTDIR)$(pkglibdir)
+ libdummycl_la_SOURCES = libdummy_icd.c libdummy_icd.h
+@@ -107,7 +107,18 @@ libdummycl2_la_SOURCES = $(libdummycl_la_SOURCES)
+ nodist_libdummycl2_la_SOURCES = $(nodist_libdummycl_la_SOURCES)
+ libdummycl2_la_CPPFLAGS = $(AM_CPPFLAGS) -DICD_SUFFIX=\"2\"
+ 
+-noinst_PROGRAMS=run_dummy_icd_through_our_ICDL
++# intentionally broken libraries
++libdummyclnogetextfuncadd_la_SOURCES = $(libdummycl_la_SOURCES)
++libdummyclnogetextfuncadd_la_CPPFLAGS = $(AM_CPPFLAGS) -DNO_clGetExtensionFunctionAddress=1
++
++libdummyclnogetplatforminfo_la_SOURCES = $(libdummycl_la_SOURCES)
++libdummyclnogetplatforminfo_la_CPPFLAGS = $(AM_CPPFLAGS) -DNO_clGetPlatformInfo=1
++
++libdummyclfailclIcdGetPlatformIDsKHR_la_SOURCES = $(libdummycl_la_SOURCES)
++nodist_libdummyclfailclIcdGetPlatformIDsKHR_la_SOURCES = $(nodist_libdummycl_la_SOURCES)
++libdummyclfailclIcdGetPlatformIDsKHR_la_CPPFLAGS = $(AM_CPPFLAGS) -DFAIL_clIcdGetPlatformIDsKHR=1
++
++noinst_PROGRAMS=run_dummy_icd_through_our_ICDL run_icd_errors
+ run_dummy_icd_through_our_ICDL_SOURCES = run_dummy_icd.c
+ nodist_run_dummy_icd_through_our_ICDL_SOURCES = \
+ 	run_dummy_icd_gen.c run_dummy_icd_weak_gen.c
+@@ -118,6 +129,13 @@ run_dummy_icd_through_our_ICDL_LDADD = libOpenCL.la
+ #
+ run_dummy_icd_through_our_ICDL_CPPFLAGS = $(AM_CPPFLAGS) -DOCL_ICD_PRINT_EXPECTED
+ 
++# for running negative tests
++run_icd_errors_SOURCES = run_icd_errors.c
++run_icd_errors_CFLAGS= $(NO_DEPRECATED_DECLARATIONS_FLAGS) $(AM_CFLAGS)
++run_icd_errors_LDADD = libOpenCL.la
++run_icd_errorsCPPFLAGS = $(AM_CPPFLAGS) -DOCL_ICD_PRINT_EXPECTED
++
++
+ ##################################################################
+ # rules to update the database from an already installed ICD Loader
+ if UPDATE_DATABASE
+diff --git a/libdummy_icd.c b/libdummy_icd.c
+index b470f1b..0dba9ac 100644
+--- a/libdummy_icd.c
++++ b/libdummy_icd.c
+@@ -47,6 +47,11 @@ static cl_int _GetPlatformIDs(
+              cl_platform_id *platforms,
+              cl_uint *num_platforms) {
+   debug_trace();
++
++#ifdef FAIL_clIcdGetPlatformIDsKHR
++  return CL_INVALID_PLATFORM;
++#endif
++
+   if( platforms == NULL && num_platforms == NULL )
+     return CL_INVALID_VALUE;
+   if( num_entries == 0 && platforms != NULL )
+@@ -102,7 +107,9 @@ CL_API_ENTRY void * CL_API_CALL INTclGetExtensionFunctionAddress(
+   }
+   return NULL;
+ }
++#ifndef NO_clGetExtensionFunctionAddress
+ SYMB(clGetExtensionFunctionAddress);
++#endif
+ 
+ #ifndef ICD_SUFFIX
+ #  define ICD_SUFFIX ""
+@@ -193,7 +200,9 @@ CL_API_ENTRY cl_int CL_API_CALL INTclGetPlatformInfo(
+     *param_value_size_ret = size_string;
+   return CL_SUCCESS;
+ }
++#ifndef NO_clGetPlatformInfo
+ SYMB(clGetPlatformInfo);
++#endif
+ 
+ CL_API_ENTRY cl_int CL_API_CALL
+ INTclGetDeviceIDs(cl_platform_id   pid /* platform */,
+@@ -223,7 +232,12 @@ INTclGetDeviceIDs(cl_platform_id   pid /* platform */,
+ 	} else {
+ 		char* strnb=getenv(ENVNAME);
+ 		if (strnb) {
+-			*res=atoi(getenv(ENVNAME));
++                        if (!strcmp(strnb, "fail"))
++                                return CL_INVALID_VALUE;
++                        else if (!strcmp(strnb, "failwithunknownerror"))
++                                return 1;
++                        else
++                                *res=atoi(getenv(ENVNAME));
+ 		} else {
+ 			*res=0;
+ 		}
+diff --git a/run_icd_errors.c b/run_icd_errors.c
+new file mode 100644
+index 0000000..fee0566
+--- /dev/null
++++ b/run_icd_errors.c
+@@ -0,0 +1,266 @@
++/**
++Copyright (c) 2012, Brice Videau <brice.videau@imag.fr>
++Copyright (c) 2012, Vincent Danjean <Vincent.Danjean@ens-lyon.org>
++Copyright (c) 2017, Tuomas Katila <tuomas.katila@intel.com>
++All rights reserved.
++
++Redistribution and use in source and binary forms, with or without
++modification, are permitted provided that the following conditions are met:
++
++1. Redistributions of source code must retain the above copyright notice, this
++   list of conditions and the following disclaimer.
++2. Redistributions in binary form must reproduce the above copyright notice,
++   this list of conditions and the following disclaimer in the documentation
++   and/or other materials provided with the distribution.
++
++THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
++ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
++ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++*/
++#include <stdlib.h>
++#include <stdio.h>
++#pragma GCC diagnostic push
++#  pragma GCC diagnostic ignored "-Wcpp"
++#  define CL_USE_DEPRECATED_OPENCL_1_0_APIS
++#  define CL_USE_DEPRECATED_OPENCL_1_1_APIS
++#  include <CL/opencl.h>
++#  include <CL/cl.h>
++#  include <CL/cl_gl.h>
++#  include <CL/cl_egl.h>
++#  include <CL/cl_ext.h>
++#  include <CL/cl_gl_ext.h>
++#pragma GCC diagnostic pop
++#include <string.h>
++#include "ocl_icd_debug.h"
++
++int debug_ocl_icd_mask;
++
++int test_clGetExtensionFunctionAddress()
++{
++  void* ptr = clGetExtensionFunctionAddress(NULL);
++  if (ptr) {
++    fprintf(stderr, "clGetExtensionFunctionAddress with NULL returned non NULL\n");
++    return 1;
++  }
++
++  ptr = clGetExtensionFunctionAddress("foobarKHR");
++  if (ptr) {
++    fprintf(stderr, "clGetExtensionFunctionAddress with invalid function name returned non NULL\n");
++    return 1;
++  }
++
++  return 0;
++}
++
++int test_clGetPlatformIDs()
++{
++  cl_int ret = clGetPlatformIDs(0, NULL, NULL);
++  if (ret != CL_INVALID_VALUE) {
++    fprintf(stderr, "clGetPlatformIDs returned ok with invalid parameters\n");
++    return 1;
++  }
++
++  return 0;
++}
++
++int test_clCreateContext()
++{
++  cl_context_properties props[4];
++  cl_int err_code;
++
++  cl_context ctx = clCreateContext(NULL, 0, NULL, NULL, NULL, &err_code);
++  if (ctx != NULL && err_code != CL_INVALID_PLATFORM) {
++    fprintf(stderr, "clCreateContext returned valid platform 0 devices\n");
++    return 1;
++  }
++
++  props[0] = CL_CONTEXT_PLATFORM;
++  props[1] = 0;
++
++  ctx = clCreateContext(props, 2, NULL, NULL, NULL, &err_code);
++  if (ctx != NULL && err_code != CL_INVALID_PLATFORM) {
++    fprintf(stderr, "clCreateContext returned context with zero secondary property\n");
++    return 1;
++  }
++
++  props[0] = CL_CONTEXT_PLATFORM;
++  props[1] = 999;
++
++  ctx = clCreateContext(props, 2, NULL, NULL, NULL, &err_code);
++  if (ctx != NULL && err_code != CL_INVALID_PLATFORM) {
++    fprintf(stderr, "clCreateContext returned context with bad secondary property\n");
++    return 1;
++  }
++
++  props[0] = CL_CONTEXT_PLATFORM + 1;
++  props[1] = 0;
++  props[2] = CL_CONTEXT_PLATFORM;
++  props[3] = 0;
++
++  ctx = clCreateContext(props, 4, NULL, NULL, NULL, &err_code);
++  if (ctx != NULL && err_code != CL_INVALID_PLATFORM) {
++    fprintf(stderr, "clCreateContext returned context with zero secondary property, loop 2\n");
++    return 1;
++  }
++
++  cl_device_id devs[1];
++  devs[0] = NULL;
++  ctx = clCreateContext(NULL, 1, devs, NULL, NULL, &err_code);
++  if (ctx != NULL && err_code != CL_INVALID_PLATFORM) {
++    fprintf(stderr, "clCreateContext returned context with NULL device\n");
++    return 1;
++  }
++
++  return 0;
++}
++
++int test_clCreateContextFromType()
++{
++  cl_context_properties props[4];
++  cl_int err_code;
++
++  cl_context ctx = clCreateContextFromType(NULL, CL_DEVICE_TYPE_CPU, NULL, NULL, &err_code);
++  if (ctx != NULL && err_code != CL_INVALID_PLATFORM) {
++    fprintf(stderr, "clCreateContextFromType returned context with NULL device\n");
++  }
++
++  props[0] = CL_CONTEXT_PLATFORM;
++  props[1] = 0;
++  ctx = clCreateContextFromType(props, CL_DEVICE_TYPE_CPU, NULL, NULL, &err_code);
++  if (ctx != NULL && err_code != CL_INVALID_PLATFORM) {
++    fprintf(stderr, "clCreateContextFromType returned context with zero secondary property\n");
++    return 1;
++  }
++
++  props[0] = CL_CONTEXT_PLATFORM;
++  props[1] = 999;
++  ctx = clCreateContextFromType(props, CL_DEVICE_TYPE_CPU, NULL, NULL, &err_code);
++  if (ctx != NULL && err_code != CL_INVALID_PLATFORM) {
++    fprintf(stderr, "clCreateContextFromType returned context with invalid secondary property\n");
++    return 1;
++  }
++
++  props[0] = CL_CONTEXT_PLATFORM + 1;
++  props[1] = 0;
++  props[2] = CL_CONTEXT_PLATFORM;
++  props[3] = 0;
++  ctx = clCreateContextFromType(props, CL_DEVICE_TYPE_CPU, NULL, NULL, &err_code);
++  if (ctx != NULL && err_code != CL_INVALID_PLATFORM) {
++    fprintf(stderr, "clCreateContextFromType returned context with zero secondary property - loop 2\n");
++    return 1;
++  }
++
++  return 0;
++}
++
++int test_clGetGLContextInfoKHR()
++{
++  cl_context_properties props[4];
++  cl_int ret;
++  cl_gl_context_info gl_ctx_info = CL_CURRENT_DEVICE_FOR_GL_CONTEXT_KHR;
++
++  ret = clGetGLContextInfoKHR(NULL, gl_ctx_info, 0, NULL, NULL);
++  if (ret != CL_INVALID_PLATFORM) {
++    fprintf(stderr, "clGetGLContextInfoKHR returned valid context with NULL properties\n");
++    return 1;
++  }
++
++  props[0] = CL_CONTEXT_PLATFORM;
++  props[1] = 0;
++  ret = clGetGLContextInfoKHR(props, gl_ctx_info, 0, NULL, NULL);
++  if (ret != CL_INVALID_PLATFORM) {
++    fprintf(stderr, "clGetGLContextInfoKHR returned ok with secondary property zero\n");
++    return 1;
++  }
++
++  props[0] = CL_CONTEXT_PLATFORM;
++  props[1] = 999;
++  ret = clGetGLContextInfoKHR(props, gl_ctx_info, 0, NULL, NULL);
++  if (ret != CL_INVALID_PLATFORM) {
++    fprintf(stderr, "clGetGLContextInfoKHR returned ok with secondary property as invalid\n");
++    return 1;
++  }
++
++  props[0] = CL_CONTEXT_PLATFORM + 1;
++  props[1] = 0;
++  props[2] = CL_CONTEXT_PLATFORM;
++  props[3] = 0;
++
++  ret = clGetGLContextInfoKHR(props, gl_ctx_info, 0, NULL, NULL);
++  if (ret != CL_INVALID_PLATFORM) {
++    fprintf(stderr, "clGetGLContextInfoKHR returned ok with secondary property zero - loop 2\n");
++    return 1;
++  }
++
++  return 0;
++}
++
++struct {
++  char* name;
++  int (*f)();
++} name2test[] = {
++  {"clGetExtensionFunctionAddress", test_clGetExtensionFunctionAddress},
++  {"clGetPlatformIDs", test_clGetPlatformIDs},
++  {"clCreateContext", test_clCreateContext},
++  {"clCreateContextFromType", test_clCreateContextFromType},
++  {"clGetGLContextInfoKHR", test_clGetGLContextInfoKHR},
++  {NULL, NULL}
++};
++
++int main(int argc, char** argv) {
++  int i;
++  cl_uint num_platforms;
++  debug_init();
++  clGetPlatformIDs( 0, NULL, &num_platforms);
++  cl_platform_id *platforms = malloc(sizeof(cl_platform_id) * num_platforms);
++  clGetPlatformIDs(num_platforms, platforms, NULL);
++  debug(D_LOG, "Found %d platforms.", num_platforms);
++  cl_platform_id chosen_platform=NULL;
++
++   for(i=0; i<num_platforms; i++){
++     char *platform_vendor;
++     size_t param_value_size_ret;
++
++     clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, 0, NULL, &param_value_size_ret );
++     platform_vendor = (char *)malloc(param_value_size_ret);
++     clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, param_value_size_ret, platform_vendor, NULL );
++
++     debug(D_LOG, "platform_vendor: %s",platform_vendor);
++     if( strcmp(platform_vendor, "ocl-icd ICD test") == 0)
++       chosen_platform = platforms[i];
++     free(platform_vendor);
++  }
++  if( chosen_platform == NULL ) {
++    fprintf(stderr,"Error LIG platform not found!\n");
++    return -1;
++  }
++
++  printf("---\n");
++  fflush(NULL);
++
++  if (argc < 1) {
++    fprintf(stderr, "no test selected to execute\n");
++    fprintf(stderr, "Tests:\n");
++    for (i = 0; name2test[i].f != NULL; ++i) {
++      fprintf(stderr, "\t%s", name2test[i].name);
++    }
++    return 1;
++  }
++
++  for (i = 0; name2test[i].f != NULL; ++i) {
++    if (!strcmp(name2test[i].name, argv[1])) {
++      return (name2test[i].f)();
++    }
++  }
++
++  fprintf(stderr, "unknown test name: %s\n", argv[1]);
++
++  return 1;
++}
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+index 58d2492..2dbddac 100644
+--- a/tests/Makefile.am
++++ b/tests/Makefile.am
+@@ -19,7 +19,7 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
+ 	  echo '  [$(OPENCL_VERSION)])'; \
+ 	} >'$(srcdir)/package.m4'
+ 
+-TESTSUITES_SRC = testsuite.at testsuite-standard.at testsuite-workaround.at testsuite-default-platform.at
++TESTSUITES_SRC = testsuite.at testsuite-standard.at testsuite-workaround.at testsuite-default-platform.at testsuite-error.at
+ EXTRA_DIST = $(TESTSUITES_SRC) $(srcdir)/package.m4 $(TESTSUITE) atlocal.in atenv.m4
+ TESTSUITE = $(srcdir)/testsuite
+ DISTCLEANFILES = atconfig
+diff --git a/tests/testsuite-error.at b/tests/testsuite-error.at
+new file mode 100644
+index 0000000..b0779a3
+--- /dev/null
++++ b/tests/testsuite-error.at
+@@ -0,0 +1,130 @@
++AT_BANNER([Error/negative tests])
++
++AT_SETUP([empty icd file])
++AT_EXPORT([OCL_ICD_DEBUG],[15],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/vendors/empty.icd])
++AT_CHECK([touch $abs_top_builddir/vendors/empty.icd], 0, [stdout], [stderr])
++AT_CHECK([ocl_test], 0, [stdout], [stderr])
++AT_CHECK([grep "File contents too short" stderr], 0, [stdout])
++AT_CLEANUP
++
++AT_SETUP([cannot read icd file])
++AT_EXPORT([OCL_ICD_DEBUG],[15],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/vendors/cannotread.icd])
++AT_CHECK([rm -f $abs_top_builddir/vendors/cannotread.icd], 0, [stdout], [stderr])
++AT_CHECK([touch $abs_top_builddir/vendors/cannotread.icd], 0, [stdout], [stderr])
++AT_CHECK([chmod 000 $abs_top_builddir/vendors/cannotread.icd], 0, [stdout], [stderr])
++AT_CHECK([ocl_test], 0, [No platforms found!
++], [stderr])
++AT_CLEANUP
++
++AT_SETUP([platform not sorted])
++AT_EXPORT([OCL_ICD_DEBUG],[15],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/vendors],
++          [OCL_ICD_PLATFORM_SORT],[none])
++AT_CHECK([ocl_test], 0, [stdout], [stderr])
++AT_CHECK([grep "Platform not sorted" stderr], 0, [stdout])
++AT_CLEANUP
++
++AT_SETUP([icd assume extension debug])
++AT_EXPORT([OCL_ICD_DEBUG],[15],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/vendors],
++          [OCL_ICD_ASSUME_ICD_EXTENSION],[debug])
++AT_CHECK([ocl_test], 0, [stdout], [stderr])
++AT_CLEANUP
++
++AT_SETUP([icd assume extension - broken library])
++AT_EXPORT([OCL_ICD_DEBUG],[15],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/.libs/libdummyclnogetplatforminfo.so],
++          [OCL_ICD_ASSUME_ICD_EXTENSION],[debug])
++AT_CHECK([ocl_test], 0, [stdout], [stderr])
++AT_CLEANUP
++
++AT_SETUP([clGetExtensionFunctionAddress doesnt resolve])
++AT_EXPORT([OCL_ICD_DEBUG],[15],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/.libs/libdummyclnogetextfuncadd.so])
++AT_CHECK([ocl_test], 0, [stdout], [stderr])
++AT_CHECK([grep "Missing symbols in ICD, skipping it" stderr], 0, [stdout])
++AT_CLEANUP
++
++AT_SETUP([clGetPlatformInfo doesnt resolve])
++AT_EXPORT([OCL_ICD_DEBUG],[15],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/.libs/libdummyclnogetplatforminfo.so])
++AT_CHECK([ocl_test], 0, [stdout], [stderr])
++AT_CHECK([grep "Missing function 'clGetPlatformInfo' in ICD, should be skipped" stderr], 0, [stdout])
++AT_CLEANUP
++
++AT_SETUP([clIcdGetPlatformIDsKHR returns error])
++AT_EXPORT([OCL_ICD_DEBUG],[15],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/.libs/libdummyclfailclIcdGetPlatformIDsKHR.so])
++AT_CHECK([ocl_test], 0, [stdout], [stderr])
++AT_CHECK([grep "No platform in ICD, skipping it" stderr], 0, [stdout])
++AT_CLEANUP
++
++AT_SETUP([count platforms fail - gpu])
++AT_EXPORT([OCL_ICD_DEBUG],[15],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/vendors],
++          [OCL_ICD_PLATFORM_SORT],[yes],
++          [NB_GPU],[fail])
++AT_CHECK([ocl_test], 0, [stdout], [stderr])
++AT_CHECK([grep "Error CL_INVALID_VALUE while counting GPU devices" stderr], 0, [stdout])
++AT_CLEANUP
++
++AT_SETUP([count platforms fail - cpu])
++AT_EXPORT([OCL_ICD_DEBUG],[15],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/vendors],
++          [OCL_ICD_PLATFORM_SORT],[yes],
++          [NB_CPU],[fail])
++AT_CHECK([ocl_test], 0, [stdout], [stderr])
++AT_CHECK([grep "Error CL_INVALID_VALUE while counting CPU devices" stderr], 0, [stdout])
++#AT_CHECK(false, 0, [stdout])
++AT_CLEANUP
++
++AT_SETUP([count platforms fail - all])
++AT_EXPORT([OCL_ICD_DEBUG],[15],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/vendors],
++          [OCL_ICD_PLATFORM_SORT],[yes],
++          [NB_ALL],[fail])
++AT_CHECK([ocl_test], 0, [stdout], [stderr])
++AT_CHECK([grep "Error CL_INVALID_VALUE while counting ALL devices" stderr], 0, [stdout])
++#AT_CHECK(false, 0, [stdout])
++AT_CLEANUP
++
++AT_SETUP([count fail with unknown error])
++AT_EXPORT([OCL_ICD_DEBUG],[15],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/vendors],
++          [OCL_ICD_PLATFORM_SORT],[yes],
++          [NB_GPU],[failwithunknownerror])
++AT_CHECK([ocl_test], 0, [stdout], [stderr])
++AT_CHECK([grep "Error OpenCL Error while counting GPU" stderr], 0, [stdout])
++AT_CLEANUP
++
++AT_SETUP([negative clGetExtensionFunctionAddress tests])
++AT_EXPORT([OCL_ICD_DEBUG],[7],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/vendors])
++AT_CHECK([run_icd_errors clGetExtensionFunctionAddress], 0, [stdout], [stderr])
++AT_CLEANUP
++
++AT_SETUP([negative clGetPlatformIDs tests])
++AT_EXPORT([OCL_ICD_DEBUG],[7],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/vendors])
++AT_CHECK([run_icd_errors clGetPlatformIDs], 0, [stdout], [stderr])
++AT_CLEANUP
++
++AT_SETUP([negative clCreateContext tests])
++AT_EXPORT([OCL_ICD_DEBUG],[7],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/vendors])
++AT_CHECK([run_icd_errors clCreateContext], 0, [stdout], [stderr])
++AT_CLEANUP
++
++AT_SETUP([negative clCreateContextFromType tests])
++AT_EXPORT([OCL_ICD_DEBUG],[7],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/vendors])
++AT_CHECK([run_icd_errors clCreateContextFromType], 0, [stdout], [stderr])
++AT_CLEANUP
++
++AT_SETUP([negative clGetGLContextInfoKHR tests])
++AT_EXPORT([OCL_ICD_DEBUG],[7],
++          [OCL_ICD_VENDORS],[$abs_top_builddir/vendors])
++AT_CHECK([run_icd_errors clGetGLContextInfoKHR], 0, [stdout], [stderr])
++AT_CLEANUP
+diff --git a/tests/testsuite.at b/tests/testsuite.at
+index 7bb67ee..1e02d7d 100644
+--- a/tests/testsuite.at
++++ b/tests/testsuite.at
+@@ -8,3 +8,4 @@ AT_COLOR_TESTS
+ m4_include([testsuite-standard.at])
+ m4_include([testsuite-default-platform.at])
+ m4_include([testsuite-workaround.at])
++m4_include([testsuite-error.at])
+-- 
+2.7.4
+
