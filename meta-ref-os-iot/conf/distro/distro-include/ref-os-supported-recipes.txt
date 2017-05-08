@@ -1,3 +1,4 @@
+bios@5xx
 bigreqsproto@core
 dmxproto@core
 dri2proto@core
