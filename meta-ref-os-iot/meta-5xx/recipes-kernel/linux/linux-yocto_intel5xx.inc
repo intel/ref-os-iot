@@ -13,7 +13,6 @@ SRC_URI_append = " file://nvme.cfg"
 SRC_URI_append = " file://enable_mtp.cfg"
 SRC_URI_append = " file://0001-Input-atmel_mxt_ts-use-mxt_acquire_irq-in-mxt_soft_r.patch"
 SRC_URI_append = " file://0002-Add-detecting-intel-board-for-atmel_mxt-driver.patch"
-SRC_URI_append = " file://disable-iwlwifi-upstream.cfg"
 SRC_URI_append = " file://0001-xDCI-runtime-suspend-fix.patch"
 SRC_URI_append = " file://0001-Revert-patch-REVERTME-mmc-host-pci-disable-functiona.patch"
 SRC_URI_append = " file://0001-Revert-commit-2a69342fe4604fcc0674d1d8d2600772b1a8ea.patch"
@@ -45,3 +44,9 @@ SRC_URI_append = " file://0001-Add-Android-MTP-function.patch"
 SRC_URI_append = " file://0001-MTP-Don-t-set-device-in-error-state-if-cable-was-dis.patch"
 SRC_URI_append = " file://0001-serial-8250_port-serial-consoles-could-not-sleep.patch"
 SRC_URI_append = " file://0001-serial-8250-enable-sleep-and-rx-wakeup-for-serial-82.patch"
+
+do_compile_kernelmodules_append() {
+    rm -rf ${B}/drivers/net/wireless/iwlwifi
+    rm -rf ${B}/net/mac80211
+    rm -rf ${B}/net/wireless
+}
