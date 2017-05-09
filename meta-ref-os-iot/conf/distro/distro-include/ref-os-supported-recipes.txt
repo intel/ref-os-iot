@@ -331,7 +331,7 @@ mosquitto@ref-os-iot
 oobe@edison
 post-install@edison
 pwr-button-handler@edison
-resize-rootfs@edison
+resize-rootfs@ref-os-iot
 sketch-check@edison
 sst-fw@edison
 u-boot-fw-utils@edison
