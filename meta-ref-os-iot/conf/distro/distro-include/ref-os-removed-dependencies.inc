@@ -56,3 +56,7 @@ DEPENDS_remove_pn-bridge-utils = "sysfsutils"
 
 # Remove xinput caliberator from the image
 RDEPENDS_nativesdk-packagegroup-sdk-host_remove += "nativesdk-dnf"
+
+# Remove python-modules as it breaks the full-image for unknown reason
+# Python works without it.
+RDEPENDS_packagegroup-python-runtime_remove += "python-modules"
