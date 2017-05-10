@@ -30,6 +30,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      wifi-hotspot \
      java-jdk \
      machinelearning \
+     ext2-tools \
 "
 
 IMAGE_FEATURES += " \
