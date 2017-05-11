@@ -1,0 +1,125 @@
+From ec8c18dd07821e87631be44f2c58c74084177c39 Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Thu, 11 May 2017 17:41:06 +0300
+Subject: [PATCH 03/13] Revert "mfd: arizona: Add gating of external MCLKn
+ clocks"
+
+This reverts commit cdd8da8cc66b3d205120560649e530978ccbc567.
+---
+ drivers/mfd/arizona-core.c       | 30 ++----------------------------
+ include/linux/mfd/arizona/core.h |  9 ---------
+ 2 files changed, 2 insertions(+), 37 deletions(-)
+
+diff --git a/drivers/mfd/arizona-core.c b/drivers/mfd/arizona-core.c
+index 41767f7..48a9b70 100644
+--- a/drivers/mfd/arizona-core.c
++++ b/drivers/mfd/arizona-core.c
+@@ -10,7 +10,6 @@
+  * published by the Free Software Foundation.
+  */
+ 
+-#include <linux/clk.h>
+ #include <linux/delay.h>
+ #include <linux/err.h>
+ #include <linux/gpio.h>
+@@ -50,15 +49,7 @@ int arizona_clk32k_enable(struct arizona *arizona)
+ 		case ARIZONA_32KZ_MCLK1:
+ 			ret = pm_runtime_get_sync(arizona->dev);
+ 			if (ret != 0)
+-				goto err_ref;
+-			ret = clk_prepare_enable(arizona->mclk[ARIZONA_MCLK1]);
+-			if (ret != 0)
+-				goto err_pm;
+-			break;
+-		case ARIZONA_32KZ_MCLK2:
+-			ret = clk_prepare_enable(arizona->mclk[ARIZONA_MCLK2]);
+-			if (ret != 0)
+-				goto err_ref;
++				goto out;
+ 			break;
+ 		}
+ 
+@@ -67,9 +58,7 @@ int arizona_clk32k_enable(struct arizona *arizona)
+ 					 ARIZONA_CLK_32K_ENA);
+ 	}
+ 
+-err_pm:
+-	pm_runtime_put_sync(arizona->dev);
+-err_ref:
++out:
+ 	if (ret != 0)
+ 		arizona->clk32k_ref--;
+ 
+@@ -94,10 +83,6 @@ int arizona_clk32k_disable(struct arizona *arizona)
+ 		switch (arizona->pdata.clk32k_src) {
+ 		case ARIZONA_32KZ_MCLK1:
+ 			pm_runtime_put_sync(arizona->dev);
+-			clk_disable_unprepare(arizona->mclk[ARIZONA_MCLK1]);
+-			break;
+-		case ARIZONA_32KZ_MCLK2:
+-			clk_disable_unprepare(arizona->mclk[ARIZONA_MCLK2]);
+ 			break;
+ 		}
+ 	}
+@@ -1032,7 +1017,6 @@ static const struct mfd_cell wm8998_devs[] = {
+ 
+ int arizona_dev_init(struct arizona *arizona)
+ {
+-	const char * const mclk_name[] = { "mclk1", "mclk2" };
+ 	struct device *dev = arizona->dev;
+ 	const char *type_name = NULL;
+ 	unsigned int reg, val, mask;
+@@ -1052,16 +1036,6 @@ int arizona_dev_init(struct arizona *arizona)
+ 			return ret;
+ 	}
+ 
+-	BUILD_BUG_ON(ARRAY_SIZE(arizona->mclk) != ARRAY_SIZE(mclk_name));
+-	for (i = 0; i < ARRAY_SIZE(arizona->mclk); i++) {
+-		arizona->mclk[i] = devm_clk_get(arizona->dev, mclk_name[i]);
+-		if (IS_ERR(arizona->mclk[i])) {
+-			dev_info(arizona->dev, "Failed to get %s: %ld\n",
+-				 mclk_name[i], PTR_ERR(arizona->mclk[i]));
+-			arizona->mclk[i] = NULL;
+-		}
+-	}
+-
+ 	regcache_cache_only(arizona->regmap, true);
+ 
+ 	switch (arizona->type) {
+diff --git a/include/linux/mfd/arizona/core.h b/include/linux/mfd/arizona/core.h
+index b31b3be..3fab1a6 100644
+--- a/include/linux/mfd/arizona/core.h
++++ b/include/linux/mfd/arizona/core.h
+@@ -13,7 +13,6 @@
+ #ifndef _WM_ARIZONA_CORE_H
+ #define _WM_ARIZONA_CORE_H
+ 
+-#include <linux/clk.h>
+ #include <linux/interrupt.h>
+ #include <linux/notifier.h>
+ #include <linux/regmap.h>
+@@ -22,12 +21,6 @@
+ 
+ #define ARIZONA_MAX_CORE_SUPPLIES 2
+ 
+-enum {
+-	ARIZONA_MCLK1,
+-	ARIZONA_MCLK2,
+-	ARIZONA_NUM_MCLK
+-};
+-
+ enum arizona_type {
+ 	WM5102 = 1,
+ 	WM5110 = 2,
+@@ -146,8 +139,6 @@ struct arizona {
+ 	struct mutex clk_lock;
+ 	int clk32k_ref;
+ 
+-	struct clk *mclk[ARIZONA_NUM_MCLK];
+-
+ 	bool ctrlif_error;
+ 
+ 	struct snd_soc_dapm_context *dapm;
+-- 
+2.7.4
+

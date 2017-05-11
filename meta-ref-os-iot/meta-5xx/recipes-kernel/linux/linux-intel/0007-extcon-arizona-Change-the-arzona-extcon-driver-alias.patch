@@ -1,0 +1,27 @@
+From 2ead1f3219eceba92adaa38137bbd74f2f1a4484 Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Wed, 24 May 2017 14:24:40 +0300
+Subject: [PATCH 07/13] extcon: arizona: Change the arzona extcon driver alias
+
+Change the module alias name to platform:arizona-extcon
+to match what is requested from arizona-core, so that the
+extcon driver gets probed automatically.
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/extcon/extcon-arizona.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/extcon/extcon-arizona.c b/drivers/extcon/extcon-arizona.c
+index 4edc515..ae3dfcd 100644
+--- a/drivers/extcon/extcon-arizona.c
++++ b/drivers/extcon/extcon-arizona.c
+@@ -1731,4 +1731,4 @@ module_platform_driver(arizona_extcon_driver);
+ MODULE_DESCRIPTION("Arizona Extcon driver");
+ MODULE_AUTHOR("Mark Brown <broonie@opensource.wolfsonmicro.com>");
+ MODULE_LICENSE("GPL");
+-MODULE_ALIAS("platform:extcon-arizona");
++MODULE_ALIAS("platform:arizona-extcon");
+-- 
+2.7.4
+

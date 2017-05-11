@@ -1,0 +1,35 @@
+From 4b3f095c22f502a16a068cce04d60081fd8029a7 Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Thu, 11 May 2017 12:02:35 +0300
+Subject: [PATCH 04/13] Add DMIC23 Pin platform dai pin to skl-pcm
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ sound/soc/intel/skylake/skl-pcm.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/sound/soc/intel/skylake/skl-pcm.c b/sound/soc/intel/skylake/skl-pcm.c
+index 58c7286..d9e679e 100644
+--- a/sound/soc/intel/skylake/skl-pcm.c
++++ b/sound/soc/intel/skylake/skl-pcm.c
+@@ -908,6 +908,17 @@ static struct snd_soc_dai_driver skl_platform_dai[] = {
+ 	},
+ },
+ {
++	.name = "DMIC23 Pin",
++	.ops = &skl_dmic_dai_ops,
++	.capture = {
++		.stream_name = "DMIC23 Rx",
++		.channels_min = HDA_MONO,
++		.channels_max = HDA_QUAD,
++		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_16000,
++		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
++	},
++},
++{
+ 	.name = "HD-Codec Pin",
+ 	.ops = &skl_link_dai_ops,
+ 	.playback = {
+-- 
+2.7.4
+

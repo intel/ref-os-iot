@@ -1,0 +1,36 @@
+From 8df272e7271244824be917dd24461fbfa9b8232b Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Tue, 30 May 2017 15:41:19 +0300
+Subject: [PATCH 13/13] ASoc: bxt_florida: Ensure that codec driver is loaded
+
+Ensure that the codec driver is loaded before adding the card.
+Otherwise the codec loading may happen later, and card adding fails
+many times during the boot.
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ sound/soc/intel/boards/bxt_florida.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/sound/soc/intel/boards/bxt_florida.c b/sound/soc/intel/boards/bxt_florida.c
+index 76d952d..0752a6c 100644
+--- a/sound/soc/intel/boards/bxt_florida.c
++++ b/sound/soc/intel/boards/bxt_florida.c
+@@ -730,6 +730,14 @@ static int snd_mrgfld_florida_mc_probe(struct platform_device *pdev)
+ 	struct bxt_florida_private *drv;
+ 
+ 	is_codec8998 = true;
++
++	/* Make sure codec driver is loaded before registering the card */
++	ret_val = request_module("snd_soc_wm8998");
++	if (ret_val) {
++		dev_err(&pdev->dev, "No codec driver available\n");
++		return -ENODEV;
++	}
++
+ 	snd_soc_card_wm8998_mrgfld.dev = &pdev->dev;
+ 
+ 	drv = devm_kzalloc(&pdev->dev, sizeof(*drv), GFP_KERNEL);
+-- 
+2.7.4
+

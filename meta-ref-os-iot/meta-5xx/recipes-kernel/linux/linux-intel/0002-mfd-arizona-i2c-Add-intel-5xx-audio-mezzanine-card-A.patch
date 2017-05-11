@@ -1,0 +1,71 @@
+From 6dc46c2ba080c2a171c96f73d384b58fcbcba4cb Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Thu, 11 May 2017 11:59:12 +0300
+Subject: [PATCH 02/13] mfd: arizona-i2c: Add intel-5xx audio mezzanine card
+ ACPI
+
+This adds detection of the wm8998 based audio card to the
+arizona i2c, with i2c ACPI id INT34E0:00
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/mfd/arizona-i2c.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/mfd/arizona-i2c.c b/drivers/mfd/arizona-i2c.c
+index 5fe1296..ddc20c0 100644
+--- a/drivers/mfd/arizona-i2c.c
++++ b/drivers/mfd/arizona-i2c.c
+@@ -18,6 +18,7 @@
+ #include <linux/regulator/consumer.h>
+ #include <linux/slab.h>
+ #include <linux/of.h>
++#include <linux/acpi.h>
+ 
+ #include <linux/mfd/arizona/core.h>
+ 
+@@ -30,10 +31,19 @@ static int arizona_i2c_probe(struct i2c_client *i2c,
+ 	const struct regmap_config *regmap_config = NULL;
+ 	unsigned long type;
+ 	int ret;
++	const struct acpi_device_id *acpi_id;
+ 
+ 	if (i2c->dev.of_node)
+ 		type = arizona_of_get_type(&i2c->dev);
+-	else
++	else if (ACPI_HANDLE(&i2c->dev)) {
++		acpi_id = acpi_match_device(i2c->dev.driver->acpi_match_table,
++					    &i2c->dev);
++		if (!acpi_id) {
++			dev_err(&i2c->dev, "No driver data\n");
++			return -EINVAL;
++		}
++		type = acpi_id->driver_data;
++	} else
+ 		type = id->driver_data;
+ 
+ 	switch (type) {
+@@ -105,11 +115,20 @@ static const struct i2c_device_id arizona_i2c_id[] = {
+ };
+ MODULE_DEVICE_TABLE(i2c, arizona_i2c_id);
+ 
++#ifdef CONFIG_ACPI
++static const struct acpi_device_id arizona_acpi_match[] = {
++	{ "INT34E0", WM8998},
++	{},
++};
++MODULE_DEVICE_TABLE(acpi, arizona_acpi_match);
++#endif
++
+ static struct i2c_driver arizona_i2c_driver = {
+ 	.driver = {
+ 		.name	= "arizona",
+ 		.pm	= &arizona_pm_ops,
+ 		.of_match_table	= of_match_ptr(arizona_of_match),
++		.acpi_match_table = ACPI_PTR(arizona_acpi_match),
+ 	},
+ 	.probe		= arizona_i2c_probe,
+ 	.remove		= arizona_i2c_remove,
+-- 
+2.7.4
+

@@ -1,0 +1,72 @@
+From 23ed0eb5c79697d7de0bab1c19087e351d5ff11e Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Wed, 7 Jun 2017 15:23:04 +0300
+Subject: [PATCH] [REVERTME] HACK: Fix NHLT sspsp field for bxt/SSP0
+
+This fixes data format problems with audio recording for bxt+wm8998 codec.
+
+The fix is picked and modified from ref-os-iot 4.4 kernel, but the root cause for
+the issue is not yet understood. This should be reverted when a proper fix is found.
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ sound/soc/intel/skylake/skl-topology.c |  7 +++++++
+ sound/soc/intel/skylake/skl-topology.h | 17 +++++++++++++++++
+ 2 files changed, 24 insertions(+)
+
+diff --git a/sound/soc/intel/skylake/skl-topology.c b/sound/soc/intel/skylake/skl-topology.c
+index 172d7db..095dcd7 100644
+--- a/sound/soc/intel/skylake/skl-topology.c
++++ b/sound/soc/intel/skylake/skl-topology.c
+@@ -1428,6 +1428,7 @@ static int skl_tplg_be_fill_pipe_params(struct snd_soc_dai *dai,
+ 	struct nhlt_specific_cfg *cfg;
+ 	struct skl *skl = get_skl_ctx(dai->dev);
+ 	int link_type = skl_tplg_be_link_type(mconfig->dev_type);
++	struct skl_i2s_config_blob *ssp_blob;
+ 
+ 	skl_tplg_fill_dma_id(mconfig, params);
+ 
+@@ -1450,6 +1451,12 @@ static int skl_tplg_be_fill_pipe_params(struct snd_soc_dai *dai,
+ 		return -EINVAL;
+ 	}
+ 
++	/* HACK for audio recording with wm8998 codec */
++	if ((link_type == NHLT_LINK_SSP) &&  (mconfig->vbus_id == 0)) {
++		ssp_blob = (struct skl_i2s_config_blob *)mconfig->formats_config.caps;
++		ssp_blob->sspsp &= 0xFFFFFFFC;
++	}
++
+ 	return 0;
+ }
+ 
+diff --git a/sound/soc/intel/skylake/skl-topology.h b/sound/soc/intel/skylake/skl-topology.h
+index 08d3928..3b962d8 100644
+--- a/sound/soc/intel/skylake/skl-topology.h
++++ b/sound/soc/intel/skylake/skl-topology.h
+@@ -113,6 +113,23 @@ struct skl_cpr_gtw_cfg {
+ 	u32 config_data[1];
+ } __packed;
+ 
++struct skl_i2s_config_blob {
++	u32 gateway_attrib;
++	u32 tdm_ts_group[8];
++	u32 ssc0;
++	u32 ssc1;
++	u32 sscto;
++	u32 sspsp;
++	u32 sstsa;
++	u32 ssrsa;
++	u32 ssc2;
++	u32 sspsp2;
++	u32 ssc3;
++	u32 ssioc;
++	u32 mdivc;
++	u32 mdivr;
++} __packed;
++
+ struct skl_dma_control {
+ 	u32 node_id;
+ 	u32 config_length;
+-- 
+2.7.4
+

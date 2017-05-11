@@ -1,0 +1,243 @@
+From 9fcf6504b76b0464fe2eacd4655eab25bd5f986d Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Mon, 29 May 2017 15:51:09 +0300
+Subject: [PATCH 09/13] ASoc: bxt-florida: Request WC PMIC sleep clock
+
+Implement switching to 32kHz sleep clock, when the high speed clock
+is not required
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ sound/soc/intel/boards/bxt_florida.c | 126 ++++++++++++++++++++++++-----------
+ 1 file changed, 88 insertions(+), 38 deletions(-)
+
+diff --git a/sound/soc/intel/boards/bxt_florida.c b/sound/soc/intel/boards/bxt_florida.c
+index 96fb6b6..136f6a7 100644
+--- a/sound/soc/intel/boards/bxt_florida.c
++++ b/sound/soc/intel/boards/bxt_florida.c
+@@ -32,7 +32,7 @@
+ #include <sound/soc.h>
+ #include <sound/jack.h>
+ #include <linux/input.h>
+-
++#include <linux/clk.h>
+ #include <linux/mfd/arizona/registers.h>
+ #include "../../codecs/wm5110.h"
+ #include "../../codecs/wm8998.h"
+@@ -61,10 +61,10 @@ enum {
+ 
+ #define SLOT_MASK(x) ((1 << x) - 1)
+ bool is_codec8998;
+-struct mrgfld_mc_private {
+-	u8		pmic_id;
+-	void __iomem    *osc_clk0_reg;
+-	int bt_mode;
++
++struct bxt_florida_private {
++	struct clk *wcove_32k_clk;
++	int wc_32k_clk_enabled;
+ };
+ 
+ static inline struct snd_soc_codec *mrgfld_florida_get_codec(struct snd_soc_card *card)
+@@ -94,6 +94,29 @@ static inline struct snd_soc_codec *mrgfld_florida_get_codec(struct snd_soc_card
+ 	return codec;
+ }
+ 
++static inline void get_32kHz_clock(struct snd_soc_card *card) {
++	struct bxt_florida_private *drvdata = snd_soc_card_get_drvdata(card);
++	int ret;
++	if (drvdata->wcove_32k_clk && !drvdata->wc_32k_clk_enabled) {
++		ret = clk_prepare(drvdata->wcove_32k_clk);
++		if (!ret)
++			ret = clk_enable(drvdata->wcove_32k_clk);
++		if (ret)
++			dev_err(card->dev, "Failed to enable 32kHz clk\n");
++		else
++			drvdata->wc_32k_clk_enabled=1;
++	}
++}
++
++static inline void put_32kHz_clock(struct snd_soc_card *card) {
++	struct bxt_florida_private *drvdata = snd_soc_card_get_drvdata(card);
++	if (drvdata->wcove_32k_clk && drvdata->wc_32k_clk_enabled) {
++		clk_disable(drvdata->wcove_32k_clk);
++		clk_unprepare(drvdata->wcove_32k_clk);
++		drvdata->wc_32k_clk_enabled=0;
++	}
++}
++
+ /* Function to switch the input clock for codec,  When audio is in
+  * progress input clock to codec will be through MCLK1 which is 19.2MHz
+  * while in off state input clock to codec will be through 32KHz through
+@@ -102,11 +125,17 @@ static inline struct snd_soc_codec *mrgfld_florida_get_codec(struct snd_soc_card
+  * src	: Input clock source to codec
+  */
+ 
+-static int mrgfld_florida_set_codec_clk(struct snd_soc_codec *florida_codec, int src)
++static int mrgfld_florida_set_codec_clk(struct snd_soc_card *card, int src)
+ {
+ 	int ret;
++	struct snd_soc_codec *florida_codec = mrgfld_florida_get_codec(card);
++
++	if (!florida_codec) {
++		dev_err(card->dev, "%s: florida codec not found\n", __func__);
++		return -EINVAL;
++	}
+ 
+-	pr_debug("mrgfld_florida_set_codec_clk: source %d\n", src);
++	dev_dbg(card->dev, "mrgfld_florida_set_codec_clk: source %d\n", src);
+ 
+ 	/*reset FLL1*/
+ 	snd_soc_codec_set_pll(florida_codec, WM5110_FLL1_REFCLK,
+@@ -122,7 +151,23 @@ static int mrgfld_florida_set_codec_clk(struct snd_soc_codec *florida_codec, int
+ 				ARIZONA_CLK_SRC_MCLK1, CODEC_IN_MCLK1_RATE,
+ 				CODEC_SYSCLK_RATE);
+ 		if (ret != 0) {
+-			dev_err(florida_codec->dev, "Failed to enable FLL1 with Ref(MCLK) Clock Loop: %d\n", ret);
++			dev_err(card->dev, "Failed to enable FLL1 with Ref(MCLK1) Clock Loop: %d\n", ret);
++			return ret;
++		}
++		/* Free the 32kHz clock */
++		put_32kHz_clock(card);
++		break;
++	case CODEC_IN_MCLK2:
++		/* Request the 32kHz clock */
++		get_32kHz_clock(card);
++
++		/* Turn ON the PLL to generate required sysclk rate
++		 * from MCLK2 */
++		ret = snd_soc_codec_set_pll(florida_codec, WM5110_FLL1,
++				ARIZONA_CLK_SRC_MCLK2, CODEC_IN_MCLK2_RATE,
++				CODEC_SYSCLK_RATE);
++		if (ret != 0) {
++			dev_err(card->dev, "Failed to enable FLL1 with Ref(MCLK2) Clock Loop: %d\n", ret);
+ 			return ret;
+ 		}
+ 		break;
+@@ -133,10 +178,12 @@ static int mrgfld_florida_set_codec_clk(struct snd_soc_codec *florida_codec, int
+ 				ARIZONA_CLK_SRC_AIF1BCLK, CODEC_IN_BCLK_RATE,
+ 				CODEC_SYSCLK_RATE);
+ 		if (ret != 0) {
+-			dev_err(florida_codec->dev, "Failed to enable FLL1 with Ref Clock Loop: %d\n", ret);
++			dev_err(card->dev, "Failed to enable FLL1 with Ref(BCLK) Clock Loop: %d\n", ret);
+ 			return ret;
+ 		}
+ 
++		/* Free the 32kHz clock */
++		put_32kHz_clock(card);
+ 		break;
+ 	default:
+ 		return -EINVAL;
+@@ -147,7 +194,7 @@ static int mrgfld_florida_set_codec_clk(struct snd_soc_codec *florida_codec, int
+ 			ARIZONA_CLK_SYSCLK, ARIZONA_CLK_SRC_FLL1,
+ 			CODEC_SYSCLK_RATE, SND_SOC_CLOCK_IN);
+ 	if (ret != 0) {
+-		dev_err(florida_codec->dev, "Failed to set SYSCLK to FLL1: %d\n", ret);
++		dev_err(card->dev, "Failed to set SYSCLK to FLL1: %d\n", ret);
+ 		return ret;
+ 	}
+ 
+@@ -161,27 +208,22 @@ static int mrgfld_clock_control(struct snd_soc_dapm_widget *w,
+ 
+ 	struct snd_soc_dapm_context *dapm = w->dapm;
+ 	struct snd_soc_card *card = dapm->card;
+-	struct snd_soc_codec *florida_codec = mrgfld_florida_get_codec(card);
+ 	int ret = 0;
+ 
+-	if (!florida_codec) {
+-		pr_err("%s: florida codec not found\n", __func__);
+-		return -EINVAL;
+-	}
+ 	if (SND_SOC_DAPM_EVENT_ON(event)) {
+ 		pr_info("%s %d Event On\n", __func__, __LINE__);
+ 		/* TODO: Ideally MCLK should be used to drive codec PLL
+ 		 * currently we are using BCLK
+ 		 */
+-		ret = mrgfld_florida_set_codec_clk(florida_codec, CODEC_IN_BCLK);
++		ret = mrgfld_florida_set_codec_clk(card, CODEC_IN_BCLK);
+ 	} else {
+ 		pr_info("%s %d Event Off\n", __func__, __LINE__);
+-		/* TODO: Switch to 32K clock for saving power. */
+-		pr_info("Currently we are not switching to 32K PMIC clock\n");
++		/* Switch to 32K clock for saving power. */
++		ret = mrgfld_florida_set_codec_clk(card, CODEC_IN_MCLK2);
+ 	}
+ 	return ret;
+-
+ }
++
+ static const struct snd_soc_dapm_widget mrgfld_widgets[] = {
+ 	SND_SOC_DAPM_HP("Headphones", NULL),
+ 	SND_SOC_DAPM_SPK("Ext Spk", NULL),
+@@ -716,41 +758,49 @@ static struct snd_soc_card snd_soc_card_wm8998_mrgfld = {
+ 
+ static int snd_mrgfld_florida_mc_probe(struct platform_device *pdev)
+ {
+-	int ret_val = 0;
+-	struct mrgfld_mc_private *drv;
+-	struct snd_soc_card *card_mrgfld = NULL;
++	int ret_val;
++	struct bxt_florida_private *drv;
+ 
+ 	is_codec8998 = true;
+-	card_mrgfld = &snd_soc_card_wm8998_mrgfld;
++	snd_soc_card_wm8998_mrgfld.dev = &pdev->dev;
+ 
+-	drv = devm_kzalloc(&pdev->dev, sizeof(*drv), GFP_ATOMIC);
++	drv = devm_kzalloc(&pdev->dev, sizeof(*drv), GFP_KERNEL);
+ 	if (!drv)
+ 		return -ENOMEM;
+ 
+-	card_mrgfld->dev = &pdev->dev;
+-	snd_soc_card_set_drvdata(card_mrgfld, drv);
+-	/* Register the card */
+-	ret_val = snd_soc_register_card(card_mrgfld);
+-	if (ret_val) {
+-		pr_err("snd_soc_register_card failed %d\n", ret_val);
+-		goto unalloc;
++	/* Request the needed clocks */
++	drv->wcove_32k_clk = devm_clk_get(&pdev->dev, "wcove_32k_clk");
++	if (IS_ERR(drv->wcove_32k_clk)) {
++		drv->wcove_32k_clk = NULL;
++		dev_warn(&pdev->dev, "Error getting wcove_32k_clk, assume fixed clock\n");
+ 	}
+-	platform_set_drvdata(pdev, card_mrgfld);
+-	pr_info("%s successful\n", __func__);
+-	return ret_val;
++	drv->wc_32k_clk_enabled=0;
+ 
+-unalloc:
+-	devm_kfree(&pdev->dev, drv);
++	snd_soc_card_set_drvdata(&snd_soc_card_wm8998_mrgfld, drv);
++	ret_val = devm_snd_soc_register_card(&pdev->dev, &snd_soc_card_wm8998_mrgfld);
++	if (ret_val) {
++		dev_info(&pdev->dev,
++			 "snd_soc_register_card failed %d\n", ret_val);
++		/* Allocating clocks and platform data has to be done before
++		   devm_snd_soc_register_card. If registering card fails, free
++		   up all the allocated resources here. */
++		if (drv->wcove_32k_clk)
++			devm_clk_put(&pdev->dev, drv->wcove_32k_clk);
++		devm_kfree(&pdev->dev, drv);
++		snd_soc_card_set_drvdata(&snd_soc_card_wm8998_mrgfld, NULL);
++		snd_soc_card_wm8998_mrgfld.dev = NULL;
++	}
+ 	return ret_val;
+ }
+ 
+ static int snd_mrgfld_florida_mc_remove(struct platform_device *pdev)
+ {
+ 	struct snd_soc_card *soc_card = platform_get_drvdata(pdev);
+-	struct mrgfld_mc_private *drv = snd_soc_card_get_drvdata(soc_card);
++	struct bxt_florida_private *drv = snd_soc_card_get_drvdata(soc_card);
+ 
+ 	pr_debug("In %s\n", __func__);
+-
++	if (drv->wcove_32k_clk)
++		devm_clk_put(&pdev->dev, drv->wcove_32k_clk);
+ 	devm_kfree(&pdev->dev, drv);
+ 	snd_soc_card_set_drvdata(soc_card, NULL);
+ 	snd_soc_unregister_card(soc_card);
+-- 
+2.7.4
+

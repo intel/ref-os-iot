@@ -1,0 +1,65 @@
+From bfdc76c4500afd2eb7ee1f9db5ca3b951ea633ce Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Mon, 15 May 2017 13:07:50 +0300
+Subject: [PATCH 06/13] extcon-arizona: Use micd-pol gpio conditionally
+
+The micd-pol gpio is not necessarily used by the hardware. If it
+is not defined anywhere, don't try to initialize the GPIO
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/extcon/extcon-arizona.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/extcon/extcon-arizona.c b/drivers/extcon/extcon-arizona.c
+index 56e6c4c..4edc515 100644
+--- a/drivers/extcon/extcon-arizona.c
++++ b/drivers/extcon/extcon-arizona.c
+@@ -240,8 +240,9 @@ static void arizona_extcon_set_mode(struct arizona_extcon_info *info, int mode)
+ 		gpio_set_value_cansleep(arizona->pdata.micd_pol_gpio,
+ 					info->micd_modes[mode].gpio);
+ 	else
+-		gpiod_set_value_cansleep(info->micd_pol_gpio,
+-					 info->micd_modes[mode].gpio);
++		if (info->micd_pol_gpio)
++			gpiod_set_value_cansleep(info->micd_pol_gpio,
++						 info->micd_modes[mode].gpio);
+ 
+ 	regmap_update_bits(arizona->regmap, ARIZONA_MIC_DETECT_1,
+ 			   ARIZONA_MICD_BIAS_SRC_MASK,
+@@ -1441,10 +1442,10 @@ static int arizona_extcon_probe(struct platform_device *pdev)
+ 							 GPIOD_OUT_LOW);
+ 		if (IS_ERR(info->micd_pol_gpio)) {
+ 			ret = PTR_ERR(info->micd_pol_gpio);
+-			dev_err(arizona->dev,
++			dev_dbg(arizona->dev,
+ 				"Failed to get microphone polarity GPIO: %d\n",
+ 				ret);
+-			goto err_register;
++			info->micd_pol_gpio = 0;
+ 		}
+ 	}
+ 
+@@ -1673,7 +1674,8 @@ static int arizona_extcon_probe(struct platform_device *pdev)
+ err_rise:
+ 	arizona_free_irq(arizona, jack_irq_rise, info);
+ err_gpio:
+-	gpiod_put(info->micd_pol_gpio);
++	if (info->micd_pol_gpio)
++		gpiod_put(info->micd_pol_gpio);
+ err_register:
+ 	pm_runtime_disable(&pdev->dev);
+ 	return ret;
+@@ -1685,7 +1687,8 @@ static int arizona_extcon_remove(struct platform_device *pdev)
+ 	struct arizona *arizona = info->arizona;
+ 	int jack_irq_rise, jack_irq_fall;
+ 
+-	gpiod_put(info->micd_pol_gpio);
++	if (info->micd_pol_gpio)
++		gpiod_put(info->micd_pol_gpio);
+ 
+ 	pm_runtime_disable(&pdev->dev);
+ 
+-- 
+2.7.4
+

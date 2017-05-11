@@ -1,0 +1,71 @@
+From 19fb1fb715122e636bd5949dd65bd489aeb533bd Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Mon, 29 May 2017 16:02:44 +0300
+Subject: [PATCH 12/13] ASoc: bxt-florida: Clean up unused mappings and
+ structures
+
+Correct EP mapping and remove unused vectors "rates" and "channels_dmic".
+Replace separate module_init and module_exit with
+module_platform_driver()
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ sound/soc/intel/boards/bxt_florida.c | 27 ++-------------------------
+ 1 file changed, 2 insertions(+), 25 deletions(-)
+
+diff --git a/sound/soc/intel/boards/bxt_florida.c b/sound/soc/intel/boards/bxt_florida.c
+index 2d73392..76d952d 100644
+--- a/sound/soc/intel/boards/bxt_florida.c
++++ b/sound/soc/intel/boards/bxt_florida.c
+@@ -220,13 +220,6 @@ static int bxt_dmic_fixup(struct snd_soc_pcm_runtime *rtd,
+ 	return 0;
+ }
+ 
+-static unsigned int rates[] = {
+-	48000,
+-};
+-static unsigned int channels_dmic[] = {
+-	2, 4,
+-};
+-
+ static const struct snd_soc_dapm_route mrgfld_wm5110_map[] = {
+ 	/*Headphones*/
+ 	{ "Headphones", NULL, "HPOUT1L" },
+@@ -273,11 +266,8 @@ static const struct snd_soc_dapm_route mrgfld_wm8998_map[] = {
+ 	{"Ext Spk", NULL, "SPKOUTRN"},
+ 
+ 	/*Earpiece*/
+-	{ "EP", NULL, "EPOUTN" },
+-	{ "EP", NULL, "EPOUTP" },
++	{ "EP", NULL, "EPOUT" },
+ 
+-	{"IN3L", NULL, "DMIC"},
+-	{"IN3R", NULL, "DMIC"},
+ 	{"DMIC", NULL, "MICVDD"},
+ 
+ 	{ "AMIC", NULL, "MICBIAS2" },
+@@ -800,20 +790,7 @@ static struct platform_driver snd_mrgfld_florida_mc_driver = {
+ 	.probe = snd_mrgfld_florida_mc_probe,
+ 	.remove = snd_mrgfld_florida_mc_remove,
+ };
+-
+-static int snd_mrgfld_florida_driver_init(void)
+-{
+-	pr_info("Morganfield Machine Driver mrgfld_florida registered\n");
+-	return platform_driver_register(&snd_mrgfld_florida_mc_driver);
+-}
+-module_init(snd_mrgfld_florida_driver_init);
+-
+-static void snd_mrgfld_florida_driver_exit(void)
+-{
+-	pr_debug("In %s\n", __func__);
+-	platform_driver_unregister(&snd_mrgfld_florida_mc_driver);
+-}
+-module_exit(snd_mrgfld_florida_driver_exit)
++module_platform_driver(snd_mrgfld_florida_mc_driver);
+ 
+ MODULE_DESCRIPTION("ASoC Morganfield Machine driver");
+ MODULE_AUTHOR("Samreen Nilofer <samreen.nilofer@intel.com>");
+-- 
+2.7.4
+
