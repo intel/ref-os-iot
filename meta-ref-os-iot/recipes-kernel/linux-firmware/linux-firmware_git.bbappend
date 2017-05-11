@@ -1,27 +1,13 @@
-# The original update has been submitted to oe-core as
-# https://patchwork.openembedded.org/patch/127215/, but it won't
-# make to the first release thus update it with the bbappend.
-#
-# This file is supposed to be dropped as soon as the original commit gets
-# merged to refkit.
-
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
 
 SRC_URI += "\
-            file://1a98-INTEL-EDK2-2-tplg.bin \
             file://iwlwifi-8000C-27.ucode \
-            file://LICENSE.1a98-INTEL-EDK2-2-tplg;subdir=git/ \
+            file://bxt_i2s.conf \
 "
 
-LICENSE += "& Firmware-1a98-INTEL-EDK2-2-tplg"
-LICENSE_${PN} += "& Firmware-1a98-INTEL-EDK2-2-tplg"
-
-NO_GENERIC_LICENSE[Firmware-1a98-INTEL-EDK2-2-tplg] = "LICENSE.1a98-INTEL-EDK2-2-tplg"
-
-LIC_FILES_CHKSUM += "file://LICENSE.1a98-INTEL-EDK2-2-tplg;md5=4e63f629d461663f675e72588128f896"
+DEPENDS += "alsa-utils-native alsa-lib-native"
 
 do_install_append() {
-	cp -r ${WORKDIR}/1a98-INTEL-EDK2-2-tplg.bin ${D}/lib/firmware/
 	cp -r ${WORKDIR}/iwlwifi-8000C-27.ucode ${D}/lib/firmware/
-	cp -r ${S}/LICENSE.1a98-INTEL-EDK2-2-tplg ${D}/lib/firmware/
+	alsatplg -c ${WORKDIR}/bxt_i2s.conf -o ${D}/lib/firmware/1a98-INTEL-EDK2-2-tplg.bin
 }

@@ -1,0 +1,6 @@
+DEPENDS_remove = "libsamplerate0"
+PACKAGECONFIG[libsamplerate0] = ",,libsamplerate0,"
+PACKAGECONFIG_class-native = ""
+PACKAGECONFIG_append_class-target = " libsamplerate0"
+RDEPENDS_${PN}_class-native = ""
+BBCLASSEXTEND = "native"
