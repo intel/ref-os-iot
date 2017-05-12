@@ -45,6 +45,8 @@ SRC_URI_append = " file://0001-MTP-Don-t-set-device-in-error-state-if-cable-was-
 SRC_URI_append = " file://0001-serial-8250_port-serial-consoles-could-not-sleep.patch"
 SRC_URI_append = " file://0001-serial-8250-enable-sleep-and-rx-wakeup-for-serial-82.patch"
 SRC_URI_append = " file://0001-Add-HDMI-audio-support-to-bxt_florida-board-driver.patch"
+SRC_URI_append = " file://0001-extcon-arizona-Use-micd-pol-gpio-conditionally.patch"
+SRC_URI_append = " file://0001-extcon-arizona-Change-the-arzona-extcon-driver-alias.patch"
 
 do_compile_kernelmodules_append() {
     rm -rf ${B}/drivers/net/wireless/iwlwifi
