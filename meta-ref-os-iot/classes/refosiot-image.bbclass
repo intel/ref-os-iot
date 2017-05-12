@@ -131,6 +131,7 @@ FEATURE_PACKAGES_tls-support =" \
 "
 FEATURE_PACKAGES_python-extra =" \
                              python-pygobject \
+                             python-dbus \
 "
 # A set of profiling tools
 FEATURE_PACKAGES_profiling-tools =" \
