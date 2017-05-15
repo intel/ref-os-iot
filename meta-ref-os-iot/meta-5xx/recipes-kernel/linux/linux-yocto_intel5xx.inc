@@ -43,6 +43,7 @@ SRC_URI_append = " file://0001-Add-Android-MTP-function.patch"
 SRC_URI_append = " file://0001-MTP-Don-t-set-device-in-error-state-if-cable-was-dis.patch"
 SRC_URI_append = " file://0001-serial-8250_port-serial-consoles-could-not-sleep.patch"
 SRC_URI_append = " file://0001-serial-8250-enable-sleep-and-rx-wakeup-for-serial-82.patch"
+SRC_URI_append = " file://0001-Add-HDMI-audio-support-to-bxt_florida-board-driver.patch"
 
 do_compile_kernelmodules_append() {
     rm -rf ${B}/drivers/net/wireless/iwlwifi
