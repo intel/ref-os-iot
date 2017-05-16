@@ -1,5 +1,7 @@
 
-# Forward to version 1.11.1:
-PV = "1.11.1"
-SRC_URI[md5sum] = "0234dcf06a403691001b061346d15b7e"
-SRC_URI[sha256sum] = "2b8923a5370dacdfbae78edc755d2489577f1240f9881f3bf4efadff75825251"
+# Forward to version 1.12.0:
+PV = "1.12.0"
+SRC_URI[md5sum] = "30e815834819a4890eb1ef6ef67cf68d"
+SRC_URI[sha256sum] = "5e68ba5046e83ee87b17d7a13931e6091466fd771e1338c5b929ee0944d40ad6"
+
+DEPENDS_remove = "libid3tag"

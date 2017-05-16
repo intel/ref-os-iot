@@ -1,0 +1,37 @@
+From 31fb9cde63f55f2610a736f390124a570c564169 Mon Sep 17 00:00:00 2001
+From: Ross Burton <ross.burton@intel.com>
+Date: Fri, 12 May 2017 17:43:08 +0300
+Subject: [PATCH] Make the detection of libunwind deterministic.
+
+Upstream-Status: Pending
+
+Signed-off-by: Ross Burton <ross.burton@intel.com>
+Signed-off-by: Maxin B. John <maxin.john@intel.com>
+---
+ configure.ac | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 9fa6824..fe9696f 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -821,10 +821,12 @@ fi
+ AM_CONDITIONAL(HAVE_GTK, test "x$HAVE_GTK" = "xyes")
+ 
+ dnl libunwind is optionally used by the leaks tracer
+-PKG_CHECK_MODULES(UNWIND, libunwind, HAVE_UNWIND=yes, HAVE_UNWIND=no)
+-if test "x$HAVE_UNWIND" = "xyes"; then
+-  AC_DEFINE(HAVE_UNWIND, 1, [libunwind available])
+-fi
++AC_ARG_WITH([unwind],[AS_HELP_STRING([--with-unwind],[use libunwind])],
++            [], [with_unwind=yes])
++AS_IF([test "$with_unwind" = yes],
++      [PKG_CHECK_MODULES(UNWIND, libunwind)
++       AC_DEFINE(HAVE_UNWIND, 1, [libunwind available])]
++ )
+ 
+ dnl libdw is optionally used to add source lines and numbers to backtraces
+ PKG_CHECK_MODULES(DW, libdw, HAVE_DW=yes, HAVE_DW=no)
+-- 
+2.4.0
+

@@ -1,0 +1,32 @@
+From 39636b6ea5a900111e7ef47a4a70f8f1e3394892 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?V=C3=ADctor=20Manuel=20J=C3=A1quez=20Leal?=
+ <vjaquez@igalia.com>
+Date: Fri, 28 Apr 2017 15:20:01 +0200
+Subject: [PATCH] plugins: remove par from caps negotiation
+
+https://bugzilla.gnome.org/show_bug.cgi?id=781759
+
+Upstream-Status: Backport
+
+Signed-off-by: Maxin B. John <maxin.john@intel.com>
+---
+ gst/vaapi/gstvaapipluginutil.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/gst/vaapi/gstvaapipluginutil.c b/gst/vaapi/gstvaapipluginutil.c
+index 78a4623..b11901f 100644
+--- a/gst/vaapi/gstvaapipluginutil.c
++++ b/gst/vaapi/gstvaapipluginutil.c
+@@ -425,8 +425,7 @@ set_video_template_caps (GstCaps * caps)
+   gst_structure_set (structure,
+       "width", GST_TYPE_INT_RANGE, 1, G_MAXINT,
+       "height", GST_TYPE_INT_RANGE, 1, G_MAXINT,
+-      "framerate", GST_TYPE_FRACTION_RANGE, 0, 1, G_MAXINT, 1,
+-      "pixel-aspect-ratio", GST_TYPE_FRACTION_RANGE, 0, 1, G_MAXINT, 1, NULL);
++      "framerate", GST_TYPE_FRACTION_RANGE, 0, 1, G_MAXINT, 1, NULL);
+ }
+ 
+ GstCaps *
+-- 
+2.4.0
+

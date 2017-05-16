@@ -9,12 +9,9 @@ PACKAGECONFIG[v4l2]       = "--enable-gst_v4l2,--disable-gst_v4l2"
 # It was originally added for a reason:
 # http://lists.openembedded.org/pipermail/openembedded-core/2016-August/125736.html
 
-# Forward to version 1.11.1:
-PV = "1.11.1"
-SRC_URI[md5sum] = "f75b5894f200b863098706570a708348"
-SRC_URI[sha256sum] = "04273b255ce2071fdb901bfc900edb77471578c1f4e23684943bffc441a0fc0c"
+# Forward to version 1.12.0:
+PV = "1.12.0"
+SRC_URI[md5sum] = "9294b22ddab3bec373cbc5e84ff4c084"
+SRC_URI[sha256sum] = "8a1d734db7338e00c28b794a7f0a5a9e67d1c5c8b0074075b50638207d372ebc"
 
-# This patch doesn't compile together with version 1.11.1 so remove it for now.
-# Once OpenEmbedded pulls in 1.11.1 officially, they will properly figure out
-# how to do this properly
-SRC_URI_remove = "file://qtdemux-free-seqh-after-calling-qtdemux_parse_svq3_s.patch"
+SRC_URI_remove = "file://0001-v4l2object-Also-add-videometa-if-there-is-padding-to.patch"

@@ -1,19 +1,20 @@
 
-# Forward to version 1.11.1:
-PV = "1.11.1"
-SRC_URI[md5sum] = "f0ca78f679079fab91369cd810248074"
-SRC_URI[sha256sum] = "856747a797746d16d9808f959647bcc96d0dd935b51914870844301689fc3e0e"
+# Forward to version 1.12.0:
+PV = "1.12.0"
+SRC_URI[md5sum] = "8f76b6b5e4b3307e505bd6ab9304dd03"
+SRC_URI[sha256sum] = "14d5eef8297d2bf2a728d38fa43cd92cc267a0ad260cf83d770215212aff4302"
 
 DEPENDS_append = " libunwind"
 
-# Remove this option since it is not understood by version 1.11.1:
+# Remove this option since it is not understood by version 1.12.0:
 EXTRA_OECONF_remove = " \
     --disable-docbook"
 
-# This patch doesn't compile together with version 1.11.1 so remove it for now.
-# Once OpenEmbedded pulls in 1.11.1 officially, they will properly figure out
-# how to do this properly
-SRC_URI_remove = "file://deterministic-unwind.patch"
+# Remove this patch included from the OpenEmbedded integration of 1.10.4
+# and replace with an updated version matching 1.12.0
+SRC_URI_remove = " file://deterministic-unwind.patch"
+FILESEXTRAPATHS_prepend := "${THISDIR}:"
+SRC_URI += " file://deterministic-unwind_1_12_0.patch"
 
 EXTRA_OECONF_remove = " --without-unwind "
 
