@@ -300,6 +300,7 @@ backport-iwlwifi@5xx
 i2c-tools@core
 hostapd@core
 5xx-udev-rules@5xx
+beignet-550x@ref-os-iot
 beignet@ref-os-iot
 clang@clang-layer
 aspell@core

@@ -7,6 +7,7 @@ FEATURE_PACKAGES_opencv = "opencv"
 FEATURE_PACKAGES_opencl = "\
 			packagegroup-opencl \
 			beignet-570x-dev \
+			beignet-550x \
 			opencl-headers-cxx"
 FEATURE_PACKAGES_vulkan = "packagegroup-vulkan"
 FEATURE_PACKAGES_linux-firmware = "linux-firmware"
