@@ -151,6 +151,7 @@ FEATURE_PACKAGES_profiling-tools =" \
 
 FEATURE_PACKAGES_python3-extra =" \
 			     python3-pygobject \
+			     python3-compile \
 "
 FEATURE_PACKAGES_wxpython =" \
 			     wxpython-phoenix \
