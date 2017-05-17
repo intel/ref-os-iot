@@ -57,6 +57,7 @@ FEATURE_PACKAGES_pulseaudio-bluetooth = " \
                             pulseaudio-module-bluetooth-policy \
                             pulseaudio-module-bluez5-device \
                             pulseaudio-module-bluez5-discover \
+                            pulseaudio-module-loopback \
 "
 
 FEATURE_PACKAGES_arduino-support = " \
