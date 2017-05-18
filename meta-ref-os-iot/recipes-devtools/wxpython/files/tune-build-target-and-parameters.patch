@@ -1,0 +1,56 @@
+diff --git a/buildtools/build_wxwidgets.py b/buildtools/build_wxwidgets.py
+index eedc661..a40ece6 100644
+--- a/buildtools/build_wxwidgets.py
++++ b/buildtools/build_wxwidgets.py
+@@ -271,24 +271,32 @@ def main(wxDir, args):
+         if options.gtk3:
+             configure_opts.append("--with-gtk=3")
+ 
++        # HACK: hardcoding the x86_64 isn't nice, but
++        # it was the only quick way to get autotools to compile
++        # things correctly
++        # TODO: find a way to pass values from yocto through setup.py to autotools
+         wxpy_configure_opts = [
+                             "--with-opengl",
+                             "--enable-sound",
+                             "--enable-graphics_ctx",
+-                            "--enable-mediactrl",
++                            "--enable-mediactrl=no",
+                             "--enable-display",
+                             "--enable-geometry",
+                             "--enable-debug_flag",
+                             "--enable-optimise",
+                             "--disable-debugreport",
+                             "--enable-uiactionsim",
+-                            ]
++                            "--host=x86_64-linux",
++                            "--build=x86_64-refos-linux",
++                            "--target=x86_64-refos-linux",
++                            "--disable-rpath",
++        ]
+ 
+         if sys.platform.startswith("darwin"):
+             #wxpy_configure_opts.append("--enable-monolithic")
+             pass
+         else:
+-            wxpy_configure_opts.append("--with-sdl")
++            wxpy_configure_opts.append("--without-sdl")
+ 
+         # Try to use use lowest available SDK back to 10.5. Both Carbon and
+         # Cocoa builds require at least the 10.5 SDK now. We only add it to
+diff --git a/wscript b/wscript
+index 120a325..9bd4cb7 100644
+--- a/wscript
++++ b/wscript
+@@ -529,11 +529,9 @@ def build(bld):
+     makeETGRule(bld, 'etg/_stc.py',        '_stc',       'WXSTC')
+     makeETGRule(bld, 'etg/_html.py',       '_html',      'WXHTML')
+     makeETGRule(bld, 'etg/_glcanvas.py',   '_glcanvas',  'WXGL')
+-    makeETGRule(bld, 'etg/_html2.py',      '_html2',     'WXWEBVIEW')
+     makeETGRule(bld, 'etg/_xml.py',        '_xml',       'WXXML')
+     makeETGRule(bld, 'etg/_xrc.py',        '_xrc',       'WXXRC')
+     makeETGRule(bld, 'etg/_richtext.py',   '_richtext',  'WXHTML WXRICHTEXT')
+-    makeETGRule(bld, 'etg/_media.py',      '_media',     'WXMEDIA')
+     makeETGRule(bld, 'etg/_ribbon.py',     '_ribbon',    'WXRIBBON')
+     makeETGRule(bld, 'etg/_propgrid.py',   '_propgrid',  'WXPROPGRID')
+     makeETGRule(bld, 'etg/_aui.py',        '_aui',       'WXAUI')

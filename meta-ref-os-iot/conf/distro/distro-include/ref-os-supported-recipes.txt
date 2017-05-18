@@ -384,3 +384,4 @@ fastboot-support@5xx
 python-dbus@meta-python
 vulkan@core
 assimp@ros-layer
+wxpython-phoenix@ref-os-iot

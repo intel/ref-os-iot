@@ -152,6 +152,9 @@ FEATURE_PACKAGES_profiling-tools =" \
 FEATURE_PACKAGES_python3-extra =" \
 			     python3-pygobject \
 "
+FEATURE_PACKAGES_wxpython =" \
+			     wxpython-phoenix \
+"
 PACKAGECONFIG_append_pn-alsa-utils = " udev"
 
 DSK_IMAGE_LAYOUT = ' \

@@ -32,6 +32,7 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      machinelearning \
      ext2-tools \
      vulkan \
+     wxpython \
 "
 
 IMAGE_FEATURES += " \
