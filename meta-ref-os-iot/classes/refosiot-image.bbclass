@@ -5,9 +5,11 @@ FEATURE_PACKAGES_xfce-ui = "packagegroup-xfce-base"
 FEATURE_PACKAGES_usb-gadget-networking = "usbgadget mtp-server"
 FEATURE_PACKAGES_opencv = "opencv"
 FEATURE_PACKAGES_opencl = "\
-			packagegroup-opencl \
 			beignet-570x-dev \
+			beignet-570x \
+			beignet-550x-dev \
 			beignet-550x \
+			ocl-icd \
 			opencl-headers-cxx"
 FEATURE_PACKAGES_vulkan = "packagegroup-vulkan"
 FEATURE_PACKAGES_linux-firmware = "linux-firmware"
