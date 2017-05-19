@@ -1,0 +1,229 @@
+From 16d477a4e4a02ba44a13a743ef362f35f00f7f9f Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Fri, 19 May 2017 18:20:07 +0300
+Subject: [PATCH] clk: wcove: Add clock driver for Whiskey Cove PMIC
+
+This adds a clock provider driver for WC PMIC 32kHz clock
+and adds that as a subdevice into intel_soc_pmic_bxtwc
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/clk/Kconfig                |  12 +++
+ drivers/clk/Makefile               |   1 +
+ drivers/clk/clk-wcove.c            | 154 +++++++++++++++++++++++++++++++++++++
+ drivers/mfd/intel_soc_pmic_bxtwc.c |   3 +
+ 4 files changed, 170 insertions(+)
+ create mode 100644 drivers/clk/clk-wcove.c
+
+diff --git a/drivers/clk/Kconfig b/drivers/clk/Kconfig
+index c3e3a02..a0de495 100644
+--- a/drivers/clk/Kconfig
++++ b/drivers/clk/Kconfig
+@@ -188,6 +188,18 @@ config COMMON_CLK_CDCE706
+ 	---help---
+ 	  This driver supports TI CDCE706 programmable 3-PLL clock synthesizer.
+ 
++config COMMON_CLK_WHISKEY_COVE
++	tristate "Clock driver for Whiskey Cove PMIC 32kHz clock"
++	depends on INTEL_SOC_PMIC
++	---help---
++	  Support for 32kHz clock outputs on Whiskey Cove PMIC.
++
++	  Say Yes if you have a Intel SoC based device with Whiskey Cove PMIC
++	  inside.
++
++	  This driver can also be built as a module. If so, the module will be
++	  called clk-wcove.
++
+ source "drivers/clk/bcm/Kconfig"
+ source "drivers/clk/hisilicon/Kconfig"
+ source "drivers/clk/qcom/Kconfig"
+diff --git a/drivers/clk/Makefile b/drivers/clk/Makefile
+index 820714c..ea25551 100644
+--- a/drivers/clk/Makefile
++++ b/drivers/clk/Makefile
+@@ -48,6 +48,7 @@ obj-$(CONFIG_ARCH_VT8500)		+= clk-vt8500.o
+ obj-$(CONFIG_COMMON_CLK_WM831X)		+= clk-wm831x.o
+ obj-$(CONFIG_COMMON_CLK_XGENE)		+= clk-xgene.o
+ obj-$(CONFIG_COMMON_CLK_PWM)		+= clk-pwm.o
++obj-$(CONFIG_COMMON_CLK_WHISKEY_COVE)	+= clk-wcove.o
+ obj-$(CONFIG_COMMON_CLK_AT91)		+= at91/
+ obj-y					+= bcm/
+ obj-$(CONFIG_ARCH_BERLIN)		+= berlin/
+diff --git a/drivers/clk/clk-wcove.c b/drivers/clk/clk-wcove.c
+new file mode 100644
+index 0000000..38e36d3
+--- /dev/null
++++ b/drivers/clk/clk-wcove.c
+@@ -0,0 +1,154 @@
++/*
++ * WhiskyCove PMIC 32kHz clock
++ *
++ * Copyright (C) 2017, Intel Corporation
++ * Authors: Jukka Laitinen <jukka.laitinen@intel.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++#include <linux/module.h>
++#include <linux/acpi.h>
++#include <linux/err.h>
++#include <linux/delay.h>
++#include <linux/interrupt.h>
++#include <linux/kernel.h>
++#include <linux/mfd/core.h>
++#include <linux/mfd/intel_bxtwc.h>
++#include <asm/intel_pmc_ipc.h>
++#include <linux/clk-provider.h>
++#include <linux/clkdev.h>
++
++/* Clock configuration register */
++#define BXTWC_CLKCONFIG		0x4FCC
++#define BXTWC_SLP0D		BIT(0)
++#define BXTWC_SLP0DLVL		BIT(1)
++#define BXTWC_SLP1D		BIT(2)
++#define BXTWC_SLP1DLVL		BIT(3)
++#define BXTWC_SLP2D		BIT(4)
++#define BXTWC_SLP2DLVL		BIT(5)
++
++#define to_clk_wcove(_hw) container_of(_hw, struct clk_wcove, hw)
++
++struct clk_wcove {
++	struct clk_hw hw;
++	struct intel_soc_pmic *pmic;
++	struct clk_lookup* clock;
++	int is_enabled;
++	unsigned long fixed_rate;
++	unsigned long fixed_accuracy;
++};
++
++static int clk_wcove_enable(struct clk_hw *hw)
++{
++	to_clk_wcove(hw)->is_enabled = 1;
++	return 0;
++};
++
++void clk_wcove_disable(struct clk_hw *hw)
++{
++	to_clk_wcove(hw)->is_enabled = 0;
++};
++
++static int clk_wcove_is_enabled(struct clk_hw *hw)
++{
++	return to_clk_wcove(hw)->is_enabled;
++}
++
++static int clk_wcove_prepare(struct clk_hw *hw)
++{
++	struct clk_wcove *clk = to_clk_wcove(hw);
++	/* Enable sleep clock */
++	regmap_update_bits(clk->pmic->regmap, BXTWC_CLKCONFIG,
++			   BXTWC_SLP1D, 0);
++	return 0;
++};
++
++void clk_wcove_unprepare(struct clk_hw *hw)
++{
++	struct clk_wcove *clk = to_clk_wcove(hw);
++	/* Disable sleep clock */
++	regmap_update_bits(clk->pmic->regmap, BXTWC_CLKCONFIG,
++			   BXTWC_SLP1D, BXTWC_SLP1D);
++};
++
++static unsigned long clk_wcove_recalc_rate(struct clk_hw *hw,
++		unsigned long parent_rate)
++{
++	return to_clk_wcove(hw)->fixed_rate;
++}
++
++static unsigned long clk_wcove_recalc_accuracy(struct clk_hw *hw,
++		unsigned long parent_accuracy)
++{
++	return to_clk_wcove(hw)->fixed_accuracy;
++}
++
++const struct clk_ops clk_wcove_ops = {
++	.enable = clk_wcove_enable,
++	.disable = clk_wcove_disable,
++	.prepare = clk_wcove_prepare,
++	.unprepare = clk_wcove_unprepare,
++	.is_enabled = clk_wcove_is_enabled,
++	.recalc_rate = clk_wcove_recalc_rate,
++	.recalc_accuracy = clk_wcove_recalc_accuracy,
++};
++
++
++
++
++static int wcove_clk_probe(struct platform_device *pdev)
++{
++	struct clk *clk;
++	struct clk_wcove *clk_wc;
++	struct clk_init_data clk_init;
++
++	clk_wc = devm_kzalloc(&pdev->dev, sizeof(*clk_wc), GFP_KERNEL);
++	if (!clk_wc)
++		return -ENOMEM;
++
++	clk_init.ops = &clk_wcove_ops;
++	clk_init.flags = CLK_IS_ROOT | CLK_IS_BASIC;
++	clk_init.name = "wcove_32k_clk";
++	clk_init.num_parents = 0;
++	clk_wc->pmic = dev_get_drvdata(pdev->dev.parent);
++	clk_wc->fixed_rate = 32000;
++	clk_wc->fixed_accuracy = 0;
++	clk_wc->hw.init = &clk_init;
++
++	clk = clk_register(&pdev->dev, &clk_wc->hw);
++	if (IS_ERR(clk)) {
++		printk("JUKKA: clk register failed");
++		devm_kfree(&pdev->dev, clk_wc);
++		return PTR_ERR(clk);
++	}
++	dev_set_drvdata(&pdev->dev, clk_wc);
++	clk_wc->clock = clkdev_create(clk, "wcove_32k_clk", NULL);
++
++	return 0;
++}
++
++static int wcove_clk_remove(struct platform_device *pdev)
++{
++	struct clk_wcove *clk_wc = dev_get_drvdata(&pdev->dev);
++	clkdev_drop(clk_wc->clock);
++	clk_unregister(clk_wc->hw.clk);
++	return 0;
++}
++
++static struct platform_driver intel_wc_clk_driver = {
++	.driver = {
++		.name = "clk_wcove",
++	},
++	.probe = wcove_clk_probe,
++	.remove = wcove_clk_remove,
++};
++
++module_platform_driver(intel_wc_clk_driver);
++
++MODULE_AUTHOR("Jukka Laitinen <jukka.laitinen@intel.com>");
++MODULE_DESCRIPTION("WhiskeyCove 32kHz clock driver");
++MODULE_LICENSE("GPL v2");
++MODULE_ALIAS("platform:clk_wcove");
+diff --git a/drivers/mfd/intel_soc_pmic_bxtwc.c b/drivers/mfd/intel_soc_pmic_bxtwc.c
+index 857dc20..13ea8df 100644
+--- a/drivers/mfd/intel_soc_pmic_bxtwc.c
++++ b/drivers/mfd/intel_soc_pmic_bxtwc.c
+@@ -333,6 +333,9 @@ static struct mfd_cell bxt_wc_dev[] = {
+ 	{
+ 		.name = "bxt_wcove_region",
+ 	},
++	{
++		.name = "clk_wcove",
++	},
+ };
+ 
+ static int regmap_ipc_byte_reg_read(void *context, unsigned int reg,
+-- 
+2.7.4
+

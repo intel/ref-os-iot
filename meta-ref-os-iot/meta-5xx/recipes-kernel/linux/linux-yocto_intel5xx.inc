@@ -11,6 +11,7 @@ SRC_URI_append = " file://at24.cfg"
 SRC_URI_append = " file://nvme.cfg"
 SRC_URI_append = " file://enable_mtp.cfg"
 SRC_URI_append = " file://usbmon.cfg"
+SRC_URI_append = " file://wcove_clk.cfg"
 SRC_URI_append = " file://0001-Input-atmel_mxt_ts-use-mxt_acquire_irq-in-mxt_soft_r.patch"
 SRC_URI_append = " file://0002-Add-detecting-intel-board-for-atmel_mxt-driver.patch"
 SRC_URI_append = " file://0001-xDCI-runtime-suspend-fix.patch"
@@ -47,6 +48,9 @@ SRC_URI_append = " file://0001-serial-8250-enable-sleep-and-rx-wakeup-for-serial
 SRC_URI_append = " file://0001-Add-HDMI-audio-support-to-bxt_florida-board-driver.patch"
 SRC_URI_append = " file://0001-extcon-arizona-Use-micd-pol-gpio-conditionally.patch"
 SRC_URI_append = " file://0001-extcon-arizona-Change-the-arzona-extcon-driver-alias.patch"
+SRC_URI_append = " file://0001-clk-wcove-Add-clock-driver-for-Whiskey-Cove-PMIC.patch"
+SRC_URI_append = " file://0001-ASoc-bxt-florida-Request-WC-PMIC-sleep-clock.patch"
+SRC_URI_append = " file://0001-ASoc-bxt-florida-Fix-codec-clocking-in-bxt-florida.patch"
 
 do_compile_kernelmodules_append() {
     rm -rf ${B}/drivers/net/wireless/iwlwifi

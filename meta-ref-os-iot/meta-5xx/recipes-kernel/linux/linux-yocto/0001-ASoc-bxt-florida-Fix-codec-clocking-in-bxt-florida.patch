@@ -1,0 +1,164 @@
+From 96a352b795eb2aa767e89a5293a7241a28b45cd8 Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Mon, 22 May 2017 19:13:45 +0300
+Subject: [PATCH] ASoc: bxt-florida: Fix codec clocking in bxt-florida
+
+Remove the System Clock widgets and handle the clock changes between
+32kHz sleep clock and system clock in the trigger function.
+This fixes the FLL1 timeouts, when the widget tries to configure FLL
+when the system clock is not yet enabled.
+
+Also fix some debug print to dev_dbg to avoid spam in the console.
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ sound/soc/intel/boards/bxt_florida.c | 75 ++++++++++--------------------------
+ 1 file changed, 20 insertions(+), 55 deletions(-)
+
+diff --git a/sound/soc/intel/boards/bxt_florida.c b/sound/soc/intel/boards/bxt_florida.c
+index d234f8c..b8f8ca6 100644
+--- a/sound/soc/intel/boards/bxt_florida.c
++++ b/sound/soc/intel/boards/bxt_florida.c
+@@ -201,29 +201,6 @@ static int mrgfld_florida_set_codec_clk(struct snd_soc_card *card, int src)
+ 	return 0;
+ }
+ 
+-
+-static int mrgfld_clock_control(struct snd_soc_dapm_widget *w,
+-		struct snd_kcontrol *k, int  event)
+-{
+-
+-	struct snd_soc_dapm_context *dapm = w->dapm;
+-	struct snd_soc_card *card = dapm->card;
+-	int ret = 0;
+-
+-	if (SND_SOC_DAPM_EVENT_ON(event)) {
+-		pr_info("%s %d Event On\n", __func__, __LINE__);
+-		/* TODO: Ideally MCLK should be used to drive codec PLL
+-		 * currently we are using BCLK
+-		 */
+-		ret = mrgfld_florida_set_codec_clk(card, CODEC_IN_BCLK);
+-	} else {
+-		pr_info("%s %d Event Off\n", __func__, __LINE__);
+-		/* Switch to 32K clock for saving power. */
+-		ret = mrgfld_florida_set_codec_clk(card, CODEC_IN_MCLK2);
+-	}
+-	return ret;
+-}
+-
+ static const struct snd_soc_dapm_widget mrgfld_widgets[] = {
+ 	SND_SOC_DAPM_HP("Headphones", NULL),
+ 	SND_SOC_DAPM_SPK("Ext Spk", NULL),
+@@ -232,10 +209,6 @@ static const struct snd_soc_dapm_widget mrgfld_widgets[] = {
+ 	SND_SOC_DAPM_MIC("DMIC", NULL),
+ 	SND_SOC_DAPM_MIC("SoC DMIC", NULL),
+ 	SND_SOC_DAPM_MIC("HDMI", NULL),
+-	SND_SOC_DAPM_SUPPLY("Platform Clock", SND_SOC_NOPM, 0, 0,
+-			mrgfld_clock_control, SND_SOC_DAPM_PRE_PMU|
+-			SND_SOC_DAPM_POST_PMD),
+-
+ };
+ 
+ static int bxt_dmic_fixup(struct snd_soc_pcm_runtime *rtd,
+@@ -297,15 +270,6 @@ static const struct snd_soc_dapm_route mrgfld_wm5110_map[] = {
+ 	{ "DMIC23 Rx", NULL, "Capture" },
+ 	{ "dmic01_hifi", NULL, "DMIC01 Rx" },
+ 	{ "dmic23_hifi", NULL, "DMIC23 Rx" },
+-
+-
+-	{"Headphones", NULL, "Platform Clock"},
+-	{"AMIC", NULL, "Platform Clock"},
+-	{"DMIC", NULL, "Platform Clock"},
+-	{"Ext Spk", NULL, "Platform Clock"},
+-	{"EP", NULL, "Platform Clock"},
+-	{"Tone Generator 1", NULL, "Platform Clock" },
+-	{"Tone Generator 2", NULL, "Platform Clock" },
+ };
+ 
+ 
+@@ -345,17 +309,6 @@ static const struct snd_soc_dapm_route mrgfld_wm8998_map[] = {
+ 	{ "DMIC23 Rx", NULL, "Capture" },
+ 	{ "dmic01_hifi", NULL, "DMIC01 Rx" },
+ 	{ "dmic23_hifi", NULL, "DMIC23 Rx" },
+-
+-
+-	/* TODO: map for rest of the ports */
+-
+-	{"Headphones", NULL, "Platform Clock"},
+-	{"AMIC", NULL, "Platform Clock"},
+-	{"DMIC", NULL, "Platform Clock"},
+-	{"Ext Spk", NULL, "Platform Clock"},
+-	{"EP", NULL, "Platform Clock"},
+-	{"Tone Generator 1", NULL, "Platform Clock" },
+-	{"Tone Generator 2", NULL, "Platform Clock" },
+ };
+ 
+ static const struct snd_kcontrol_new mrgfld_controls[] = {
+@@ -440,15 +393,23 @@ static int mrgfld_florida_codec_fixup(struct snd_soc_pcm_runtime *rtd,
+ 	return 0;
+ }
+ 
+-static int mrgfld_ssp_florida_trigger(struct snd_pcm_substream *substream, int index)
++static int mrgfld_ssp_florida_trigger(struct snd_pcm_substream *substream, int event)
+ {
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+-	struct snd_soc_dai *florida_dai= rtd->codec_dai;
++	struct snd_soc_card *card = rtd->card;
++	int ret;
+ 
+-	if (!strcmp(florida_dai->name, "wm8998-aif1"))
+-		mrgfld_florida_set_codec_clk(rtd->card, CODEC_IN_MCLK1);
++	if (SND_SOC_DAPM_EVENT_ON(event)) {
++		dev_dbg(card->dev,"%s %d Event On\n", __func__, __LINE__);
++		/* Switch to MCLK1 */
++		ret = mrgfld_florida_set_codec_clk(card, CODEC_IN_MCLK1);
++	} else {
++		dev_dbg(card->dev,"%s %d Event Off\n", __func__, __LINE__);
++		/* Switch to 32K clock for saving power. */
++		ret = mrgfld_florida_set_codec_clk(card, CODEC_IN_MCLK2);
++	}
+ 
+-	return 0;
++	return ret;
+ }
+ 
+ static int mrgfld_ssp_florida_hw_params(struct snd_pcm_substream *substream,
+@@ -459,10 +420,14 @@ static int mrgfld_ssp_florida_hw_params(struct snd_pcm_substream *substream,
+ 	unsigned int fmt;
+ 	int ret;
+ 
++	if (strcmp(florida_dai->name, "wm8998-aif1") &&
++	    strcmp(florida_dai->name, "wm5110-aif1"))
++		return 0;
++
+ 	ret = snd_soc_dai_set_tdm_slot(florida_dai, 0, 0, 4, 24);
+ 	/* slot width is set as 25, SNDRV_PCM_FORMAT_S32_LE */
+ 	if (ret < 0) {
+-		pr_err("can't set codec pcm format %d\n", ret);
++		dev_err(rtd->dev,"can't set codec pcm format %d\n", ret);
+ 		return ret;
+ 	}
+ 
+@@ -471,7 +436,7 @@ static int mrgfld_ssp_florida_hw_params(struct snd_pcm_substream *substream,
+ 		| SND_SOC_DAIFMT_CBS_CFS;
+ 	ret = snd_soc_dai_set_fmt(florida_dai, fmt);
+ 	if (ret < 0) {
+-		pr_err("can't set codec DAI configuration %d\n", ret);
++		dev_err(rtd->dev,"can't set codec DAI configuration %d\n", ret);
+ 		return ret;
+ 	}
+ 
+@@ -704,9 +669,9 @@ struct snd_soc_dai_link mrgfld_wm8998_msic_dailink[] = {
+ 		.codec_name = "dmic-codec",
+ 		.codec_dai_name = "dmic-hifi",
+ 		.platform_name = "0000:00:0e.0",
++		.be_hw_params_fixup = bxt_dmic_fixup,
+ 		.dpcm_capture = 1,
+ 		.no_pcm = 1,
+-		.be_hw_params_fixup = bxt_dmic_fixup,
+         },
+ 
+ 	{
+-- 
+2.7.4
+
