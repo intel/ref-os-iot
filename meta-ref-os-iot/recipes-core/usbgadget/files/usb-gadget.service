@@ -1,6 +1,8 @@
 [Unit]
 Description=USB gadget service (networking etc.)
 
+After=connman.service
+
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/usb-gadget.sh start
@@ -8,4 +10,4 @@ ExecStop=/usr/bin/usb-gadget.sh stop
 RemainAfterExit=yes
 
 [Install]
-WantedBy=network.target
+WantedBy=multi-user.target
