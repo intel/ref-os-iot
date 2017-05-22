@@ -1,0 +1,81 @@
+From ccc2229de910d830f1178a4c279b3201ef5ba700 Mon Sep 17 00:00:00 2001
+From: Soren Friis <soren.friis@intel.com>
+Date: Mon, 22 May 2017 13:36:56 +0300
+Subject: [PATCH] Vulkan: Fix library handle leak
+
+Signed-off-by: Soren Friis <soren.friis@intel.com>
+---
+ loader/loader.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/loader/loader.c b/loader/loader.c
+index 24758f4..14600ab 100644
+--- a/loader/loader.c
++++ b/loader/loader.c
+@@ -1712,6 +1712,7 @@ loader_scanned_icd_add(const struct loader_instance *inst,
+                    "loader_scanned_icd_add: ICD %s doesn't support interface"
+                    " version compatible with loader, skip this ICD.",
+                    filename);
++        loader_platform_close_library(handle);
+         goto out;
+     }
+ 
+@@ -1728,6 +1729,7 @@ loader_scanned_icd_add(const struct loader_instance *inst,
+                        "\'vkGetInstanceProcAddr\' or "
+                        "\'vk_icdGetInstanceProcAddr\' from ICD %s failed.",
+                        filename);
++            loader_platform_close_library(handle);
+             goto out;
+         } else {
+             loader_log(inst, VK_DEBUG_REPORT_WARNING_BIT_EXT, 0,
+@@ -1744,6 +1746,7 @@ loader_scanned_icd_add(const struct loader_instance *inst,
+                        "\'vkCreateInstance\' via dlsym/loadlibrary for "
+                        "ICD %s",
+                        filename);
++            loader_platform_close_library(handle);
+             goto out;
+         }
+         fp_get_inst_ext_props = loader_platform_get_proc_address(
+@@ -1754,6 +1757,7 @@ loader_scanned_icd_add(const struct loader_instance *inst,
+                        "InstanceExtensionProperties\' via dlsym/loadlibrary "
+                        "for ICD %s",
+                        filename);
++            loader_platform_close_library(handle);
+             goto out;
+         }
+     } else {
+@@ -1770,6 +1774,7 @@ loader_scanned_icd_add(const struct loader_instance *inst,
+                        "\'vkCreateInstance\' via \'vk_icdGetInstanceProcAddr\'"
+                        " for ICD %s",
+                        filename);
++            loader_platform_close_library(handle);
+             goto out;
+         }
+         fp_get_inst_ext_props =
+@@ -1781,6 +1786,7 @@ loader_scanned_icd_add(const struct loader_instance *inst,
+                        "InstanceExtensionProperties\' via "
+                        "\'vk_icdGetInstanceProcAddr\' for ICD %s",
+                        filename);
++            loader_platform_close_library(handle);
+             goto out;
+         }
+         fp_get_phys_dev_proc_addr =
+@@ -1800,6 +1806,7 @@ loader_scanned_icd_add(const struct loader_instance *inst,
+                        "loader_scanned_icd_add: Realloc failed on icd library"
+                        " list for ICD %s",
+                        filename);
++            loader_platform_close_library(handle);
+             goto out;
+         }
+         // double capacity
+@@ -1823,6 +1830,7 @@ loader_scanned_icd_add(const struct loader_instance *inst,
+                    "loader_scanned_icd_add: Out of memory can't add ICD %s",
+                    filename);
+         res = VK_ERROR_OUT_OF_HOST_MEMORY;
++        loader_platform_close_library(handle);
+         goto out;
+     }
+     strcpy(new_scanned_icd->lib_name, filename);
+-- 
+2.7.4
+

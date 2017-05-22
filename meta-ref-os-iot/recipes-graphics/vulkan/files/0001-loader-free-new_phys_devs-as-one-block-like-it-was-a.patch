@@ -1,0 +1,28 @@
+From db0d86f71ff2ad9a22aba9939089a29c3b74bf96 Mon Sep 17 00:00:00 2001
+From: Petri Ahonen <petri.ahonen@intel.com>
+Date: Mon, 22 May 2017 07:41:49 +0300
+Subject: [PATCH] loader: free new_phys_devs as one block like it was allocated
+ as
+
+---
+ loader/loader.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/loader/loader.c b/loader/loader.c
+index bff79c1..c8cdb5a 100644
+--- a/loader/loader.c
++++ b/loader/loader.c
+@@ -5635,9 +5635,7 @@ out:
+         if (NULL != inst->phys_devs_term) {
+             // We've encountered an error, so we should free the
+             // new buffers.
+-            for (uint32_t i = 0; i < inst->total_gpu_count; i++) {
+-                loader_instance_heap_free(inst, new_phys_devs[i]);
+-            }
++            loader_instance_heap_free(inst, new_phys_devs);
+             loader_instance_heap_free(inst, inst->phys_devs_term);
+             inst->total_gpu_count = 0;
+         }
+-- 
+2.7.4
+

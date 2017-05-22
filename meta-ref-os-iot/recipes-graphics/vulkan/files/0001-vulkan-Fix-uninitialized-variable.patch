@@ -1,0 +1,29 @@
+From 940207bf60a580f2361fd737961378a4386e6246 Mon Sep 17 00:00:00 2001
+From: Arun Ravindran <arun.ravindran@intel.com>
+Date: Mon, 22 May 2017 10:26:48 +0300
+Subject: [PATCH] vulkan: Fix uninitialized variable
+
+This fixes the static code analysis issue of
+uninitialized variable.
+
+Signed-off-by: Arun Ravindran <arun.ravindran@intel.com>
+---
+ loader/loader.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/loader/loader.c b/loader/loader.c
+index 24758f4..30f0860 100644
+--- a/loader/loader.c
++++ b/loader/loader.c
+@@ -972,7 +972,7 @@ VkResult loader_add_device_extensions(const struct loader_instance *inst,
+                                       VkPhysicalDevice physical_device,
+                                       const char *lib_name,
+                                       struct loader_extension_list *ext_list) {
+-    uint32_t i, count;
++    uint32_t i, count = 0;
+     VkResult res;
+     VkExtensionProperties *ext_props;
+ 
+-- 
+2.7.4
+

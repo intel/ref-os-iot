@@ -1,0 +1,29 @@
+From d9ca7ec68ae8d4064d3501076d7629f02b07fcdd Mon Sep 17 00:00:00 2001
+From: Tuomas Katila <tuomas.katila@intel.com>
+Date: Mon, 22 May 2017 14:11:23 +0300
+Subject: [PATCH] static analysis: remove reference to file_vers after free
+
+Signed-off-by: Tuomas Katila <tuomas.katila@intel.com>
+---
+ loader/loader.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/loader/loader.c b/loader/loader.c
+index 24758f4..2b17048 100644
+--- a/loader/loader.c
++++ b/loader/loader.c
+@@ -2820,9 +2820,8 @@ loader_add_layer_properties(const struct loader_instance *inst,
+         if (!layer_json_supports_layers_tag(&json_version)) {
+             loader_log(inst, VK_DEBUG_REPORT_WARNING_BIT_EXT, 0,
+                        "loader_add_layer_properties: \'layers\' tag not "
+-                       "supported until file version 1.0.1, but %s is "
+-                       "reporting version %s",
+-                       filename, file_vers);
++                       "supported until file version 1.0.1",
++                       filename);
+         }
+         for (int curLayer = 0; curLayer < numItems; curLayer++) {
+             layer_node = cJSON_GetArrayItem(layers_node, curLayer);
+-- 
+2.7.4
+
