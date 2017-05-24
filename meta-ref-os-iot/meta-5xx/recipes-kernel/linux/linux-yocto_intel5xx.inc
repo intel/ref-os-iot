@@ -51,6 +51,7 @@ SRC_URI_append = " file://0001-extcon-arizona-Change-the-arzona-extcon-driver-al
 SRC_URI_append = " file://0001-clk-wcove-Add-clock-driver-for-Whiskey-Cove-PMIC.patch"
 SRC_URI_append = " file://0001-ASoc-bxt-florida-Request-WC-PMIC-sleep-clock.patch"
 SRC_URI_append = " file://0001-ASoc-bxt-florida-Fix-codec-clocking-in-bxt-florida.patch"
+SRC_URI_append = " file://0001-mfd-arizona-Request-interrupt-gpio-for-arizona-to-fi.patch"
 
 do_compile_kernelmodules_append() {
     rm -rf ${B}/drivers/net/wireless/iwlwifi

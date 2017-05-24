@@ -1,0 +1,56 @@
+From 1d462c41ccb2770a5da5c09e092ebe01f49d4ede Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Wed, 24 May 2017 12:44:23 +0300
+Subject: [PATCH] mfd: arizona: Request interrupt gpio for arizona to fix
+ pinmux issues
+
+This complements the commit 3092f8050ec.
+
+In case the arizona IRQ is defined in the ACPI, request the GPIO to
+make sure that the GPIO is muxed as input.
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/mfd/arizona-irq.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/drivers/mfd/arizona-irq.c b/drivers/mfd/arizona-irq.c
+index 3d425e9..0f2f515 100644
+--- a/drivers/mfd/arizona-irq.c
++++ b/drivers/mfd/arizona-irq.c
+@@ -24,6 +24,8 @@
+ #include <linux/mfd/arizona/core.h>
+ #include <linux/mfd/arizona/registers.h>
+ 
++#include <linux/acpi.h>
++#include "../gpio/gpiolib.h"
+ #include "arizona.h"
+ 
+ static int arizona_map_irq(struct arizona *arizona, int irq)
+@@ -190,6 +192,7 @@ int arizona_irq_init(struct arizona *arizona)
+ 	int ret, i;
+ 	const struct regmap_irq_chip *aod, *irq;
+ 	struct irq_data *irq_data;
++	struct gpio_desc *acpi_gpio;
+ 
+ 	arizona->ctrlif_error = true;
+ 
+@@ -334,6 +337,15 @@ int arizona_irq_init(struct arizona *arizona)
+ 	}
+ 
+ 	/* Used to emulate edge trigger and to work around broken pinmux */
++
++	/* If the irq is not defined by pdata, but is defined in ACPI, set the gpio number
++	   into the pdata to fix the pinmux */
++	if (arizona->pdata.irq_gpio <= 0) {
++		acpi_gpio=acpi_get_gpiod_by_index(ACPI_COMPANION(arizona->dev),NULL,0,NULL);
++		if (!IS_ERR(acpi_gpio))
++			arizona->pdata.irq_gpio=desc_to_gpio(acpi_gpio);
++	}
++
+ 	if (arizona->pdata.irq_gpio) {
+ 		if (gpio_to_irq(arizona->pdata.irq_gpio) != arizona->irq) {
+ 			dev_warn(arizona->dev, "IRQ %d is not GPIO %d (%d)\n",
+-- 
+2.7.4
+
