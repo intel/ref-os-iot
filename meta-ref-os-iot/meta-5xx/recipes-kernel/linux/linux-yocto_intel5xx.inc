@@ -36,8 +36,6 @@ SRC_URI_append = " file://0013-tty-Use-disc-for-line-discipline-index-name.patch
 SRC_URI_append = " file://0014-tty-Refactor-tty_ldisc_reinit-for-reuse.patch"
 SRC_URI_append = " file://0015-tty-Destroy-ldisc-instance-on-hangup.patch"
 SRC_URI_append = " file://0001-Enable-autosuspend-after-dwc3_resume.patch"
-SRC_URI_append = " file://0002-Type-c-in-DEVICE-mode-if-not-connection.patch"
-SRC_URI_append = " file://0001-Workaround-for-dwc3-suspend-issue.patch"
 SRC_URI_append = " file://0001-Bluetooth-add-LED-trigger-for-indicating-HCI-is-powe.patch"
 SRC_URI_append = " file://kernel_dynamic_debug.cfg"
 SRC_URI_append = " file://0001-at24-Enable-M24M02-serial-EEPROM.patch"
@@ -54,6 +52,7 @@ SRC_URI_append = " file://0001-ASoc-bxt-florida-Request-WC-PMIC-sleep-clock.patc
 SRC_URI_append = " file://0001-ASoc-bxt-florida-Fix-codec-clocking-in-bxt-florida.patch"
 SRC_URI_append = " file://0001-mfd-arizona-Request-interrupt-gpio-for-arizona-to-fi.patch"
 SRC_URI_append = " file://0001-input-touchscreen-Add-reset-gpio-control-for-atmel-m.patch"
+SRC_URI_append = " file://0001-Enable-USB-Type-C-HOST-mode-with-S0iX-suspend.patch"
 
 do_compile_kernelmodules_append() {
     rm -rf ${B}/drivers/net/wireless/iwlwifi
