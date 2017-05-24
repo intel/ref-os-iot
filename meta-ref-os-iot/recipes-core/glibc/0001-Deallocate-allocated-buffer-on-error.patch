@@ -1,0 +1,84 @@
+From fe8ff1aa8c0a7caf0abbd33a04aaad1036f6daac Mon Sep 17 00:00:00 2001
+From: Soren Friis <soren.friis@intel.com>
+Date: Wed, 24 May 2017 13:46:36 +0300
+Subject: [PATCH] Deallocate allocated buffer on error.
+
+Correction for:
+https://nvd.nist.gov/vuln/detail/CVE-2017-8804
+
+Patch found from:
+https://sourceware.org/ml/libc-alpha/2017-05/msg00125.html
+
+Signed-off-by: Florian Weimer <fweimer@redhat. com>
+Signed-off-by: Soren Friis <soren.friis@intel.com>
+---
+ sunrpc/xdr.c | 39 ++++++++++++++++++++++++++++++---------
+ 1 file changed, 30 insertions(+), 9 deletions(-)
+
+diff --git a/sunrpc/xdr.c b/sunrpc/xdr.c
+index bfabf33..3fa7218 100644
+--- a/sunrpc/xdr.c
++++ b/sunrpc/xdr.c
+@@ -620,14 +620,23 @@ xdr_bytes (XDR *xdrs, char **cpp, u_int *sizep, u_int maxsize)
+ 	}
+       if (sp == NULL)
+ 	{
+-	  *cpp = sp = (char *) mem_alloc (nodesize);
++	  sp = (char *) mem_alloc (nodesize);
++	  if (sp == NULL)
++	    {
++	      (void) __fxprintf (NULL, "%s: %s", __func__,
++				 _("out of memory\n"));
++	      return FALSE;
++	    }
+ 	}
+-      if (sp == NULL)
++      if (!xdr_opaque (xdrs, sp, nodesize))
+ 	{
+-	  (void) __fxprintf (NULL, "%s: %s", __func__, _("out of memory\n"));
++	  if (*cpp == NULL)
++	    /* Deallocate the buffer allocated by this function.  */
++	    free (sp);
+ 	  return FALSE;
+ 	}
+-      /* fall into ... */
++      *cpp = sp;
++      return TRUE;
+ 
+     case XDR_ENCODE:
+       return xdr_opaque (xdrs, sp, nodesize);
+@@ -781,14 +790,26 @@ xdr_string (XDR *xdrs, char **cpp, u_int maxsize)
+     {
+     case XDR_DECODE:
+       if (sp == NULL)
+-	*cpp = sp = (char *) mem_alloc (nodesize);
+-      if (sp == NULL)
+ 	{
+-	  (void) __fxprintf (NULL, "%s: %s", __func__, _("out of memory\n"));
+-	  return FALSE;
++	  sp = (char *) mem_alloc (nodesize);
++	  if (sp == NULL)
++	    {
++	      (void) __fxprintf (NULL, "%s: %s", __func__,
++				 _("out of memory\n"));
++	      return FALSE;
++	    }
+ 	}
+       sp[size] = 0;
+-      /* fall into ... */
++
++      if (!xdr_opaque (xdrs, sp, size))
++	{
++	  if (*cpp == NULL)
++	    /* Deallocate the buffer allocated by this function.  */
++	    free (sp);
++	  return FALSE;
++	}
++      *cpp = sp;
++      return TRUE;
+ 
+     case XDR_ENCODE:
+       return xdr_opaque (xdrs, sp, size);
+-- 
+2.7.4
+
