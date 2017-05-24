@@ -1,0 +1,773 @@
+From a2e25fb36ca9272eeb31b94b88d3fa90a623acf7 Mon Sep 17 00:00:00 2001
+From: Jari Nippula <jari.nippula@intel.com>
+Date: Tue, 23 May 2017 15:05:41 +0300
+Subject: [PATCH] Enable type-c HOST mode with S0iX suspend
+
+Signed-off-by: Jari Nippula <jari.nippula@intel.com>
+---
+ drivers/usb/dwc3/core.c         | 220 +++++++++++++++++++++++++++++++++++++---
+ drivers/usb/dwc3/core.h         |  37 +++++++
+ drivers/usb/dwc3/dwc3-pci.c     |  57 ++---------
+ drivers/usb/typec/typec_wcove.c | 132 +++++++++++++++++-------
+ 4 files changed, 350 insertions(+), 96 deletions(-)
+
+diff --git a/drivers/usb/dwc3/core.c b/drivers/usb/dwc3/core.c
+index 5dceacb..0a6e701 100644
+--- a/drivers/usb/dwc3/core.c
++++ b/drivers/usb/dwc3/core.c
+@@ -35,6 +35,8 @@
+ #include <linux/of.h>
+ #include <linux/acpi.h>
+ #include <linux/pinctrl/consumer.h>
++#include <linux/acpi.h>
++#include <linux/pci.h>
+ 
+ #include <linux/usb/ch9.h>
+ #include <linux/usb/gadget.h>
+@@ -48,7 +50,122 @@
+ 
+ #include "debug.h"
+ 
+-#define DWC3_DEFAULT_AUTOSUSPEND_DELAY	5000 /* ms */
++#define DWC3_DEFAULT_AUTOSUSPEND_DELAY	1000 /* ms */
++
++#define PCI_INTEL_BXT_DSM_UUID		"732b85d5-b7a7-4a1b-9ba0-4bbd00ffd511"
++
++static const struct dev_pm_ops dwc3_dev_pm_ops;
++static const struct dev_pm_ops dwc3_dummy_dev_pm_ops;
++
++static int dwc3_resume(struct device *dev);
++static int dwc3_runtime_resume(struct device *dev);
++
++static int dwc3_mux_mode_get(struct device *dev)
++{
++	u8 uuid[16];
++	acpi_status ret;
++	union acpi_object element;
++	struct acpi_buffer buf = { 0, NULL };
++	union acpi_object params[4];
++	struct acpi_object_list input = {
++		.count = 4,
++		.pointer = params,
++	};
++
++	buf.length = sizeof(union acpi_object);
++	buf.pointer = &element;
++
++	acpi_str_to_uuid(PCI_INTEL_BXT_DSM_UUID, uuid);
++
++	params[0].type = ACPI_TYPE_BUFFER;
++	params[0].buffer.length = 16;
++	params[0].buffer.pointer = uuid;
++	params[1].type = ACPI_TYPE_INTEGER;
++	params[1].integer.value = 1;
++	params[2].type = ACPI_TYPE_INTEGER;
++	params[2].integer.value = PCI_INTEL_BXT_FUNC_GET_MODE;
++	params[3].type = ACPI_TYPE_PACKAGE;
++	params[3].package.count = 0;
++	params[3].package.elements = NULL;
++
++	ret = acpi_evaluate_object(ACPI_HANDLE(dev), "_DSM", &input, &buf);
++	if (ACPI_SUCCESS(ret)) {
++		if (element.type != ACPI_TYPE_INTEGER) {
++			dev_err(dev, "%s: acpi object not an integer, func:%lld, type:%d\n",
++				__func__, params[2].integer.value, element.type);
++			return -EIO;
++		} else {
++			return (int) (element.integer.value & 0xff);
++		}
++	} else {
++		dev_err(dev, "%s: failed to evaluate _DSM, func:%lld\n", __func__, params[2].integer.value);
++		return -EIO;
++	}
++
++	return 0;
++}
++
++int dwc3_dsm(struct device *dev, int func, int param)
++{
++	u8 uuid[16];
++	union acpi_object *obj;
++	union acpi_object tmp;
++	union acpi_object argv4 = ACPI_INIT_DSM_ARGV4(1, &tmp);
++
++	tmp.type = ACPI_TYPE_INTEGER;
++	tmp.integer.value = param;
++
++	acpi_str_to_uuid(PCI_INTEL_BXT_DSM_UUID, uuid);
++
++	obj = acpi_evaluate_dsm(ACPI_HANDLE(dev), uuid,
++			1, func, &argv4);
++	if (!obj) {
++		dev_err(dev, "failed to evaluate _DSM\n");
++		return -EIO;
++	}
++
++	ACPI_FREE(obj);
++
++	return 0;
++}
++
++static void dwc3_acpi_notify(acpi_handle handle, u32 event, void *data)
++{
++	struct platform_device *pdev = (struct platform_device *) data;
++	struct device *dev = &pdev->dev;
++	struct dwc3	*dwc = dev_get_drvdata(dev);
++	struct device_driver *drv = dev->driver;
++	switch (event)
++	{
++		case DWC3_ACPI_EVENT_MODE_HOST:
++			if (!dwc->host_mode) {
++				dwc->host_mode = true;
++				pm_runtime_get_sync(dev);
++				drv->pm = &dwc3_dummy_dev_pm_ops;
++				pm_runtime_put(dev);
++				dwc3_dsm(dev, PCI_INTEL_BXT_FUNC_XDCA, PCI_INTEL_BXT_DEV_PREPARED);
++			}
++			break;
++		case DWC3_ACPI_EVENT_MODE_DEVICE:
++			if (dwc->host_mode) {
++				dwc->host_mode = false;
++				dwc3_dsm(dev, PCI_INTEL_BXT_FUNC_XDCA, PCI_INTEL_BXT_DEV_NOT_PREPARED);
++				pm_runtime_get_sync(dev);
++				if (dwc->dummy_resumed == DWC3_DUMMY_TYPE_RESUME) {
++					pm_runtime_get_sync(dev);
++					dwc3_resume(dev);
++				} else if (dwc->dummy_resumed == DWC3_DUMMY_TYPE_RUNTIME_RESUME) {
++					pm_runtime_get_sync(dev);
++					dwc3_runtime_resume(dev);
++				}
++				drv->pm = &dwc3_dev_pm_ops;
++				pm_runtime_put(dev);
++			}
++			break;
++		default:
++			break;
++	}
++}
+ 
+ void dwc3_set_mode(struct dwc3 *dwc, u32 mode)
+ {
+@@ -567,14 +684,20 @@ static int dwc3_core_init(struct dwc3 *dwc)
+ 			dwc->maximum_speed = USB_SPEED_HIGH;
+ 	}
+ 
+-	/* issue device SoftReset too */
+-	ret = dwc3_soft_reset(dwc);
+-	if (ret)
+-		goto err0;
++	dwc3_dsm(dwc->dev, PCI_INTEL_BXT_FUNC_MUX_CTRL, PCI_INTEL_BXT_MUX_CTRL_DENY);
++	if (dwc3_mux_mode_get(dwc->dev) >= PCI_INTEL_BXT_MODE_DEVICE) {
++		/* issue device SoftReset too */
++		ret = dwc3_soft_reset(dwc);
++		if (ret) {
++			goto err0;
++		}
+ 
+-	ret = dwc3_core_soft_reset(dwc);
+-	if (ret)
+-		goto err0;
++		ret = dwc3_core_soft_reset(dwc);
++		if (ret) {
++			goto err0;
++		}
++	}
++	dwc3_dsm(dwc->dev, PCI_INTEL_BXT_FUNC_MUX_CTRL, PCI_INTEL_BXT_MUX_CTRL_ALLOW);
+ 
+ 	ret = dwc3_phy_setup(dwc);
+ 	if (ret)
+@@ -831,6 +954,7 @@ static void dwc3_core_exit_mode(struct dwc3 *dwc)
+ static int dwc3_probe(struct platform_device *pdev)
+ {
+ 	struct device		*dev = &pdev->dev;
++	struct acpi_device  *adev = ACPI_COMPANION(dev->parent);
+ 	struct dwc3_platform_data *pdata = dev_get_platdata(dev);
+ 	struct resource		*res;
+ 	struct dwc3		*dwc;
+@@ -888,6 +1012,13 @@ static int dwc3_probe(struct platform_device *pdev)
+ 	dwc->regs	= regs;
+ 	dwc->regs_size	= resource_size(res);
+ 
++	/* Initialize "xDCI prepared for host mode" status for
++		USB MUX HOST mode transition */
++	dwc3_dsm(dev, PCI_INTEL_BXT_FUNC_XDCA, PCI_INTEL_BXT_DEV_NOT_PREPARED);
++
++	dwc->host_mode = false;
++
++
+ 	/* default to highest possible threshold */
+ 	lpm_nyet_threshold = 0xff;
+ 
+@@ -1065,8 +1196,16 @@ static int dwc3_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		goto err3;
+ 
++	ret = acpi_install_notify_handler(adev->handle,
++								ACPI_DEVICE_NOTIFY,
++								dwc3_acpi_notify,
++								pdev);
++
+ 	dwc3_debugfs_init(dwc);
+ 	pm_runtime_put(dev);
++	pm_runtime_put(dev->parent);
++	dwc->dummy_resumed = DWC3_DUMMY_TYPE_NONE;
++	dwc3_dsm(dev, PCI_INTEL_BXT_FUNC_MUX_CTRL, PCI_INTEL_BXT_MUX_CTRL_ALLOW);
+ 
+ 	return 0;
+ 
+@@ -1104,6 +1243,10 @@ static int dwc3_remove(struct platform_device *pdev)
+ 	 */
+ 	res->start -= DWC3_GLOBALS_REGS_START;
+ 
++	acpi_remove_notify_handler(ACPI_COMPANION(pdev->dev.parent)->handle,
++			ACPI_DEVICE_NOTIFY,
++			dwc3_acpi_notify);
++
+ 	dwc3_debugfs_exit(dwc);
+ 	dwc3_core_exit_mode(dwc);
+ 
+@@ -1117,6 +1260,9 @@ static int dwc3_remove(struct platform_device *pdev)
+ 	dwc3_free_event_buffers(dwc);
+ 	dwc3_free_scratch_buffers(dwc);
+ 
++	// Allow typec mux switches after dwc3 driver is unloaded.
++	dwc3_dsm(&pdev->dev, PCI_INTEL_BXT_FUNC_XDCA, PCI_INTEL_BXT_DEV_PREPARED);
++
+ 	return 0;
+ }
+ 
+@@ -1140,7 +1286,7 @@ static int dwc3_suspend_common(struct dwc3 *dwc)
+ 
+ 	dwc3_core_exit(dwc);
+ 
+-	return 0;
++	return dwc3_dsm(dwc->dev, PCI_INTEL_BXT_FUNC_PMU_PWR, PCI_INTEL_BXT_STATE_D3);
+ }
+ 
+ static int dwc3_resume_common(struct dwc3 *dwc)
+@@ -1148,6 +1294,10 @@ static int dwc3_resume_common(struct dwc3 *dwc)
+ 	unsigned long	flags;
+ 	int		ret;
+ 
++	ret = dwc3_dsm(dwc->dev, PCI_INTEL_BXT_FUNC_PMU_PWR, PCI_INTEL_BXT_STATE_D0);
++	if (ret)
++		return ret;
++
+ 	ret = dwc3_core_init(dwc);
+ 	if (ret)
+ 		return ret;
+@@ -1190,13 +1340,21 @@ static int dwc3_runtime_suspend(struct device *dev)
+ 	struct dwc3     *dwc = dev_get_drvdata(dev);
+ 	int		ret;
+ 
+-	if (dwc3_runtime_checks(dwc))
++
++	if (dwc->dummy_resumed != DWC3_DUMMY_TYPE_NONE) {
++		return 0;
++	}
++
++	if (dwc3_runtime_checks(dwc)) {
++		return -EBUSY;
++	} else if (!device_run_wake(dwc->dev->parent)) {
+ 		return -EBUSY;
++	}
+ 
+ 	ret = dwc3_suspend_common(dwc);
+-	if (ret)
++	if (ret) {
+ 		return ret;
+-
++	}
+ 	device_init_wakeup(dev, true);
+ 
+ 	return 0;
+@@ -1207,6 +1365,7 @@ static int dwc3_runtime_resume(struct device *dev)
+ 	struct dwc3     *dwc = dev_get_drvdata(dev);
+ 	int		ret;
+ 
++
+ 	device_init_wakeup(dev, false);
+ 
+ 	ret = dwc3_resume_common(dwc);
+@@ -1224,12 +1383,25 @@ static int dwc3_runtime_resume(struct device *dev)
+ 		break;
+ 	}
+ 
++	dwc->dummy_resumed = DWC3_DUMMY_TYPE_NONE;
+ 	pm_runtime_mark_last_busy(dev);
+ 	pm_runtime_put(dev);
+ 
+ 	return 0;
+ }
+ 
++static int dwc3_runtime_resume_dummy(struct device *dev)
++{
++	struct dwc3     *dwc = dev_get_drvdata(dev);
++
++	device_init_wakeup(dev, false);
++	if (dwc->dummy_resumed == DWC3_DUMMY_TYPE_NONE)
++		dwc->dummy_resumed = DWC3_DUMMY_TYPE_RUNTIME_RESUME;
++	pm_runtime_mark_last_busy(dev);
++	pm_runtime_put(dev);
++	return 0;
++}
++
+ static int dwc3_runtime_idle(struct device *dev)
+ {
+ 	struct dwc3     *dwc = dev_get_drvdata(dev);
+@@ -1251,6 +1423,7 @@ static int dwc3_runtime_idle(struct device *dev)
+ 
+ 	return 0;
+ }
++
+ #endif /* CONFIG_PM */
+ 
+ #ifdef CONFIG_PM_SLEEP
+@@ -1264,6 +1437,7 @@ static int dwc3_suspend(struct device *dev)
+ 		return ret;
+ 
+ 	pinctrl_pm_select_sleep_state(dev);
++	dwc3_dsm(dwc->dev, PCI_INTEL_BXT_FUNC_MUX_CTRL, PCI_INTEL_BXT_MUX_CTRL_DENY);
+ 
+ 	return 0;
+ }
+@@ -1275,15 +1449,31 @@ static int dwc3_resume(struct device *dev)
+ 
+ 	pinctrl_pm_select_default_state(dev);
+ 
++	dwc3_dsm(dwc->dev, PCI_INTEL_BXT_FUNC_MUX_CTRL, PCI_INTEL_BXT_MUX_CTRL_ALLOW);
++
+ 	ret = dwc3_resume_common(dwc);
+ 	if (ret)
+ 		return ret;
+ 
++	dwc->dummy_resumed = DWC3_DUMMY_TYPE_NONE;
++
+ 	pm_runtime_disable(dev);
+ 	pm_runtime_set_active(dev);
+ 	pm_runtime_enable(dev);
+ 	pm_runtime_put(dev);
++	return 0;
++}
+ 
++static int dwc3_resume_dummy(struct device *dev)
++{
++	struct dwc3	*dwc = dev_get_drvdata(dev);
++
++	dwc->dummy_resumed = DWC3_DUMMY_TYPE_RESUME;
++
++	pm_runtime_disable(dev);
++	pm_runtime_set_active(dev);
++	pm_runtime_enable(dev);
++	pm_runtime_put(dev);
+ 	return 0;
+ }
+ #endif /* CONFIG_PM_SLEEP */
+@@ -1294,6 +1484,12 @@ static const struct dev_pm_ops dwc3_dev_pm_ops = {
+ 			dwc3_runtime_idle)
+ };
+ 
++static const struct dev_pm_ops dwc3_dummy_dev_pm_ops = {
++	SET_SYSTEM_SLEEP_PM_OPS(dwc3_suspend, dwc3_resume_dummy)
++	SET_RUNTIME_PM_OPS(dwc3_runtime_suspend, dwc3_runtime_resume_dummy,
++			dwc3_runtime_idle)
++};
++
+ #ifdef CONFIG_OF
+ static const struct of_device_id of_dwc3_match[] = {
+ 	{
+diff --git a/drivers/usb/dwc3/core.h b/drivers/usb/dwc3/core.h
+index c624381..ac75d35 100644
+--- a/drivers/usb/dwc3/core.h
++++ b/drivers/usb/dwc3/core.h
+@@ -442,6 +442,28 @@
+ #define DWC3_DEPCMD_TYPE_BULK		2
+ #define DWC3_DEPCMD_TYPE_INTR		3
+ 
++/* _DSM functions */
++#define PCI_INTEL_BXT_FUNC_PMU_PWR      4
++#define PCI_INTEL_BXT_STATE_D0          0
++#define PCI_INTEL_BXT_STATE_D3          3
++
++#define PCI_INTEL_BXT_FUNC_XDCA         8
++#define PCI_INTEL_BXT_DEV_PREPARED      0
++#define PCI_INTEL_BXT_DEV_NOT_PREPARED  1
++
++#define PCI_INTEL_BXT_FUNC_GET_MODE     9
++#define PCI_INTEL_BXT_MODE_HOST         0
++#define PCI_INTEL_BXT_MODE_DEVICE       1
++
++#define PCI_INTEL_BXT_FUNC_MUX_CTRL     10
++#define PCI_INTEL_BXT_MUX_CTRL_DENY     0
++#define PCI_INTEL_BXT_MUX_CTRL_ALLOW    1
++
++
++/* ACPI Notifications */
++#define DWC3_ACPI_EVENT_MODE_HOST       0x81
++#define DWC3_ACPI_EVENT_MODE_DEVICE     0x82
++
+ /* Structures */
+ 
+ struct dwc3_trb;
+@@ -586,6 +608,18 @@ enum dwc3_link_state {
+ 	DWC3_LINK_STATE_MASK		= 0x0f,
+ };
+ 
++// enum suspend_type {
++// 	DWC3_SUSPEND_TYPE_NONE = 0,
++// 	DWC3_SUSPEND_TYPE_RUNTIME_SUSPEND,
++// 	DWC3_SUSPEND_TYPE_SUSPEND,
++// };
++
++enum dummy_resume_type {
++	DWC3_DUMMY_TYPE_NONE = 0,
++	DWC3_DUMMY_TYPE_RUNTIME_RESUME,
++	DWC3_DUMMY_TYPE_RESUME,
++};
++
+ /* TRB Length, PCM and Status */
+ #define DWC3_TRB_SIZE_MASK	(0x00ffffff)
+ #define DWC3_TRB_SIZE_LENGTH(n)	((n) & DWC3_TRB_SIZE_MASK)
+@@ -840,6 +874,9 @@ struct dwc3 {
+ 
+ 	enum usb_dr_mode	dr_mode;
+ 
++	bool host_mode;
++	enum dummy_resume_type dummy_resumed;
++
+ 	u32			fladj;
+ 	u32			irq_gadget;
+ 	u32			nr_scratch;
+diff --git a/drivers/usb/dwc3/dwc3-pci.c b/drivers/usb/dwc3/dwc3-pci.c
+index 7d6ef27..1779390 100644
+--- a/drivers/usb/dwc3/dwc3-pci.c
++++ b/drivers/usb/dwc3/dwc3-pci.c
+@@ -40,11 +40,6 @@
+ #define PCI_DEVICE_ID_INTEL_APL			0x5aaa
+ #define PCI_DEVICE_ID_INTEL_KBP			0xa2b0
+ 
+-#define PCI_INTEL_BXT_DSM_UUID		"732b85d5-b7a7-4a1b-9ba0-4bbd00ffd511"
+-#define PCI_INTEL_BXT_FUNC_PMU_PWR	4
+-#define PCI_INTEL_BXT_STATE_D0		0
+-#define PCI_INTEL_BXT_STATE_D3		3
+-
+ struct dwc3_pci {
+ 	struct platform_device *dwc3;
+ 	struct pci_dev *pci;
+@@ -149,32 +144,6 @@ static int dwc3_pci_quirks(struct dwc3_pci *dwc_pci, struct platform_device *dwc
+ 	return 0;
+ }
+ 
+-static int dwc3_pci_dsm(struct dwc3_pci *dwc_pci, int param)
+-{
+-	union acpi_object *obj;
+-	union acpi_object tmp;
+-	union acpi_object argv4 = ACPI_INIT_DSM_ARGV4(1, &tmp);
+-
+-	if (!dwc_pci->has_dsm_for_pm)
+-		return 0;
+-
+-	tmp.type = ACPI_TYPE_INTEGER;
+-	tmp.integer.value = param;
+-
+-	acpi_str_to_uuid(PCI_INTEL_BXT_DSM_UUID, dwc_pci->uuid);
+-
+-	obj = acpi_evaluate_dsm(ACPI_HANDLE(&dwc_pci->pci->dev), dwc_pci->uuid,
+-			1, PCI_INTEL_BXT_FUNC_PMU_PWR, &argv4);
+-	if (!obj) {
+-		dev_err(&dwc_pci->pci->dev, "failed to evaluate _DSM\n");
+-		return -EIO;
+-	}
+-
+-	ACPI_FREE(obj);
+-
+-	return 0;
+-}
+-
+ static int dwc3_pci_probe(struct pci_dev *pci,
+ 		const struct pci_device_id *id)
+ {
+@@ -238,7 +207,6 @@ static int dwc3_pci_probe(struct pci_dev *pci,
+ 	device_init_wakeup(dev, true);
+ 	device_set_run_wake(dev, true);
+ 	pci_set_drvdata(pci, dwc_pci);
+-	pm_runtime_put(dev);
+ 
+ 	return 0;
+ err:
+@@ -286,39 +254,32 @@ MODULE_DEVICE_TABLE(pci, dwc3_pci_id_table);
+ #ifdef CONFIG_PM
+ static int dwc3_pci_runtime_suspend(struct device *dev)
+ {
+-	struct dwc3_pci *dwc_pci = dev_get_drvdata(dev);
+-
+-	if (device_run_wake(dev))
+-		return dwc3_pci_dsm(dwc_pci, PCI_INTEL_BXT_STATE_D3);
+-
+-	return -EBUSY;
++	return 0;
+ }
+ 
+ static int dwc3_pci_runtime_resume(struct device *dev)
+ {
+ 	struct dwc3_pci *dwc_pci = dev_get_drvdata(dev);
+ 	struct platform_device *dwc3 = dwc_pci->dwc3;
+-	int ret;
+-
+-	ret = dwc3_pci_dsm(dwc_pci, PCI_INTEL_BXT_STATE_D0);
+-	if (ret)
+-		return ret;
+ 
+-	return pm_runtime_get(&dwc3->dev);
++	if (dwc3)
++		pm_runtime_get(&dwc3->dev);
++	return 0;
+ }
+ 
+ static int dwc3_pci_suspend(struct device *dev)
+ {
+-	struct dwc3_pci *dwc_pci = dev_get_drvdata(dev);
+-
+-	return dwc3_pci_dsm(dwc_pci, PCI_INTEL_BXT_STATE_D3);
++	return 0;
+ }
+ 
+ static int dwc3_pci_resume(struct device *dev)
+ {
+ 	struct dwc3_pci *dwc_pci = dev_get_drvdata(dev);
++	struct platform_device *dwc3 = dwc_pci->dwc3;
+ 
+-	return dwc3_pci_dsm(dwc_pci, PCI_INTEL_BXT_STATE_D0);
++	if (dwc3)
++		pm_runtime_get(&dwc3->dev);
++	return 0;
+ }
+ #endif /* CONFIG_PM */
+ 
+diff --git a/drivers/usb/typec/typec_wcove.c b/drivers/usb/typec/typec_wcove.c
+index b5ef768..1c9527a 100644
+--- a/drivers/usb/typec/typec_wcove.c
++++ b/drivers/usb/typec/typec_wcove.c
+@@ -126,7 +126,8 @@
+ #define USBC_PD_RX_BUF_LEN		30
+ #define USBC_PD_TX_BUF_LEN		30
+ 
+-#define XHCI_MUX	0x924080d8
++#define PCI_DEVICE_ID_INTEL_XDCI	0x1aaa
++#define WCOVE_XDCI_PREPARE_TIMEOUT 500
+ 
+ struct wcove_typec {
+ 	int pd_port_num;
+@@ -140,7 +141,6 @@ struct wcove_typec {
+ 	struct typec_connection con;
+ 	struct typec_partner partner;
+ 	struct pci_dev *xhci_dev;
+-	void __iomem *drd_mux;
+ };
+ 
+ enum wcove_typec_func {
+@@ -148,6 +148,8 @@ enum wcove_typec_func {
+ 	WCOVE_FUNC_ORIENTATION,
+ 	WCOVE_FUNC_ROLE,
+ 	WCOVE_FUNC_DRIVE_VCONN,
++	WCOVE_FUNC_NOTIFY_XDCI,
++	WCOVE_FUNC_GET_XDCI_PREP_STATUS,
+ };
+ 
+ enum wcove_typec_orientation {
+@@ -161,6 +163,17 @@ enum wcove_typec_role {
+ 	WCOVE_ROLE_DEVICE_NO_VBUS,
+ };
+ 
++enum wcove_typec_target {
++	WCOVE_TARGET_HOST,
++	WCOVE_TARGET_DEVICE,
++};
++
++
++struct dwc3_pci {
++	struct platform_device *dwc3;
++	struct pci_dev *pci;
++};
++
+ static struct sink_ps profiles[] = {
+ 
+ 	{
+@@ -217,35 +230,69 @@ static int wcove_access_xhci(struct wcove_typec *wcove, bool enable)
+ 			pm_runtime_put(&wcove->xhci_dev->dev);
+ 		}
+ 	}
++
++	return 0;
++}
++
++static int wcove_mode_get(struct wcove_typec *wcove)
++{
++	acpi_status ret;
++	union acpi_object element;
++	struct acpi_buffer buf = { 0, NULL };
++	union acpi_object params[4];
++	struct acpi_object_list input = {
++		.count = 4,
++		.pointer = params,
++	};
++
++	buf.length = sizeof(union acpi_object);
++	buf.pointer = &element;
++
++	params[0].type = ACPI_TYPE_BUFFER;
++	params[0].buffer.length = 16;
++	params[0].buffer.pointer = uuid.b;
++	params[1].type = ACPI_TYPE_INTEGER;
++	params[1].integer.value = 1;
++	params[2].type = ACPI_TYPE_INTEGER;
++	params[2].integer.value = WCOVE_FUNC_GET_XDCI_PREP_STATUS;
++	params[3].type = ACPI_TYPE_PACKAGE;
++	params[3].package.count = 0;
++	params[3].package.elements = NULL;
++
++	ret = acpi_evaluate_object(ACPI_HANDLE(wcove->dev), "_DSM", &input, &buf);
++	if (ACPI_SUCCESS(ret)) {
++		if (element.type != ACPI_TYPE_INTEGER) {
++			dev_err(wcove->dev, "%s: acpi object not an integer!! %d\n", __func__, element.type);
++			return -EIO;
++		} else {
++			return (int) (element.integer.value & 0xff);
++		}
++	} else {
++		dev_err(wcove->dev, "%s: failed to evaluate _DSM, func:%lld\n", __func__, params[2].integer.value);
++		return -EIO;
++	}
++
+ 	return 0;
+ }
+ 
+ static int wcove_typec_func(struct wcove_typec *wcove,
+-			    enum wcove_typec_func func, int param)
++		enum wcove_typec_func func, int param)
+ {
+ 	union acpi_object *obj;
+ 	union acpi_object tmp;
+ 	union acpi_object argv4 = ACPI_INIT_DSM_ARGV4(1, &tmp);
+ 
+-	if (func == WCOVE_FUNC_ROLE && param == WCOVE_ROLE_DEVICE_NO_VBUS)
+-	{
+-		/* Disable VBUS_VALID bit to indicate dwc3 about cable disconnection */
+-		writel(0x300000, wcove->drd_mux);
++	// Take func action
++	tmp.type = ACPI_TYPE_INTEGER;
++	tmp.integer.value = param;
++	obj = acpi_evaluate_dsm(ACPI_HANDLE(wcove->dev), uuid.b, 1, func,
++				&argv4);
++	if (!obj) {
++		dev_err(wcove->dev, "%s: failed to evaluate _DSM\n", __func__);
++		return -EIO;
+ 	}
+-	else
+-	{
+-		tmp.type = ACPI_TYPE_INTEGER;
+-		tmp.integer.value = param;
++	ACPI_FREE(obj);
+ 
+-		obj = acpi_evaluate_dsm(ACPI_HANDLE(wcove->dev), uuid.b, 1, func,
+-					&argv4);
+-		if (!obj) {
+-			dev_err(wcove->dev, "%s: failed to evaluate _DSM\n", __func__);
+-			return -EIO;
+-		}
+-
+-		ACPI_FREE(obj);
+-	}
+ 	return 0;
+ }
+ 
+@@ -255,6 +302,7 @@ static void wcove_typec_device_mode(struct wcove_typec *wcove)
+ 	wcove->con.partner = &wcove->partner;
+ 	wcove->con.pwr_role = TYPEC_SINK;
+ 	wcove->con.vconn_role = TYPEC_SINK;
++
+ 	wcove_access_xhci(wcove, true);
+ 	wcove_typec_func(wcove, WCOVE_FUNC_ROLE, WCOVE_ROLE_DEVICE);
+ 	wcove_access_xhci(wcove, false);
+@@ -376,6 +424,7 @@ static irqreturn_t  wcove_typec_irq(int irq, void *data)
+ 	unsigned int status2;
+ 	unsigned int rx_status;
+ 	int ret;
++	int i;
+ 
+ 	mutex_lock(&wcove->lock);
+ 	ret = regmap_read(wcove->regmap, USBC_IRQ1, &cc_irq1);
+@@ -417,8 +466,8 @@ static irqreturn_t  wcove_typec_irq(int irq, void *data)
+ 	if (status1 & USBC_STATUS1_DET_ONGOING)
+ 		goto out;
+ 
+-	if (USBC_STATUS1_RSLT(status1) == USBC_RSLT_NOTHING ||
+-		USBC_STATUS1_RSLT(status1) == USBC_RSLT_SNK) {
++	if (USBC_STATUS1_RSLT(status1) == USBC_RSLT_NOTHING)
++	{
+ 		if (wcove->con.partner) {
+ 			typec_disconnect(wcove->port);
+ 			memset(&wcove->con, 0, sizeof(wcove->con));
+@@ -431,6 +480,7 @@ static irqreturn_t  wcove_typec_irq(int irq, void *data)
+ 		wcove_access_xhci(wcove, true);
+ 		wcove_typec_func(wcove, WCOVE_FUNC_ROLE, WCOVE_ROLE_DEVICE_NO_VBUS);
+ 		wcove_access_xhci(wcove, false);
++		wcove_typec_func(wcove, WCOVE_FUNC_NOTIFY_XDCI, WCOVE_TARGET_DEVICE);
+ 		/* reset the pd sink state */
+ 		if (wcove->pd_port_num >= 0)
+ 			pd_sink_reset_state(wcove->pd_port_num);
+@@ -488,18 +538,30 @@ static irqreturn_t  wcove_typec_irq(int irq, void *data)
+ 		wcove->con.pwr_opmode = TYPEC_PWR_MODE_3_0A;
+ 		wcove_typec_device_mode(wcove);
+ 		break;
+-	// case USBC_RSLT_SNK:
+-	// 	wcove->partner.type = TYPEC_PARTNER_USB;
+-	// 	wcove->con.partner = &wcove->partner;
+-	// 	wcove->con.data_role = TYPEC_HOST;
+-	// 	wcove->con.pwr_role = TYPEC_SOURCE;
+-	// 	wcove->con.vconn_role = TYPEC_SOURCE;
+-	// 	wcove_access_xhci(wcove, true);
+-	// 	wcove_typec_func(wcove, WCOVE_FUNC_ROLE, WCOVE_ROLE_HOST);
+-	// 	wcove_access_xhci(wcove, false);
+-
+-	// 	typec_connect(wcove->port, &wcove->con);
+-	// 	break;
++	case USBC_RSLT_SNK:
++		wcove->partner.type = TYPEC_PARTNER_USB;
++		wcove->con.partner = &wcove->partner;
++		wcove->con.data_role = TYPEC_HOST;
++		wcove->con.pwr_role = TYPEC_SOURCE;
++		wcove->con.vconn_role = TYPEC_SOURCE;
++
++		wcove_typec_func(wcove, WCOVE_FUNC_NOTIFY_XDCI, WCOVE_TARGET_HOST);
++		for (i = 0; i < WCOVE_XDCI_PREPARE_TIMEOUT; i++) {
++			ret = wcove_mode_get(wcove);
++			if (ret == 0) {
++				break;
++			} else if (ret < 0) {
++				dev_err(wcove->dev, "_DSM method failed!\n");
++				goto out;
++			}
++			msleep(100);
++		}
++		wcove_access_xhci(wcove, true);
++		wcove_typec_func(wcove, WCOVE_FUNC_ROLE, WCOVE_ROLE_HOST);
++		wcove_access_xhci(wcove, false);
++
++		typec_connect(wcove->port, &wcove->con);
++		break;
+ 	case USBC_RSLT_DEBUG_ACC:
+ 		wcove->partner.accessory = TYPEC_ACCESSORY_DEBUG;
+ 		wcove->partner.type = TYPEC_PARTNER_ACCESSORY;
+@@ -562,8 +624,6 @@ static int wcove_typec_probe(struct platform_device *pdev)
+ 	if (IS_ERR(wcove->port))
+ 		return PTR_ERR(wcove->port);
+ 
+-	wcove->drd_mux = ioremap(XHCI_MUX, 0x0f);
+-
+ 	/* PD receive packet handler */
+ 	wcove->pd_port_num = pd_sink_register_port(&profile,
+ 				wcove_typec_pd_tx_pkt_handler, wcove);
+-- 
+2.7.4
+

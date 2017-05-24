@@ -53,6 +53,7 @@ SRC_URI_append = " file://0001-clk-wcove-Add-clock-driver-for-Whiskey-Cove-PMIC.
 SRC_URI_append = " file://0001-ASoc-bxt-florida-Request-WC-PMIC-sleep-clock.patch"
 SRC_URI_append = " file://0001-ASoc-bxt-florida-Fix-codec-clocking-in-bxt-florida.patch"
 SRC_URI_append = " file://0001-mfd-arizona-Request-interrupt-gpio-for-arizona-to-fi.patch"
+SRC_URI_append = " file://0001-Enable-type-c-HOST-mode-with-S0iX-suspend.patch"
 
 do_compile_kernelmodules_append() {
     rm -rf ${B}/drivers/net/wireless/iwlwifi
