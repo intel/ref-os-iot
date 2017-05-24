@@ -1,0 +1,166 @@
+From 8ecf6500865c646a95b9fc5e17fd65f7ff6a12fd Mon Sep 17 00:00:00 2001
+From: Guillem Jover <guillem@debian.org>
+Date: Tue, 28 Mar 2017 22:44:36 +0200
+Subject: [PATCH] build: Detect the required GNU patch
+
+This makes sure the perl module is using a directory traversal resistant
+patch implementation, currently that's only GNU patch.
+
+Fixes: CVE-2017-8283
+Stable-Candidate: 1.17.x
+---
+ configure.ac                 |  1 +
+ m4/dpkg-progs.m4             | 15 +++++++++++++++
+ scripts/Dpkg.pm              | 10 +++++++++-
+ scripts/Dpkg/Source/Patch.pm |  9 +++++----
+ scripts/Makefile.am          |  2 ++
+ 5 files changed, 32 insertions(+), 5 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 3123d0ce0..0112d4dc5 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -61,6 +61,7 @@ AC_PROG_CC
+ DPKG_C_C99
+ AC_PROG_CXX
+ DPKG_CXX_CXX11
++DPKG_PROG_PATCH
+ AC_CHECK_PROGS([DOXYGEN], [doxygen])
+ AC_CHECK_PROG([HAVE_DOT], [dot], [YES], [NO])
+ DPKG_PROG_PO4A
+diff --git a/m4/dpkg-progs.m4 b/m4/dpkg-progs.m4
+index c59f595e1..577d50d78 100644
+--- a/m4/dpkg-progs.m4
++++ b/m4/dpkg-progs.m4
+@@ -49,3 +49,18 @@ AC_ARG_VAR([TAR], [GNU tar program])
+ AC_CHECK_PROGS([TAR], [gnutar gtar tar], [tar])
+ AC_DEFINE_UNQUOTED([TAR], ["$TAR"], [GNU tar program])
+ ])# DPKG_DEB_PROG_TAR
++
++# DPKG_PROG_PATCH
++# ---------------
++# Specify GNU patch program name to use by dpkg-source. On GNU systems this
++# is usually simply patch, on BSD systems this is usually gpatch.
++# Even though most invocations would work with other patch implementations,
++# currently only GNU patch is directory traversal resistant.
++AC_DEFUN([DPKG_PROG_PATCH], [
++  AC_ARG_VAR([PATCH], [GNU patch program])
++  AC_CHECK_PROGS([PATCH], [gpatch patch], [patch])
++  AS_IF([! $PATCH --version 2>/dev/null | grep -q '^GNU patch'], [
++    AC_MSG_ERROR([cannot find a GNU patch program])
++  ])
++  AC_DEFINE_UNQUOTED([PATCH], ["$PATCH"], [GNU patch program])
++])# DPKG_PROG_PATCH
+diff --git a/scripts/Dpkg.pm b/scripts/Dpkg.pm
+index deecfb35d..4827fb125 100644
+--- a/scripts/Dpkg.pm
++++ b/scripts/Dpkg.pm
+@@ -33,6 +33,7 @@ our $VERSION = '1.01';
+ our @EXPORT_OK = qw(
+     $PROGNAME
+     $PROGVERSION
++    $PROGPATCH
+     $CONFDIR
+     $ADMINDIR
+     $LIBDIR
+@@ -60,6 +61,11 @@ Contains the name of the current program.
+ 
+ Contains the version of the dpkg suite.
+ 
++=item $Dpkg::PROGPATCH
++
++Contains the name of the system GNU patch program (or another implementation
++that is directory traversal resistant).
++
+ =item $Dpkg::CONFDIR
+ 
+ Contains the path to the dpkg system configuration directory.
+@@ -84,6 +90,8 @@ our ($PROGNAME) = $0 =~ m{(?:.*/)?([^/]*)};
+ 
+ # The following lines are automatically fixed at install time
+ our $PROGVERSION = '1.18.x';
++our $PROGPATCH = $ENV{DPKG_PROGPATCH} // 'patch';
++
+ our $CONFDIR = '/etc/dpkg';
+ our $ADMINDIR = '/var/lib/dpkg';
+ our $LIBDIR = '.';
+@@ -102,7 +110,7 @@ our $pkgdatadir = $DATADIR;
+ 
+ =head2 Version 1.01 (dpkg 1.17.0)
+ 
+-New variables: $PROGNAME, $PROGVERSION, $CONFDIR, $ADMINDIR, $LIBDIR and
++New variables: $PROGNAME, $PROGVERSION, $CONFDIR, $ADMINDIR, $LIBDIR, $PROGPATCH and
+ $DATADIR.
+ 
+ Deprecated variables: $version, $admindir, $dpkglibdir and $pkgdatadir.
+diff --git a/scripts/Dpkg/Source/Patch.pm b/scripts/Dpkg/Source/Patch.pm
+index ee5e114f8..22e9d213d 100644
+--- a/scripts/Dpkg/Source/Patch.pm
++++ b/scripts/Dpkg/Source/Patch.pm
+@@ -30,6 +30,7 @@ use File::Compare;
+ use Fcntl ':mode';
+ use Time::HiRes qw(stat);
+ 
++use Dpkg;
+ use Dpkg::Gettext;
+ use Dpkg::ErrorHandling;
+ use Dpkg::IPC;
+@@ -582,7 +583,7 @@ sub apply {
+     $self->ensure_open('r');
+     my ($stdout, $stderr) = ('', '');
+     spawn(
+-	exec => [ 'patch', @{$opts{options}} ],
++	exec => [ $Dpkg::PROGPATCH, @{$opts{options}} ],
+ 	chdir => $destdir,
+ 	env => { LC_ALL => 'C', LANG => 'C', PATCH_GET => '0' },
+ 	delete_env => [ 'POSIXLY_CORRECT' ], # ensure expected patch behaviour
+@@ -595,7 +596,7 @@ sub apply {
+     if ($?) {
+ 	print { *STDOUT } $stdout;
+ 	print { *STDERR } $stderr;
+-	subprocerr('LC_ALL=C patch ' . join(' ', @{$opts{options}}) .
++	subprocerr("LC_ALL=C $Dpkg::PROGPATCH " . join(' ', @{$opts{options}}) .
+ 	           ' < ' . $self->get_filename());
+     }
+     $self->close();
+@@ -632,7 +633,7 @@ sub check_apply {
+     # Apply the patch
+     $self->ensure_open('r');
+     my $patch_pid = spawn(
+-	exec => [ 'patch', @{$opts{options}} ],
++	exec => [ $Dpkg::PROGPATCH, @{$opts{options}} ],
+ 	chdir => $destdir,
+ 	env => { LC_ALL => 'C', LANG => 'C', PATCH_GET => '0' },
+ 	delete_env => [ 'POSIXLY_CORRECT' ], # ensure expected patch behaviour
+@@ -642,7 +643,7 @@ sub check_apply {
+     );
+     wait_child($patch_pid, nocheck => 1);
+     my $exit = WEXITSTATUS($?);
+-    subprocerr('patch --dry-run') unless WIFEXITED($?);
++    subprocerr("$Dpkg::PROGPATCH --dry-run") unless WIFEXITED($?);
+     $self->close();
+     return ($exit == 0);
+ }
+diff --git a/scripts/Makefile.am b/scripts/Makefile.am
+index 6c37b98c0..618296a25 100644
+--- a/scripts/Makefile.am
++++ b/scripts/Makefile.am
+@@ -127,6 +127,7 @@ do_perl_subst = $(AM_V_GEN) \
+ 		    -e "s:\$$ADMINDIR[[:space:]]*=[[:space:]]*['\"][^'\"]*['\"]:\$$ADMINDIR='$(admindir)':" \
+ 		    -e "s:\$$LIBDIR[[:space:]]*=[[:space:]]*['\"][^'\"]*['\"]:\$$LIBDIR='$(pkglibdir)':" \
+ 		    -e "s:\$$DATADIR[[:space:]]*=[[:space:]]*['\"][^'\"]*['\"]:\$$DATADIR='$(pkgdatadir)':" \
++		    -e "s:\$$PROGPATCH[[:space:]]*=[[:space:]]*['\"][^'\"]*['\"]:\$$PROGPATCH='$(PATCH)':" \
+ 		    -e "s:\$$PROGVERSION[[:space:]]*=[[:space:]]*['\"][^'\"]*[\"']:\$$PROGVERSION='$(PACKAGE_VERSION)':"
+ 
+ do_shell_subst = $(AM_V_GEN) \
+@@ -188,6 +189,7 @@ coverage-clean:
+ 
+ TEST_ENV_VARS = \
+ 	DPKG_DATADIR=$(srcdir)/.. \
++	DPKG_PROGPATCH=$(PATCH) \
+ 	DPKG_ORIGINS_DIR=$(srcdir)/t/origins
+ TEST_COVERAGE = $(PERL_COVERAGE)
+ 
+-- 
+2.11.0
+
