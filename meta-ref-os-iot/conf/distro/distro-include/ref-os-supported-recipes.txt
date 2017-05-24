@@ -1,3 +1,4 @@
+gnutls@ref-os-iot
 bigreqsproto@core
 dmxproto@core
 dri2proto@core
