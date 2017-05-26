@@ -1,0 +1,40 @@
+From bf200a932fbefb0df5dd63cbe7c8579980d6b0e6 Mon Sep 17 00:00:00 2001
+From: Soren Friis <soren.friis@intel.com>
+Date: Fri, 2 Jun 2017 10:06:08 +0300
+Subject: [PATCH 1/2] crlmodule: ov5670: Correct flip register settings
+
+Correct the mirror and flipping bits to cover the full
+set of bits defined by the data sheet.
+
+Change-Id: I9ccab71149287c3a65a495f3c92b5d351075a127
+Tracked-On:
+Signed-off-by: Soren Friis <soren.friis@intel.com>
+---
+ drivers/media/i2c/crlmodule/crl_ov5670_configuration.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h b/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h
+index b29545b..083a6cc 100644
+--- a/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h
++++ b/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h
+@@ -440,7 +440,7 @@ static struct crl_dynamic_register_access ov5670_v_flip_regs[] = {
+ 		.len = CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE,
+ 		.ops_items = ARRAY_SIZE(ov5670_vflip_ops),
+ 		.ops = ov5670_vflip_ops,
+-		.mask = 0x2,
++		.mask = 0x46,
+ 	},
+ 	{
+ 		.address = 0x450B,
+@@ -457,7 +457,7 @@ static struct crl_dynamic_register_access ov5670_h_flip_regs[] = {
+ 		.len = CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE,
+ 		.ops_items = ARRAY_SIZE(ov5670_hflip_ops),
+ 		.ops = ov5670_hflip_ops,
+-		.mask = 0x2,
++		.mask = 0x06,
+ 	},
+ };
+ 
+-- 
+2.7.4
+

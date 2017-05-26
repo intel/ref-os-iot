@@ -1,0 +1,36 @@
+From c12d25ba755ee65e3f3ec48595f816126d604ecd Mon Sep 17 00:00:00 2001
+From: Soren Friis <soren.friis@intel.com>
+Date: Fri, 26 May 2017 14:21:05 +0300
+Subject: [PATCH 3/3] intel-ipu4: Add delay to ov5670 stream on
+
+When running more than one ov5670 camera, the setup of
+the ipu4 driver + HW initialization of the ov5670 sensor
+sometimes causes an IPC response timeout.
+
+Although the root cause of this is not known, inserting
+a delay before the stream on command seems to fix it.
+
+Change-Id: I9d4a8811bbf3ee811b952f5843e39bc46229c1cd
+Tracked-On:
+Signed-off-by: Soren Friis <soren.friis@intel.com>
+---
+ drivers/media/i2c/crlmodule/crl_ov5670_configuration.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h b/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h
+index c93afd6..b29545b 100644
+--- a/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h
++++ b/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h
+@@ -367,6 +367,9 @@ static struct crl_register_write_rep ov5670_mode_1080[] = {
+ };
+ 
+ static struct crl_register_write_rep ov5670_streamon_regs[] = {
++	/* Sleep for 80 ms to avoid startup problems when running multiple
++	 * ov5670 cameras */
++	{ 0x0000, CRL_REG_LEN_DELAY, 0x50 },
+ 	{ 0x0100, CRL_REG_LEN_08BIT, 0x01 }
+ };
+ 
+-- 
+2.7.4
+

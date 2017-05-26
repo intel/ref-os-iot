@@ -1,0 +1,244 @@
+From 46ce2cf04a8901a2f7b67a714f6f437c52780cba Mon Sep 17 00:00:00 2001
+From: Soren Friis <soren.friis@intel.com>
+Date: Wed, 31 May 2017 14:11:14 +0300
+Subject: [PATCH 2/2] crlmodule: ov5670: Add binned 720p resolution
+
+Add a 720p output resolution created by binning
+and cropping inside the sensor.
+
+Change-Id: I0efde3756ca2107b79e4c45edb9a6ede8fe7e2a8
+Tracked-On:
+Signed-off-by: Soren Friis <soren.friis@intel.com>
+---
+ .../media/i2c/crlmodule/crl_ov5670_configuration.h | 122 +++++++++++++++++++--
+ 1 file changed, 115 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h b/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h
+index 083a6cc..65064b0 100644
+--- a/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h
++++ b/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h
+@@ -146,6 +146,7 @@ static struct crl_register_write_rep ov5670_powerup_regset[] = {
+ 	{ 0x3807, CRL_REG_LEN_08BIT, 0xa3 },
+ 	{ 0x3811, CRL_REG_LEN_08BIT, 0x04 },
+ 	{ 0x3813, CRL_REG_LEN_08BIT, 0x02 },
++	{ 0x3814, CRL_REG_LEN_08BIT, 0x01 },
+ 	{ 0x3815, CRL_REG_LEN_08BIT, 0x01 },
+ 	{ 0x3816, CRL_REG_LEN_08BIT, 0x00 },
+ 	{ 0x3817, CRL_REG_LEN_08BIT, 0x00 },
+@@ -155,6 +156,7 @@ static struct crl_register_write_rep ov5670_powerup_regset[] = {
+ 	{ 0x3822, CRL_REG_LEN_08BIT, 0x48 },
+ 	{ 0x3826, CRL_REG_LEN_08BIT, 0x00 },
+ 	{ 0x3827, CRL_REG_LEN_08BIT, 0x08 },
++	{ 0x382a, CRL_REG_LEN_08BIT, 0x01 },
+ 	{ 0x3830, CRL_REG_LEN_08BIT, 0x08 },
+ 	{ 0x3836, CRL_REG_LEN_08BIT, 0x02 },
+ 	{ 0x3837, CRL_REG_LEN_08BIT, 0x00 },
+@@ -264,7 +266,6 @@ static struct crl_register_write_rep ov5670_powerup_regset[] = {
+ 	{ 0x5b02, CRL_REG_LEN_08BIT, 0x01 },
+ 	{ 0x5b03, CRL_REG_LEN_08BIT, 0xdb },
+ 	{ 0x3d8c, CRL_REG_LEN_08BIT, 0x71 },
+-	{ 0x370b, CRL_REG_LEN_08BIT, 0x05 },
+ 	{ 0x3618, CRL_REG_LEN_08BIT, 0x2a },
+ 	{ 0x5780, CRL_REG_LEN_08BIT, 0x3e },
+ 	{ 0x5781, CRL_REG_LEN_08BIT, 0x0f },
+@@ -302,70 +303,144 @@ static struct crl_register_write_rep ov5670_powerup_regset[] = {
+ 
+ static struct crl_register_write_rep ov5670_mode_1944[] = {
+ 	/* Auto size function in use, but no cropping in this mode */
++	{ 0x366e, CRL_REG_LEN_08BIT, 0x10 },
+ 	{ 0x3808, CRL_REG_LEN_08BIT, 0x0a },
+ 	{ 0x3809, CRL_REG_LEN_08BIT, 0x20 },
+ 	{ 0x380a, CRL_REG_LEN_08BIT, 0x07 },
+ 	{ 0x380b, CRL_REG_LEN_08BIT, 0x98 },
+-	{ 0x3821, CRL_REG_LEN_08BIT, 0x00 },
++	{ 0x3814, CRL_REG_LEN_08BIT, 0x01 },
++	{ 0x3820, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x00, 0, 0x10},
++	{ 0x3821, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x00, 0, 0x01},
++	{ 0x382a, CRL_REG_LEN_08BIT, 0x01 },
++	{ 0x4009, CRL_REG_LEN_08BIT, 0x0d },
++	{ 0x4017, CRL_REG_LEN_08BIT, 0x08 },
++	{ 0x4502, CRL_REG_LEN_08BIT, 0x40 },
++	{ 0x4508, CRL_REG_LEN_08BIT, 0xaa },
++	{ 0x4509, CRL_REG_LEN_08BIT, 0xaa },
+ 	{ 0x4600, CRL_REG_LEN_08BIT, 0x01 },
+ 	{ 0x4601, CRL_REG_LEN_08BIT, 0x03 },
+ };
+ 
+ static struct crl_register_write_rep ov5670_mode_1940[] = {
+ 	/* Auto size function in use, cropping from the centre of the image */
++	{ 0x366e, CRL_REG_LEN_08BIT, 0x10 },
+ 	{ 0x3808, CRL_REG_LEN_08BIT, 0x0a },
+ 	{ 0x3809, CRL_REG_LEN_08BIT, 0x00 },
+ 	{ 0x380a, CRL_REG_LEN_08BIT, 0x07 },
+ 	{ 0x380b, CRL_REG_LEN_08BIT, 0x94 },
+-	{ 0x3821, CRL_REG_LEN_08BIT, 0x00 },
++	{ 0x3814, CRL_REG_LEN_08BIT, 0x01 },
++	{ 0x3820, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x00, 0, 0x10},
++	{ 0x3821, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x00, 0, 0x01},
++	{ 0x382a, CRL_REG_LEN_08BIT, 0x01 },
++	{ 0x4009, CRL_REG_LEN_08BIT, 0x0d },
++	{ 0x4017, CRL_REG_LEN_08BIT, 0x08 },
++	{ 0x4502, CRL_REG_LEN_08BIT, 0x40 },
++	{ 0x4508, CRL_REG_LEN_08BIT, 0xaa },
++	{ 0x4509, CRL_REG_LEN_08BIT, 0xaa },
+ 	{ 0x4600, CRL_REG_LEN_08BIT, 0x01 },
+ 	{ 0x4601, CRL_REG_LEN_08BIT, 0x00 },
+ };
+ 
+ static struct crl_register_write_rep ov5670_mode_1458[] = {
+ 	/* Auto size function in use, cropping from the centre of the image */
++	{ 0x366e, CRL_REG_LEN_08BIT, 0x10 },
+ 	{ 0x3808, CRL_REG_LEN_08BIT, 0x0a },
+ 	{ 0x3809, CRL_REG_LEN_08BIT, 0x20 },
+ 	{ 0x380a, CRL_REG_LEN_08BIT, 0x05 },
+ 	{ 0x380b, CRL_REG_LEN_08BIT, 0xB2 },
+-	{ 0x3821, CRL_REG_LEN_08BIT, 0x00 },
++	{ 0x3814, CRL_REG_LEN_08BIT, 0x01 },
++	{ 0x3820, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x00, 0, 0x10},
++	{ 0x3821, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x00, 0, 0x01},
++	{ 0x382a, CRL_REG_LEN_08BIT, 0x01 },
++	{ 0x4009, CRL_REG_LEN_08BIT, 0x0d },
++	{ 0x4017, CRL_REG_LEN_08BIT, 0x08 },
++	{ 0x4502, CRL_REG_LEN_08BIT, 0x40 },
++	{ 0x4508, CRL_REG_LEN_08BIT, 0xaa },
++	{ 0x4509, CRL_REG_LEN_08BIT, 0xaa },
+ 	{ 0x4600, CRL_REG_LEN_08BIT, 0x01 },
+ 	{ 0x4601, CRL_REG_LEN_08BIT, 0x03 },
+ };
+ 
+ static struct crl_register_write_rep ov5670_mode_1456[] = {
+ 	/* Auto size function in use, cropping from the centre of the image */
++	{ 0x366e, CRL_REG_LEN_08BIT, 0x10 },
+ 	{ 0x3808, CRL_REG_LEN_08BIT, 0x0a },
+ 	{ 0x3809, CRL_REG_LEN_08BIT, 0x00 },
+ 	{ 0x380a, CRL_REG_LEN_08BIT, 0x05 },
+ 	{ 0x380b, CRL_REG_LEN_08BIT, 0xB0 },
+-	{ 0x3821, CRL_REG_LEN_08BIT, 0x00 },
++	{ 0x3814, CRL_REG_LEN_08BIT, 0x01 },
++	{ 0x3820, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x00, 0, 0x10},
++	{ 0x3821, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x00, 0, 0x01},
++	{ 0x382a, CRL_REG_LEN_08BIT, 0x01 },
++	{ 0x4009, CRL_REG_LEN_08BIT, 0x0d },
++	{ 0x4017, CRL_REG_LEN_08BIT, 0x08 },
++	{ 0x4502, CRL_REG_LEN_08BIT, 0x40 },
++	{ 0x4508, CRL_REG_LEN_08BIT, 0xaa },
++	{ 0x4509, CRL_REG_LEN_08BIT, 0xaa },
+ 	{ 0x4600, CRL_REG_LEN_08BIT, 0x01 },
+ 	{ 0x4601, CRL_REG_LEN_08BIT, 0x00 },
+ };
+ 
+ static struct crl_register_write_rep ov5670_mode_1152[] = {
+ 	/* Auto size function in use, cropping from the centre of the image */
++	{ 0x366e, CRL_REG_LEN_08BIT, 0x10 },
+ 	{ 0x3808, CRL_REG_LEN_08BIT, 0x07 },
+ 	{ 0x3809, CRL_REG_LEN_08BIT, 0xC0 },
+ 	{ 0x380a, CRL_REG_LEN_08BIT, 0x04 },
+ 	{ 0x380b, CRL_REG_LEN_08BIT, 0x80 },
+-	{ 0x3821, CRL_REG_LEN_08BIT, 0x00 },
++	{ 0x3814, CRL_REG_LEN_08BIT, 0x01 },
++	{ 0x3820, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x00, 0, 0x10},
++	{ 0x3821, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x00, 0, 0x01},
++	{ 0x382a, CRL_REG_LEN_08BIT, 0x01 },
++	{ 0x4009, CRL_REG_LEN_08BIT, 0x0d },
++	{ 0x4017, CRL_REG_LEN_08BIT, 0x08 },
++	{ 0x4502, CRL_REG_LEN_08BIT, 0x40 },
++	{ 0x4508, CRL_REG_LEN_08BIT, 0xaa },
++	{ 0x4509, CRL_REG_LEN_08BIT, 0xaa },
+ 	{ 0x4600, CRL_REG_LEN_08BIT, 0x00 },
+ 	{ 0x4601, CRL_REG_LEN_08BIT, 0xc6 },
+ };
+ 
+ static struct crl_register_write_rep ov5670_mode_1080[] = {
+ 	/* Auto size function in use, cropping from the centre of the image */
++	{ 0x366e, CRL_REG_LEN_08BIT, 0x10 },
+ 	{ 0x3808, CRL_REG_LEN_08BIT, 0x07 },
+ 	{ 0x3809, CRL_REG_LEN_08BIT, 0x80 },
+ 	{ 0x380a, CRL_REG_LEN_08BIT, 0x04 },
+ 	{ 0x380b, CRL_REG_LEN_08BIT, 0x38 },
+-	{ 0x3821, CRL_REG_LEN_08BIT, 0x00 },
++	{ 0x3814, CRL_REG_LEN_08BIT, 0x01 },
++	{ 0x3820, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x00, 0, 0x10},
++	{ 0x3821, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x00, 0, 0x01},
++	{ 0x382a, CRL_REG_LEN_08BIT, 0x01 },
++	{ 0x4009, CRL_REG_LEN_08BIT, 0x0d },
++	{ 0x4017, CRL_REG_LEN_08BIT, 0x08 },
++	{ 0x4502, CRL_REG_LEN_08BIT, 0x40 },
++	{ 0x4508, CRL_REG_LEN_08BIT, 0xaa },
++	{ 0x4509, CRL_REG_LEN_08BIT, 0xaa },
+ 	{ 0x4600, CRL_REG_LEN_08BIT, 0x00 },
+ 	{ 0x4601, CRL_REG_LEN_08BIT, 0xc0 },
+ };
+ 
++static struct crl_register_write_rep ov5670_mode_720[] = {
++	/* Binning in use */
++	{ 0x366e, CRL_REG_LEN_08BIT, 0x08 },
++	{ 0x3808, CRL_REG_LEN_08BIT, 0x05 },
++	{ 0x3809, CRL_REG_LEN_08BIT, 0x00 },
++	{ 0x380a, CRL_REG_LEN_08BIT, 0x02 },
++	{ 0x380b, CRL_REG_LEN_08BIT, 0xd0 },
++	{ 0x3814, CRL_REG_LEN_08BIT, 0x03 },
++	{ 0x3820, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x10, 0, 0x10},
++	{ 0x3821, CRL_REG_LEN_08BIT | CRL_REG_READ_AND_UPDATE, 0x01, 0, 0x01},
++	{ 0x382a, CRL_REG_LEN_08BIT, 0x03 },
++	{ 0x4009, CRL_REG_LEN_08BIT, 0x05 },
++	{ 0x4017, CRL_REG_LEN_08BIT, 0x10 },
++	{ 0x4502, CRL_REG_LEN_08BIT, 0x44 },
++	{ 0x4508, CRL_REG_LEN_08BIT, 0x55 },
++	{ 0x4509, CRL_REG_LEN_08BIT, 0x55 },
++	{ 0x4600, CRL_REG_LEN_08BIT, 0x00 },
++	{ 0x4601, CRL_REG_LEN_08BIT, 0x80 },
++};
++
+ static struct crl_register_write_rep ov5670_streamon_regs[] = {
+ 	/* Sleep for 80 ms to avoid startup problems when running multiple
+ 	 * ov5670 cameras */
+@@ -641,6 +716,24 @@ static struct crl_subdev_rect_rep ov5670_1080_rects[] = {
+ 	},
+ };
+ 
++static struct crl_subdev_rect_rep ov5670_720_rects[] = {
++	{
++		.subdev_type = CRL_SUBDEV_TYPE_PIXEL_ARRAY,
++		.in_rect = { 0, 0, 2592, 1944 },
++		.out_rect = { 16, 252, 2560, 1440 },
++	},
++	{
++		.subdev_type = CRL_SUBDEV_TYPE_BINNER,
++		.in_rect = { 0, 0, 2560, 1440 },
++		.out_rect = { 0, 0, 1280, 720 },
++	},
++	{
++		.subdev_type = CRL_SUBDEV_TYPE_SCALER,
++		.in_rect = { 0, 0, 1280, 720 },
++		.out_rect = { 0, 0, 1280, 720 },
++	},
++};
++
+ static struct crl_mode_rep ov5670_modes[] = {
+ 	{
+ 		.sd_rects_items = ARRAY_SIZE(ov5670_1944_rects),
+@@ -733,6 +826,21 @@ static struct crl_mode_rep ov5670_modes[] = {
+ 		.mode_regs_items = ARRAY_SIZE(ov5670_mode_1080),
+ 		.mode_regs = ov5670_mode_1080,
+ 	},
++	{
++		.sd_rects_items = ARRAY_SIZE(ov5670_720_rects),
++		.sd_rects = ov5670_720_rects,
++		.binn_hor = 2,
++		.binn_vert = 2,
++		.scale_m = 1,
++		.width = 1280,
++		.height = 720,
++		.min_llp = 3360,
++		.min_fll = 992,
++		.comp_items = 0,
++		.ctrl_data = 0,
++		.mode_regs_items = ARRAY_SIZE(ov5670_mode_720),
++		.mode_regs = ov5670_mode_720,
++	},
+ };
+ 
+ static struct crl_sensor_subdev_config ov5670_sensor_subdevs[] = {
+-- 
+2.7.4
+
