@@ -387,3 +387,6 @@ vulkan@core
 assimp@ros-layer
 wxpython-phoenix@ref-os-iot
 systemd-serialgetty@core
+snapd@ref-os-iot
+squashfs-tools@core
+xfsprogs@filesystems-layer

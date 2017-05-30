@@ -63,3 +63,8 @@ RDEPENDS_python3-modules_remove = "python3-gdbm"
 PACKAGES_remove_pn-python = "python-gdbm"
 PROVIDES_remove_pn-python = "python-gdbm"
 RDEPENDS_python-modules_remove = "python-gdbm"
+
+# remove lzo dependency
+PNBLACKLIST[lzo] = "Not a whitelisted component"
+EXTRA_OEMAKE_remove_pn-squashfs-tools = "LZO_SUPPORT=1"
+DEPENDS_remove_pn-squashfs-tools = "lzo"

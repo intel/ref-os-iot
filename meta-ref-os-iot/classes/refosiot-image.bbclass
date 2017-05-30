@@ -183,6 +183,8 @@ FEATURE_PACKAGES_python3-extra =" \
 FEATURE_PACKAGES_wxpython =" \
 			     wxpython-phoenix \
 "
+FEATURE_PACKAGES_snap = " snapd"
+
 PACKAGECONFIG_append_pn-alsa-utils = " udev"
 
 DSK_IMAGE_LAYOUT = ' \
