@@ -57,4 +57,6 @@ DEPENDS_remove_pn-bridge-utils = "sysfsutils"
 # Remove xinput caliberator from the image
 RDEPENDS_nativesdk-packagegroup-sdk-host_remove += "nativesdk-dnf"
 
-RDEPENDS_packagegroup-nodejs-runtime_remove += "iot-rest-api-server"
+# Temporary fix to packagegroup-python-runtime. Waiting for intel-iot-refkit to fix it.
+PROVIDES_remove_pn-python3 = "python3-gdbm"
+RDEPENDS_python3-modules_remove = "python3-gdbm"

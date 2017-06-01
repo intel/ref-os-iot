@@ -5,7 +5,6 @@ LICENSE = "MIT"
 
 # Ref OS IOT image features
 REF_OS_IMAGE_PKG_FEATURES += " \
-     python-runtime \
      arduino-support \
      nodejs-runtime \
      pam \
@@ -23,6 +22,8 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      mraa-dev-support \
      tools-debug \
      tools-develop \
+     tools-networking \
+     tools-archive \
      misc-tools \
      paho-mqtt \
      ext2-tools \
@@ -36,6 +37,7 @@ IMAGE_FEATURES += " \
 
 IMAGE_INSTALL_append = "\
     ${MACHINE_EXTRA_RRECOMMENDS} \
+    python3-modules \
 "
 
 inherit refosiot-image

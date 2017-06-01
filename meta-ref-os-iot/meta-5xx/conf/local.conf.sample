@@ -223,7 +223,7 @@ include ../.sstate_mirrors.conf
 # CONF_VERSION is increased each time build/conf/ changes incompatibly and is used to
 # track the version of this file when it was generated. This can safely be ignored if
 # this doesn't mean anything to you.
-CONF_VERSION = "1"
+CONF_VERSION = "2"
 
 #
 # ISAFW: https://github.com/01org/isafw
@@ -261,17 +261,13 @@ PACKAGE_DEBUG_SPLIT_STYLE = "debug-without-src"
 # development images and production images. See
 # doc/howtows/building-images.rst for further instructions.
 
-# Reference OS for IOT development images get built when uncommenting the
-# following line. Do not do this in production! The resulting images
-# are not secure.
-#
-require conf/distro/include/refkit-development.inc
-
-# When building production images, configure IMA signing
-# as described in meta-integrity/README.md if IMA is enabled
-# and uncomment the following line.
-#
-#require conf/distro/include/refkit-production.inc
+# When using the REFKIT_IMAGE_MODE = "development" as suggested here,
+# Reference OS IOT images by default enable certain development features (like
+# auto-login as root on local consoles) and use the pre-generated
+# private/public keys included in this layer. Real production
+# images should use REFKIT_IMAGE_MODE = "production" and must set their
+# own keys.
+REFKIT_IMAGE_MODE ?= "development"
 
 # systemd-bootchart is a useful tool to analyze and optimize a system
 # boot time. The tool is available in Reference OS for IOT and needs to be activated
@@ -290,4 +286,4 @@ require conf/distro/include/refkit-development.inc
 
 # Add installer to the package. To boot directly from the removable media,
 # without launching the installer, comment this out
-PACKAGE_INSTALL_append_pn-refkit-initramfs = " initramfs-framework-installer"
+PACKAGE_INSTALL_append_pn-refkit-initramfs-development = " initramfs-framework-installer"

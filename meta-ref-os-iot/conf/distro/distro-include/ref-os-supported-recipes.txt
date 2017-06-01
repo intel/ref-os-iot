@@ -373,7 +373,7 @@ man@core
 powertop@core
 systemtap@core
 trace-cmd@core
-opencl-headers-cxx@refkit
+opencl-headers-cxx@refkit-computervision
 kernel-headers@ref-os-iot
 meta-extsdk-toolchain@core
 mkl-dnn@ref-os-iot
@@ -386,3 +386,4 @@ python-dbus@meta-python
 vulkan@core
 assimp@ros-layer
 wxpython-phoenix@ref-os-iot
+systemd-serialgetty@core

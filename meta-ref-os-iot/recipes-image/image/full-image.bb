@@ -14,7 +14,6 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      realsense-dev \
      multimedia \
      iotivity \
-     python-runtime \
      nodejs-runtime \
      alsa \
      pulseaudio \
@@ -24,6 +23,9 @@ REF_OS_IMAGE_PKG_FEATURES += " \
      intel-xdk-support \
      tools-debug \
      tools-develop \
+     tools-interactive \
+     tools-networking \
+     tools-archive \
      mraa-dev-support \
      python3-extra \
      linux-firmware \
@@ -41,6 +43,7 @@ IMAGE_FEATURES += " \
 
 IMAGE_INSTALL_append = "\
     ${MACHINE_EXTRA_RRECOMMENDS} \
+    python3-modules \
 "
 
 LICENSE = "MIT"

@@ -44,7 +44,7 @@ FEATURE_PACKAGES_multimedia = "\
 			    "
 FEATURE_PACKAGES_alsa = "alsa-lib alsa-plugins alsa-utils"
 FEATURE_PACKAGES_vnc = "x11vnc"
-FEATURE_PACKAGES_text-utils = "gedit nano"
+FEATURE_PACKAGES_text-utils = "gedit nano gawk vim"
 FEATURE_PACKAGES_test-utils = "glmark2 fwts"
 
 #Pulseaudio support
@@ -81,6 +81,31 @@ FEATURE_PACKAGES_intel-xdk-support = "avahi-daemon avahi-utils nss nodejs-npm av
 
 FEATURE_PACKAGES_dev-packages = "libjpeg-turbo-dev opencv-dev kernel-headers"
 
+FEATURE_PACKAGES_tools-networking = " \
+                               curl \
+                               iputils-arping \
+                               iputils-clockdiff \
+                               iputils-ping \
+                               iputils-ping6 \
+                               iputils-tracepath \
+                               iputils-tracepath6 \
+                               iputils-traceroute6 \
+                               lowpan-tools \
+                               rsync \
+                               wget \
+"
+
+FEATURE_PACKAGES_tools-interactive = " \
+                               pciutils \
+                               procps \
+                               usbutils \
+"
+
+FEATURE_PACKAGES_tools-archive = " \
+                               bzip2 \
+                               gzip \
+"
+
 # tools to manipulate file sysytems
 FEATURE_PACKAGES_ext2-tools =" \
 		               e2fsprogs \
@@ -113,7 +138,6 @@ FEATURE_PACKAGES_misc-tools =" \
                                net-tools \
                                bison \
                                elfutils \
-                               nano \
 "
 FEATURE_PACKAGES_paho-mqtt =" \
                              paho-mqtt \
@@ -147,6 +171,9 @@ FEATURE_PACKAGES_profiling-tools =" \
                               powertop \
                               systemtap \
                               trace-cmd \
+                              atop \
+                              htop \
+                              iftop \
 "
 
 FEATURE_PACKAGES_python3-extra =" \

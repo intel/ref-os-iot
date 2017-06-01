@@ -25,7 +25,6 @@ REFKIT_IMAGE_EXTRA_INSTALL += "${REFKIT_IMAGE_NOSWUPD_EXTRA_INSTALL}"
 
 # REF OS IOT image features
 REF_OS_IMAGE_PKG_FEATURES = " \
-     tools-interactive \
      ssh-server-openssh \
      empty-root-password \
      usb-gadget-networking \
