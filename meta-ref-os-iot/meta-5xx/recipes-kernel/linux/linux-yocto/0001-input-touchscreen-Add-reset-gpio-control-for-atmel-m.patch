@@ -1,0 +1,102 @@
+From 982eba28e3f7490f085d7b326f9d478994084664 Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Wed, 31 May 2017 17:55:09 +0300
+Subject: [PATCH] input: touchscreen: Add reset gpio control for atmel-mxt
+
+This adds the possibility to define a HW reset GPIO in
+mxt_platform_data  structure. If the GPIO is not defined in
+the platform data, the code attempts to read it from the device's
+ACPI table, as index 1. This assumes that the index 0 is always
+the IRQ line.
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/input/touchscreen/atmel_mxt_ts.c   | 31 +++++++++++++++++++++++++++++-
+ include/linux/platform_data/atmel_mxt_ts.h |  1 +
+ 2 files changed, 31 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/input/touchscreen/atmel_mxt_ts.c b/drivers/input/touchscreen/atmel_mxt_ts.c
+index 64b666b..fb28c0d 100644
+--- a/drivers/input/touchscreen/atmel_mxt_ts.c
++++ b/drivers/input/touchscreen/atmel_mxt_ts.c
+@@ -28,6 +28,7 @@
+ #include <linux/of.h>
+ #include <linux/slab.h>
+ #include <asm/unaligned.h>
++#include <linux/gpio.h>
+ 
+ /* Firmware files */
+ #define MXT_FW_NAME		"maxtouch.fw"
+@@ -214,6 +215,7 @@ struct mxt_data {
+ 	struct mxt_object *object_table;
+ 	struct mxt_info info;
+ 	unsigned int irq;
++	unsigned int reset;
+ 	unsigned int max_x;
+ 	unsigned int max_y;
+ 	bool in_bootloader;
+@@ -2598,7 +2600,6 @@ static const struct mxt_platform_data *mxt_parse_acpi(struct i2c_client *client)
+ 	while (acpi_pdata->hid) {
+ 		if (!strcmp(acpi_device_hid(adev), acpi_pdata->hid))
+ 			return &acpi_pdata->pdata;
+-
+ 		acpi_pdata++;
+ 	}
+ 
+@@ -2636,6 +2637,7 @@ static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
+ {
+ 	struct mxt_data *data;
+ 	const struct mxt_platform_data *pdata;
++	struct gpio_desc *gpiod;
+ 	int error;
+ 
+ 	pdata = mxt_get_platform_data(client);
+@@ -2654,6 +2656,33 @@ static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
+ 	data->client = client;
+ 	data->pdata = pdata;
+ 	data->irq = client->irq;
++	data->reset = pdata->reset_gpio;
++
++	if (!pdata->reset_gpio) {
++		gpiod = devm_gpiod_get_index_optional(&client->dev,
++						      "mxt-ts reset", 1,
++						      GPIOD_OUT_LOW);
++		if(gpiod)
++			data->reset = desc_to_gpio(gpiod);
++	} else {
++		error = devm_gpio_request_one(&client->dev, data->reset,
++					      GPIOF_OUT_INIT_LOW,
++					      "mxt-ts reset");
++		if (error) {
++			dev_err(&client->dev,
++				"Failed to request reset GPIO %d err:%d\n",
++				data->reset, error);
++			data->reset = 0;
++		}
++	}
++
++	if (data->reset) {
++		/* Reset and wake up the device */
++		udelay(1); /* 90ns for mXT224 */
++		gpio_set_value(data->reset, 1);
++		msleep(100); /* 40ms for mXT224 */
++	}
++
+ 	i2c_set_clientdata(client, data);
+ 
+ 	init_completion(&data->bl_completion);
+diff --git a/include/linux/platform_data/atmel_mxt_ts.h b/include/linux/platform_data/atmel_mxt_ts.h
+index 695035a..1df0c48 100644
+--- a/include/linux/platform_data/atmel_mxt_ts.h
++++ b/include/linux/platform_data/atmel_mxt_ts.h
+@@ -26,6 +26,7 @@ struct mxt_platform_data {
+ 	u8 t19_num_keys;
+ 	const unsigned int *t19_keymap;
+ 	enum mxt_suspend_mode suspend_mode;
++	unsigned reset_gpio;
+ };
+ 
+ #endif /* __LINUX_PLATFORM_DATA_ATMEL_MXT_TS_H */
+-- 
+2.7.4
+
