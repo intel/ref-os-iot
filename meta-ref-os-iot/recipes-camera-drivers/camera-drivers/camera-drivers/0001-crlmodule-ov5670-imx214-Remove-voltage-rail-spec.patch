@@ -1,0 +1,94 @@
+From bc7577ec2f8b4f24cb71d63e28539b1dff2db524 Mon Sep 17 00:00:00 2001
+From: Soren Friis <soren.friis@intel.com>
+Date: Tue, 30 May 2017 13:44:30 +0300
+Subject: [PATCH] crlmodule: ov5670 & imx214: Remove voltage rail spec
+
+The camera sensor driver had definitions for the
+voltage rails. However, these were not being used
+since the BIOS configure the voltage rails and
+associate those with the video devices.
+
+They were causing warning prints so remove them
+to clean up the boot log.
+
+Signed-off-by: Soren Friis <soren.friis@intel.com>
+---
+ .../media/i2c/crlmodule/crl_imx214_configuration.h | 15 +++---------
+ .../media/i2c/crlmodule/crl_ov5670_configuration.h | 28 +++-------------------
+ 2 files changed, 6 insertions(+), 37 deletions(-)
+
+diff --git a/drivers/media/i2c/crlmodule/crl_imx214_configuration.h b/drivers/media/i2c/crlmodule/crl_imx214_configuration.h
+index bf94552..ea285f5 100644
+--- a/drivers/media/i2c/crlmodule/crl_imx214_configuration.h
++++ b/drivers/media/i2c/crlmodule/crl_imx214_configuration.h
+@@ -1351,18 +1351,9 @@ static struct crl_v4l2_ctrl imx214_v4l2_ctrls[] = {
+ 
+ /* Power items, they are enabled in the order they are listed here */
+ static struct crl_power_seq_entity imx214_power_items[] = {
+-	{
+-		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
+-		.ent_name = "VANA",
+-		.val = 2700000,
+-		.delay = 30000,
+-	},
+-	{
+-		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
+-		.ent_name = "VDIG",
+-		.val = 1100000,
+-		.delay = 0,
+-	},
++	/* Removed voltage rails since those are automatically
++	 * associated with the video device in the BIOS configuration
++	 * and automatically turned on and off by the power mgmt framework */
+ 	{
+ 		.type = CRL_POWER_ETY_CLK_FRAMEWORK,
+ 		.val = 24000000,
+diff --git a/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h b/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h
+index b29545b..d76366d 100644
+--- a/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h
++++ b/drivers/media/i2c/crlmodule/crl_ov5670_configuration.h
+@@ -1064,30 +1064,9 @@ static struct crl_frame_desc ov5670_frame_desc[] = {
+ 
+ /* Power items, they are enabled in the order they are listed here */
+ static const struct crl_power_seq_entity ov5670_power_items[] = {
+-	{
+-		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
+-		.ent_name = "VANA",
+-		.val = 2800000,
+-		.delay = 0,
+-	},
+-	{
+-		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
+-		.ent_name = "VDIG",
+-		.val = 1200000,
+-		.delay = 0,
+-	},
+-	{
+-		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
+-		.ent_name = "VIO",
+-		.val = 1800000,
+-		.delay = 0,
+-	},
+-	{
+-		.type = CRL_POWER_ETY_REGULATOR_FRAMEWORK,
+-		.ent_name = "VAF",
+-		.val = 3000000,
+-		.delay = 2000,
+-	},
++	/* Removed voltage rails since those are automatically
++	 * associated with the video device in the BIOS configuration
++	 * and automatically turned on and off by the power mgmt framework */
+ 	{
+ 		.type = CRL_POWER_ETY_CLK_FRAMEWORK,
+ 		.val = 24000000,
+@@ -1100,7 +1079,6 @@ static const struct crl_power_seq_entity ov5670_power_items[] = {
+ 	{
+ 		.type = CRL_POWER_ETY_GPIO_FROM_PDATA_BY_NUMBER,
+ 	},
+-
+ };
+ 
+ static struct crl_sensor_configuration ov5670_crl_configuration = {
+-- 
+2.7.4
+
