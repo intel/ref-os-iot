@@ -36,6 +36,7 @@ SRC_URI_append = " file://0012-ASoc-bxt-florida-Clean-up-unused-mappings-and-str
 SRC_URI_append = " file://0013-ASoc-bxt_florida-Ensure-that-codec-driver-is-loaded.patch"
 SRC_URI_append = " file://0014-mfd-arizona-Request-interrupt-gpio-for-arizona-to-fi.patch"
 SRC_URI_append = " file://0015-REVERTME-HACK-Fix-NHLT-sspsp-field-for-bxt-SSP0.patch"
+SRC_URI_append = " file://0001-gpio-gpio-wcove-Correct-wcove-gpio-register-address-.patch"
 
 do_compile_kernelmodules_append() {
     rm -rf ${B}/drivers/net/wireless/intel/iwlwifi
