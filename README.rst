@@ -8,7 +8,8 @@ Intel(R) REF-OS-IOT is a Linux*-based OS designed to work elegantly and efficien
 INSTRUCTIONS
 ################
 These instructions are for building with bitbake directly and assume basic knowledge of build environments and processes. For more information on bitbake see https://www.yoctoproject.org/tools-resources/projects/bitbake
-NOTE: Instructions for Docker* can be found in the IoT Reference OS Kit for Intel(R) Architecture project, see https://github.com/intel/intel-iot-refkit
+NOTE: Instructions for Docker* can be found in the IoT Reference OS Kit for Intel(R) Architecture project, see https://github.com/intel/intel-iot-refkit.
+NOTE: The method described below needs around 135GB of disk space.
 
 Setup Ubuntu 16.04 host for build:
 =====================================
