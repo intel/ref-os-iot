@@ -60,3 +60,6 @@ RDEPENDS_nativesdk-packagegroup-sdk-host_remove += "nativesdk-dnf"
 # Temporary fix to packagegroup-python-runtime. Waiting for intel-iot-refkit to fix it.
 PROVIDES_remove_pn-python3 = "python3-gdbm"
 RDEPENDS_python3-modules_remove = "python3-gdbm"
+PACKAGES_remove_pn-python = "python-gdbm"
+PROVIDES_remove_pn-python = "python-gdbm"
+RDEPENDS_python-modules_remove = "python-gdbm"

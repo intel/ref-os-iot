@@ -38,6 +38,7 @@ IMAGE_FEATURES += " \
 IMAGE_INSTALL_append = "\
     ${MACHINE_EXTRA_RRECOMMENDS} \
     python3-modules \
+    python-modules \
 "
 
 inherit refosiot-image
