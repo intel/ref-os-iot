@@ -1,0 +1,65 @@
+From fec730d6300b04080b8794fe09ca9c5f81b078f4 Mon Sep 17 00:00:00 2001
+From: Sagar Arun Kamble <sagar.a.kamble@intel.com>
+Date: Wed, 5 Apr 2017 15:51:50 +0530
+Subject: [PATCH 2/3] drm/i915: Suspend GuC prior to GPU Reset during GEM
+ suspend
+
+commit 63987bfebd8869e00b34e2bdd12e59d71909bec0 upstream.
+
+i915 is currently doing a full GPU reset at the end of
+i915_gem_suspend() followed by GuC suspend in i915_drm_suspend(). This
+GPU reset clobbers the GuC, causing the suspend request to then fail,
+leaving the GuC in an undefined state. We need to tell the GuC to
+suspend before we do the direct intel_gpu_reset().
+
+v2: Commit message update. (Chris, Daniele)
+
+Fixes: 1c777c5d1dcd ("drm/i915/hsw: Fix GPU hang during resume from S3-devices state")
+Cc: Jeff McGee <jeff.mcgee@intel.com>
+Cc: Daniele Ceraolo Spurio <daniele.ceraolospurio@intel.com>
+Cc: Chris Wilson <chris@chris-wilson.co.uk>
+Cc: Joonas Lahtinen <joonas.lahtinen@linux.intel.com>
+Cc: Imre Deak <imre.deak@intel.com>
+Cc: Mika Kuoppala <mika.kuoppala@intel.com>
+Signed-off-by: Sagar Arun Kamble <sagar.a.kamble@intel.com>
+Link: http://patchwork.freedesktop.org/patch/msgid/1491387710-20553-1-git-send-email-sagar.a.kamble@intel.com
+Reviewed-by: Daniele Ceraolo Spurio <daniele.ceraolospurio@intel.com>
+Acked-by: Chris Wilson <chris@chris-wilson.co.uk>
+Signed-off-by: Chris Wilson <chris@chris-wilson.co.uk>
+(cherry picked from commit fd08923384385400101c71ac0d21d37d6b23b00d)
+Signed-off-by: Jani Nikula <jani.nikula@intel.com>
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/gpu/drm/i915/i915_drv.c | 2 --
+ drivers/gpu/drm/i915/i915_gem.c | 2 ++
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/i915/i915_drv.c b/drivers/gpu/drm/i915/i915_drv.c
+index 96a63dc..d0dcba5 100644
+--- a/drivers/gpu/drm/i915/i915_drv.c
++++ b/drivers/gpu/drm/i915/i915_drv.c
+@@ -1485,8 +1485,6 @@ static int i915_drm_suspend(struct drm_device *dev)
+ 		goto out;
+ 	}
+ 
+-	intel_guc_suspend(dev_priv);
+-
+ 	intel_display_suspend(dev);
+ 
+ 	intel_dp_mst_suspend(dev);
+diff --git a/drivers/gpu/drm/i915/i915_gem.c b/drivers/gpu/drm/i915/i915_gem.c
+index 62bc2ae..e94e340 100644
+--- a/drivers/gpu/drm/i915/i915_gem.c
++++ b/drivers/gpu/drm/i915/i915_gem.c
+@@ -4366,6 +4366,8 @@ int i915_gem_suspend(struct drm_i915_private *dev_priv)
+ 	i915_gem_context_lost(dev_priv);
+ 	mutex_unlock(&dev->struct_mutex);
+ 
++	intel_guc_suspend(dev_priv);
++
+ 	cancel_delayed_work_sync(&dev_priv->gpu_error.hangcheck_work);
+ 	cancel_delayed_work_sync(&dev_priv->gt.retire_work);
+ 
+-- 
+2.7.4
+

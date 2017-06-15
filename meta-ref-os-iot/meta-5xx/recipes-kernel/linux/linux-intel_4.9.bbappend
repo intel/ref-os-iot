@@ -37,6 +37,9 @@ SRC_URI_append = " file://0013-ASoc-bxt_florida-Ensure-that-codec-driver-is-load
 SRC_URI_append = " file://0014-mfd-arizona-Request-interrupt-gpio-for-arizona-to-fi.patch"
 SRC_URI_append = " file://0015-REVERTME-HACK-Fix-NHLT-sspsp-field-for-bxt-SSP0.patch"
 SRC_URI_append = " file://0001-gpio-gpio-wcove-Correct-wcove-gpio-register-address-.patch"
+SRC_URI_append = " file://0001-drm-i915-Fix-kernel-crash-after-GPU-HANG.patch"
+SRC_URI_append = " file://0002-drm-i915-Suspend-GuC-prior-to-GPU-Reset-during-GEM-s.patch"
+SRC_URI_append = " file://0003-drm-i915-guc-enable-GuC-loading-submission-by-defaul.patch"
 
 do_compile_kernelmodules_append() {
     rm -rf ${B}/drivers/net/wireless/intel/iwlwifi

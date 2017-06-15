@@ -1,0 +1,59 @@
+From 23ccae511802b3fcb95bf6bf4037e142107975e1 Mon Sep 17 00:00:00 2001
+From: Dave Gordon <david.s.gordon@intel.com>
+Date: Tue, 7 Jun 2016 09:14:51 +0100
+Subject: [PATCH 3/3] drm/i915/guc: enable GuC loading & submission by default
+
+commit 041824ee25cfc535ba2d9a22c217df735ea2471e upstream.
+
+The recent patch
+. fce91f2 drm/i915/guc: add enable_guc_loading parameter
+enabled GuC loading and submission by default, but as issues
+were found with warnings being issued during suspend-resume
+cycles, GuC loading was disabled by default, by patch
+. 2335986 drm/i915/guc: Disable automatic GuC firmware loading
+
+Those warnings have been resolved, so this patch re-enables GuC
+loading and submission by default.
+
+Signed-off-by: Dave Gordon <david.s.gordon@intel.com>
+Reviewed-by: Tvrtko Ursulin <tvrtko.ursulin@intel.com>
+Signed-off-by: Tvrtko Ursulin <tvrtko.ursulin@intel.com>
+Link: http://patchwork.freedesktop.org/patch/msgid/1465287291-2187-1-git-send-email-david.s.gordon@intel.com
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/gpu/drm/i915/i915_params.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/i915/i915_params.c b/drivers/gpu/drm/i915/i915_params.c
+index b6a7e363..0f28c5d 100644
+--- a/drivers/gpu/drm/i915/i915_params.c
++++ b/drivers/gpu/drm/i915/i915_params.c
+@@ -56,8 +56,8 @@ struct i915_params i915 __read_mostly = {
+ 	.verbose_state_checks = 1,
+ 	.nuclear_pageflip = 0,
+ 	.edp_vswing = 0,
+-	.enable_guc_loading = 0,
+-	.enable_guc_submission = 0,
++	.enable_guc_loading = -1,
++	.enable_guc_submission = -1,
+ 	.guc_log_level = -1,
+ 	.guc_firmware_path = NULL,
+ 	.huc_firmware_path = NULL,
+@@ -221,12 +221,12 @@ MODULE_PARM_DESC(edp_vswing,
+ module_param_named_unsafe(enable_guc_loading, i915.enable_guc_loading, int, 0400);
+ MODULE_PARM_DESC(enable_guc_loading,
+ 		"Enable GuC firmware loading "
+-		"(-1=auto, 0=never [default], 1=if available, 2=required)");
++		"(-1=auto [default], 0=never, 1=if available, 2=required)");
+ 
+ module_param_named_unsafe(enable_guc_submission, i915.enable_guc_submission, int, 0400);
+ MODULE_PARM_DESC(enable_guc_submission,
+ 		"Enable GuC submission "
+-		"(-1=auto, 0=never [default], 1=if available, 2=required)");
++		"(-1=auto [default], 0=never, 1=if available, 2=required)");
+ 
+ module_param_named(guc_log_level, i915.guc_log_level, int, 0400);
+ MODULE_PARM_DESC(guc_log_level,
+-- 
+2.7.4
+
