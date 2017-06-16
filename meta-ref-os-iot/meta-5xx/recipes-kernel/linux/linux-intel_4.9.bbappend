@@ -11,6 +11,7 @@ SRC_URI_append = " file://enable_mtp.cfg"
 SRC_URI_append = " file://enable_u_serial_console.cfg"
 SRC_URI_append = " file://kernel_dynamic_debug.cfg"
 SRC_URI_append = " file://wcove_clk.cfg"
+SRC_URI_append = " file://wcove_tmu.cfg"
 SRC_URI_append = " file://0001-Add-detecting-intel-board-for-atmel_mxt-driver.patch"
 SRC_URI_append = " file://0002-xDCI-runtime-suspend-fix.patch"
 SRC_URI_append = " file://0003-Enable-autosuspend-after-dwc3_resume.patch"
@@ -40,6 +41,7 @@ SRC_URI_append = " file://0001-gpio-gpio-wcove-Correct-wcove-gpio-register-addre
 SRC_URI_append = " file://0001-drm-i915-Fix-kernel-crash-after-GPU-HANG.patch"
 SRC_URI_append = " file://0002-drm-i915-Suspend-GuC-prior-to-GPU-Reset-during-GEM-s.patch"
 SRC_URI_append = " file://0003-drm-i915-guc-enable-GuC-loading-submission-by-defaul.patch"
+SRC_URI_append = " file://0001-platform-x86-Add-Whiskey-Cove-PMIC-TMU-support.patch"
 
 do_compile_kernelmodules_append() {
     rm -rf ${B}/drivers/net/wireless/intel/iwlwifi
