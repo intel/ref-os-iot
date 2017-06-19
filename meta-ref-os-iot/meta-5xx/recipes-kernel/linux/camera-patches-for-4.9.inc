@@ -40,4 +40,5 @@ SRC_URI_append = " file://0037-media-Make-events-on-request-completion-optional-
 SRC_URI_append = " file://0038-media-Add-poll-support.patch"
 SRC_URI_append = " file://0039-v4l-subdev-compat-Implement-handling-for-VIDIOC_SUBD.patch"
 SRC_URI_append = " file://0001-Add-Kconfig-for-Intel-IPU4-driver.patch"
+SRC_URI_append = " file://0001-v4l2-core-Don-t-sync-buffer-if-requested-to-skip.patch"
 SRC_URI_append = " file://ipu4-driver.cfg"

@@ -1,0 +1,147 @@
+From e6b66be810e47a085413cb307f3927b7902061fd Mon Sep 17 00:00:00 2001
+From: Samu Onkalo <samu.onkalo@intel.com>
+Date: Wed, 5 Aug 2015 14:57:49 +0300
+Subject: [PATCH] v4l2-core: Don't sync buffer if requested to skip
+
+User can request to skip cache maintenance operations.
+If cpu is not touching the buffers but passes them
+to another HW block cache maintenance could be skipped.
+
+Change-Id: I5b3877b28ed3cc6fc3db0765270f6079152c57fd
+Signed-off-by: Samu Onkalo <samu.onkalo@intel.com>
+Signed-off-by: Anttu Koski <anttu.koski@intel.com>
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/media/v4l2-core/videobuf2-core.c | 51 ++++++++++++++++++++++++++++----
+ 1 file changed, 45 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/media/v4l2-core/videobuf2-core.c b/drivers/media/v4l2-core/videobuf2-core.c
+index 21900202..1506639 100644
+--- a/drivers/media/v4l2-core/videobuf2-core.c
++++ b/drivers/media/v4l2-core/videobuf2-core.c
+@@ -24,7 +24,9 @@
+ #include <linux/freezer.h>
+ #include <linux/kthread.h>
+ 
++#include <linux/videodev2.h>
+ #include <media/videobuf2-core.h>
++#include <media/videobuf2-v4l2.h>
+ #include <media/v4l2-mc.h>
+ 
+ #include <trace/events/vb2.h>
+@@ -189,6 +191,26 @@ static void __vb2_queue_cancel(struct vb2_queue *q);
+ static void __enqueue_in_driver(struct vb2_buffer *vb);
+ 
+ /**
++ * __sync_buffers_prepare() - sync all buffers at prepare phase
++ */
++static void __sync_buffers_prepare(struct vb2_buffer *vb)
++{
++	unsigned int plane;
++	for (plane = 0; plane < vb->num_planes; ++plane)
++		call_void_memop(vb, prepare, vb->planes[plane].mem_priv);
++}
++
++/**
++ * __sync_buffers_finish() - sync all buffers at finish phase
++ */
++static void __sync_buffers_finish(struct vb2_buffer *vb)
++{
++	unsigned int plane;
++	for (plane = 0; plane < vb->num_planes; ++plane)
++		call_void_memop(vb, finish, vb->planes[plane].mem_priv);
++}
++
++/**
+  * __vb2_buf_mem_alloc() - allocate video memory for the given buffer
+  */
+ static int __vb2_buf_mem_alloc(struct vb2_buffer *vb)
+@@ -888,8 +910,9 @@ EXPORT_SYMBOL_GPL(vb2_plane_cookie);
+ void vb2_buffer_done(struct vb2_buffer *vb, enum vb2_buffer_state state)
+ {
+ 	struct vb2_queue *q = vb->vb2_queue;
++	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
++
+ 	unsigned long flags;
+-	unsigned int plane;
+ 
+ 	if (WARN_ON(vb->state != VB2_BUF_STATE_ACTIVE))
+ 		return;
+@@ -911,8 +934,10 @@ void vb2_buffer_done(struct vb2_buffer *vb, enum vb2_buffer_state state)
+ 			vb->index, state);
+ 
+ 	/* sync buffers */
+-	for (plane = 0; plane < vb->num_planes; ++plane)
+-		call_void_memop(vb, finish, vb->planes[plane].mem_priv);
++	if (!(vbuf->flags &
++	      (V4L2_BUF_FLAG_NO_CACHE_INVALIDATE |
++	       V4L2_BUF_FLAG_NO_CACHE_CLEAN)))
++		__sync_buffers_finish(vb);
+ 
+ 	spin_lock_irqsave(&q->done_lock, flags);
+ 	if (state == VB2_BUF_STATE_QUEUED ||
+@@ -974,6 +999,7 @@ static int __qbuf_mmap(struct vb2_buffer *vb, const void *pb)
+ static int __qbuf_userptr(struct vb2_buffer *vb, const void *pb)
+ {
+ 	struct vb2_plane planes[VB2_MAX_PLANES];
++	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
+ 	struct vb2_queue *q = vb->vb2_queue;
+ 	void *mem_priv;
+ 	unsigned int plane;
+@@ -1052,6 +1078,11 @@ static int __qbuf_userptr(struct vb2_buffer *vb, const void *pb)
+ 	}
+ 
+ 	if (reacquired) {
++		/* sync buffers once */
++		if (vbuf->flags &
++		    (V4L2_BUF_FLAG_NO_CACHE_INVALIDATE |
++		     V4L2_BUF_FLAG_NO_CACHE_CLEAN))
++			__sync_buffers_prepare(vb);
+ 		/*
+ 		 * One or more planes changed, so we must call buf_init to do
+ 		 * the driver-specific initialization on the newly acquired
+@@ -1092,6 +1123,7 @@ static int __qbuf_userptr(struct vb2_buffer *vb, const void *pb)
+ static int __qbuf_dmabuf(struct vb2_buffer *vb, const void *pb)
+ {
+ 	struct vb2_plane planes[VB2_MAX_PLANES];
++	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
+ 	struct vb2_queue *q = vb->vb2_queue;
+ 	void *mem_priv;
+ 	unsigned int plane;
+@@ -1195,6 +1227,11 @@ static int __qbuf_dmabuf(struct vb2_buffer *vb, const void *pb)
+ 	}
+ 
+ 	if (reacquired) {
++		/* sync buffers once */
++		if (vbuf->flags &
++		    (V4L2_BUF_FLAG_NO_CACHE_INVALIDATE |
++		     V4L2_BUF_FLAG_NO_CACHE_CLEAN))
++			__sync_buffers_prepare(vb);
+ 		/*
+ 		 * Call driver-specific initialization on the newly acquired buffer,
+ 		 * if provided.
+@@ -1227,7 +1264,7 @@ static int __qbuf_dmabuf(struct vb2_buffer *vb, const void *pb)
+ static void __enqueue_in_driver(struct vb2_buffer *vb)
+ {
+ 	struct vb2_queue *q = vb->vb2_queue;
+-	unsigned int plane;
++	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
+ 
+ 	vb->state = VB2_BUF_STATE_ACTIVE;
+ 	atomic_inc(&q->owned_by_drv_count);
+@@ -1235,8 +1272,10 @@ static void __enqueue_in_driver(struct vb2_buffer *vb)
+ 	trace_vb2_buf_queue(q, vb);
+ 
+ 	/* sync buffers */
+-	for (plane = 0; plane < vb->num_planes; ++plane)
+-		call_void_memop(vb, prepare, vb->planes[plane].mem_priv);
++	if (!(vbuf->flags &
++	      (V4L2_BUF_FLAG_NO_CACHE_INVALIDATE |
++	       V4L2_BUF_FLAG_NO_CACHE_CLEAN)))
++		__sync_buffers_prepare(vb);
+ 
+ 	call_void_vb_qop(vb, buf_queue, vb);
+ }
+-- 
+2.7.4
+
