@@ -102,7 +102,7 @@ index 28139ed..899fb8a 100644
 +		 */
 +		if (from_pad != -1 &&
 +		    !media_entity_has_route(entity, from_pad, local->index)) {
-+			link_top(graph)++;
++			link_top(graph)=link_top(graph)->next;
 +			continue;
 +		}
  

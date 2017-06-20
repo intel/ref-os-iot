@@ -1,4 +1,4 @@
-From 718ea8b1787712e8923db5329b66c9cf6db23ab4 Mon Sep 17 00:00:00 2001
+From ebfaeee9cc55ee06c35ee66e72f5f01a6725cbd0 Mon Sep 17 00:00:00 2001
 From: Jianxu Zheng <jian.xu.zheng@intel.com>
 Date: Wed, 22 Mar 2017 09:40:12 +0530
 Subject: [PATCH] media:entity: graph walk starting from pad
@@ -20,7 +20,7 @@ Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
  3 files changed, 11 insertions(+), 12 deletions(-)
 
 diff --git a/drivers/media/media-entity.c b/drivers/media/media-entity.c
-index e2c8d43..2ff70a2 100644
+index fcf2c14..3748ee9 100644
 --- a/drivers/media/media-entity.c
 +++ b/drivers/media/media-entity.c
 @@ -335,14 +335,14 @@ void media_entity_graph_walk_cleanup(struct media_entity_graph *graph)
@@ -48,7 +48,7 @@ index e2c8d43..2ff70a2 100644
 -		if (from_pad != -1 &&
 -		    !media_entity_has_route(entity, from_pad, local->index)) {
 +		if (!media_entity_has_route(entity, from_pad, local->index)) {
- 			link_top(graph)++;
+ 			link_top(graph)=link_top(graph)->next;
  			continue;
  		}
 @@ -431,7 +430,7 @@ __must_check int __media_entity_pipeline_start(struct media_entity *entity,
