@@ -1,0 +1,42 @@
+From 7edb32e75fca391f725ef8c874fb463684afa52b Mon Sep 17 00:00:00 2001
+From: Serge Hallyn <serge.hallyn@ubuntu.com>
+Date: Thu, 6 Aug 2015 00:10:13 -0500
+Subject: [PATCH] Fix a resource leak in libmis/idmapping.c
+
+Reported at https://alioth.debian.org/tracker/?func=detail&atid=411478&aid=315136&group_id=30580
+by Alejandro Joya.
+
+Signed-off-by: Serge Hallyn <serge.hallyn@ubuntu.com>
+---
+ libmisc/idmapping.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/libmisc/idmapping.c b/libmisc/idmapping.c
+index 714c29e..34de3ce 100644
+--- a/libmisc/idmapping.c
++++ b/libmisc/idmapping.c
+@@ -71,12 +71,18 @@ struct map_range *get_map_ranges(int ranges, int argc, char **argv)
+ 	/* Gather up the ranges from the command line */
+ 	mapping = mappings;
+ 	for (idx = 0; idx < ranges; idx++, argidx += 3, mapping++) {
+-		if (!getulong(argv[argidx + 0], &mapping->upper))
++		if (!getulong(argv[argidx + 0], &mapping->upper)) {
++			free(mappings);
+ 			return NULL;
+-		if (!getulong(argv[argidx + 1], &mapping->lower))
++		}
++		if (!getulong(argv[argidx + 1], &mapping->lower)) {
++			free(mappings);
+ 			return NULL;
+-		if (!getulong(argv[argidx + 2], &mapping->count))
++		}
++		if (!getulong(argv[argidx + 2], &mapping->count)) {
++			free(mappings);
+ 			return NULL;
++		}
+ 	}
+ 	return mappings;
+ }
+-- 
+2.7.4
+

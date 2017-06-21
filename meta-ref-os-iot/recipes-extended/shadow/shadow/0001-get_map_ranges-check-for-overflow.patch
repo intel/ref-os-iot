@@ -1,0 +1,37 @@
+From 7f5a14817d304c4f9ac0aff864f27d95a8cc75ca Mon Sep 17 00:00:00 2001
+From: Serge Hallyn <serge@hallyn.com>
+Date: Sun, 31 Jul 2016 12:55:44 -0500
+Subject: [PATCH] get_map_ranges: check for overflow
+
+The kernel accepts u32 values, so make sure that userspace
+is not passing large values.
+
+Signed-off-by: Serge Hallyn <serge@hallyn.com>
+---
+ libmisc/idmapping.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/libmisc/idmapping.c b/libmisc/idmapping.c
+index 0dce634..f105a41 100644
+--- a/libmisc/idmapping.c
++++ b/libmisc/idmapping.c
+@@ -83,6 +83,16 @@ struct map_range *get_map_ranges(int ranges, int argc, char **argv)
+ 			free(mappings);
+ 			return NULL;
+ 		}
++		if (mapping->upper > UINT_MAX ||
++			mapping->lower > UINT_MAX ||
++			mapping->count > UINT_MAX)  {
++			free(mappings);
++			return NULL;
++		}
++		if (mapping->lower + mapping->count < mapping->lower) {
++			free(mapping);
++			return NULL;
++		}
+ 	}
+ 	return mappings;
+ }
+-- 
+2.7.4
+

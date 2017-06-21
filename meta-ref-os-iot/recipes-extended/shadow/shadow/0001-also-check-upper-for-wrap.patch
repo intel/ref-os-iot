@@ -1,0 +1,26 @@
+From 94da3dc5c853e386a70ce45aeaafb1d61f55fe23 Mon Sep 17 00:00:00 2001
+From: Serge Hallyn <serge@hallyn.com>
+Date: Fri, 5 Aug 2016 17:16:48 -0500
+Subject: [PATCH] also check upper for wrap
+
+---
+ libmisc/idmapping.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/libmisc/idmapping.c b/libmisc/idmapping.c
+index f105a41..625a07a 100644
+--- a/libmisc/idmapping.c
++++ b/libmisc/idmapping.c
+@@ -89,7 +89,8 @@ struct map_range *get_map_ranges(int ranges, int argc, char **argv)
+ 			free(mappings);
+ 			return NULL;
+ 		}
+-		if (mapping->lower + mapping->count < mapping->lower) {
++		if (mapping->lower + mapping->count < mapping->lower ||
++				mapping->upper + mapping->count < mapping->upper) {
+ 			free(mapping);
+ 			return NULL;
+ 		}
+-- 
+2.7.4
+

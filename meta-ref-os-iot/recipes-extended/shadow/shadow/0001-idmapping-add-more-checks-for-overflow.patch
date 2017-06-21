@@ -1,0 +1,49 @@
+From ff2baed5dbf81e8967b805889f565fedb48600df Mon Sep 17 00:00:00 2001
+From: Serge Hallyn <serge@hallyn.com>
+Date: Sun, 14 Aug 2016 18:05:00 -0500
+Subject: [PATCH] idmapping: add more checks for overflow
+
+At this point they are redundant but should be safe.  Thanks to
+Sebastian Krahmer for the first check.
+---
+ libmisc/idmapping.c | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/libmisc/idmapping.c b/libmisc/idmapping.c
+index 625a07a..db254fc 100644
+--- a/libmisc/idmapping.c
++++ b/libmisc/idmapping.c
+@@ -83,16 +83,26 @@ struct map_range *get_map_ranges(int ranges, int argc, char **argv)
+ 			free(mappings);
+ 			return NULL;
+ 		}
++		if (ULONG_MAX - mapping->upper <= mapping->count || ULONG_MAX - mapping->lower <= mapping->count) {
++			fprintf(stderr, _( "%s: subuid overflow detected.\n"), Prog);
++			exit(EXIT_FAILURE);
++		}
+ 		if (mapping->upper > UINT_MAX ||
+ 			mapping->lower > UINT_MAX ||
+ 			mapping->count > UINT_MAX)  {
+-			free(mappings);
+-			return NULL;
++			fprintf(stderr, _( "%s: subuid overflow detected.\n"), Prog);
++			exit(EXIT_FAILURE);
++		}
++		if (mapping->lower + mapping->count > UINT_MAX ||
++				mapping->upper + mapping->count > UINT_MAX) {
++			fprintf(stderr, _( "%s: subuid overflow detected.\n"), Prog);
++			exit(EXIT_FAILURE);
+ 		}
+ 		if (mapping->lower + mapping->count < mapping->lower ||
+ 				mapping->upper + mapping->count < mapping->upper) {
+-			free(mapping);
+-			return NULL;
++			/* this one really shouldn't be possible given previous checks */
++			fprintf(stderr, _( "%s: subuid overflow detected.\n"), Prog);
++			exit(EXIT_FAILURE);
+ 		}
+ 	}
+ 	return mappings;
+-- 
+2.7.4
+
