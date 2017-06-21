@@ -45,6 +45,8 @@ IMAGE_INSTALL_append = "\
     ${MACHINE_EXTRA_RRECOMMENDS} \
     python3-modules \
     python-modules \
+    python-mraa \
+    python-upm \
 "
 
 LICENSE = "MIT"
