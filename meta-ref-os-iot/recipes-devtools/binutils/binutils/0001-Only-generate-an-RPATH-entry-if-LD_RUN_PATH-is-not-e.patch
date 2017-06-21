@@ -1,0 +1,41 @@
+From 68e2328dce822d83ba243bb632e2bbe376e60c78 Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Mon, 2 Mar 2015 01:27:17 +0000
+Subject: [PATCH] Only generate an RPATH entry if LD_RUN_PATH is not empty
+
+for cases where -rpath isn't specified. debian (#151024)
+
+Upstream-Status: Pending
+
+Signed-off-by: Chris Chimelis <chris@debian.org>
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+Signed-off-by: Tuomas Katila <tuomas.katila@intel.com>
+---
+ ld/emultempl/elf32.em | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/ld/emultempl/elf32.em b/ld/emultempl/elf32.em
+index 325d847..6803628 100644
+--- a/ld/emultempl/elf32.em
++++ b/ld/emultempl/elf32.em
+@@ -1461,6 +1461,8 @@ fragment <<EOF
+ 	      && command_line.rpath == NULL)
+ 	    {
+ 	      path = (const char *) getenv ("LD_RUN_PATH");
++	      if ((path) && (strlen (path) == 0))
++		  path = NULL;
+ 	      if (path
+ 		  && gld${EMULATION_NAME}_search_needed (path, &n, force))
+ 		break;
+@@ -1738,6 +1740,8 @@ gld${EMULATION_NAME}_before_allocation (void)
+   rpath = command_line.rpath;
+   if (rpath == NULL)
+     rpath = (const char *) getenv ("LD_RUN_PATH");
++  if ((rpath) && (strlen (rpath) == 0))
++    rpath = NULL;
+ 
+   for (abfd = link_info.input_bfds; abfd; abfd = abfd->link.next)
+     if (bfd_get_flavour (abfd) == bfd_target_elf_flavour)
+-- 
+2.7.4
+
