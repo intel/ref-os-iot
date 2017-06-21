@@ -1,0 +1,156 @@
+From 2d1127a47fd5a52dd809adeaa81af65a31c85f74 Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Wed, 21 Jun 2017 14:44:37 +0300
+Subject: [PATCH] Revert to use old intel_ipu4_pipeline_pm functions
+
+This reverts back to use intel_ipu4_pipeline_pm functions even
+with newer kernels. The current pm fuctions in the kernel media
+drivers don't support all the IPU4 BE SOC pad configurations, and
+in multiple camera cases it is easier to build the necessary hacks
+on top of the old pm funcs.
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ .../pci/intel-ipu4/intel-ipu4-isys-compat-defs.h   |  2 --
+ .../media/pci/intel-ipu4/intel-ipu4-isys-video.c   | 13 +------------
+ drivers/media/pci/intel-ipu4/intel-ipu4-isys.c     | 22 ++++++++++++----------
+ 3 files changed, 13 insertions(+), 24 deletions(-)
+
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu4-isys-compat-defs.h b/drivers/media/pci/intel-ipu4/intel-ipu4-isys-compat-defs.h
+index 3667749..7f2b765 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu4-isys-compat-defs.h
++++ b/drivers/media/pci/intel-ipu4/intel-ipu4-isys-compat-defs.h
+@@ -17,9 +17,7 @@
+ #ifndef INTEL_IPU4_ISYS_COMPAT_DEFS_H
+ #define INTEL_IPU4_ISYS_COMPAT_DEFS_H
+ 
+-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+ int intel_ipu4_pipeline_pm_use(struct media_entity *entity, int use);
+-#endif
+ int intel_ipu4_isys_isr_run(void *ptr);
+ 
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu4-isys-video.c b/drivers/media/pci/intel-ipu4/intel-ipu4-isys-video.c
+index 2b7b853..8bed2b5 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu4-isys-video.c
++++ b/drivers/media/pci/intel-ipu4/intel-ipu4-isys-video.c
+@@ -180,11 +180,8 @@ static int video_open(struct file *file)
+ 	if (rval)
+ 		goto out_power_down;
+ 
+-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+ 	rval = intel_ipu4_pipeline_pm_use(&av->vdev.entity, 1);
+-#else
+-	rval = v4l2_pipeline_pm_use(&av->vdev.entity, 1);
+-#endif
++
+ 	if (rval)
+ 		goto out_v4l2_fh_release;
+ 
+@@ -262,11 +259,7 @@ out_lib_init:
+ out_intel_ipu4_pipeline_pm_use:
+ 	isys->video_opened--;
+ 	mutex_unlock(&isys->mutex);
+-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+ 	intel_ipu4_pipeline_pm_use(&av->vdev.entity, 0);
+-#else
+-	v4l2_pipeline_pm_use(&av->vdev.entity, 0);
+-#endif
+ 
+ out_v4l2_fh_release:
+ 	v4l2_fh_release(file);
+@@ -298,11 +291,7 @@ static int video_release(struct file *file)
+ 
+ 	mutex_unlock(&av->isys->mutex);
+ 
+-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+ 	intel_ipu4_pipeline_pm_use(&av->vdev.entity, 0);
+-#else
+-	v4l2_pipeline_pm_use(&av->vdev.entity, 0);
+-#endif
+ 
+ 	pm_runtime_put(&av->isys->adev->dev);
+ 
+diff --git a/drivers/media/pci/intel-ipu4/intel-ipu4-isys.c b/drivers/media/pci/intel-ipu4/intel-ipu4-isys.c
+index cca4ec0..7b30823 100644
+--- a/drivers/media/pci/intel-ipu4/intel-ipu4-isys.c
++++ b/drivers/media/pci/intel-ipu4/intel-ipu4-isys.c
+@@ -119,7 +119,6 @@ const struct intel_ipu4_isys_fw_ctrl *intel_ipu4_isys_get_api_ops(void)
+ 	return api_ops;
+ }
+ 
+-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+ /*
+  * BEGIN adapted code from drivers/media/platform/omap3isp/isp.c.
+  * FIXME: This (in terms of functionality if not code) should be most
+@@ -144,7 +143,11 @@ static int intel_ipu4_pipeline_pm_use_count(struct media_pad *pad)
+ 	media_entity_graph_walk_start(&graph, pad);
+ 
+ 	while ((entity = media_entity_graph_walk_next(&graph))) {
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
++		if (is_media_entity_v4l2_video_device(entity))
++#else
+ 		if (is_media_entity_v4l2_io(entity))
++#endif			
+ 			use += entity->use_count;
+ 	}
+ 
+@@ -217,7 +220,11 @@ static int intel_ipu4_pipeline_pm_power(struct media_entity *entity,
+ 	media_entity_graph_walk_start(&graph, &entity->pads[0]);
+ 
+ 	while (!ret && (entity = media_entity_graph_walk_next(&graph)))
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
++		if (!is_media_entity_v4l2_video_device(entity))
++#else
+ 		if (!is_media_entity_v4l2_io(entity))
++#endif
+ 			ret = intel_ipu4_pipeline_pm_power_one(entity, change);
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+@@ -233,7 +240,11 @@ static int intel_ipu4_pipeline_pm_power(struct media_entity *entity,
+ 
+ 	while ((first = media_entity_graph_walk_next(&graph))
+ 	       && first != entity)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
++		if (!is_media_entity_v4l2_video_device(entity))
++#else
+ 		if (!is_media_entity_v4l2_io(first))
++#endif
+ 			intel_ipu4_pipeline_pm_power_one(first, -change);
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)
+@@ -336,7 +347,6 @@ static int intel_ipu4_pipeline_link_notify(struct media_link *link, u32 flags,
+ 	return 0;
+ }
+ /* END adapted code from drivers/media/platform/omap3isp/isp.c */
+-#endif /* < v4.6 */
+ 
+ static int isys_determine_legacy_csi_lane_configuration(
+ 					struct intel_ipu4_isys *isys)
+@@ -889,11 +899,7 @@ fail:
+ 
+ #ifdef MEDIA_IOC_REQUEST_CMD
+ struct media_device_ops isys_mdev_ops = {
+-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+ 	.link_notify = intel_ipu4_pipeline_link_notify,
+-#else
+-	.link_notify = v4l2_pipeline_link_notify,
+-#endif
+ 	.req_alloc = intel_ipu4_isys_req_alloc,
+ 	.req_free = intel_ipu4_isys_req_free,
+ 	.req_queue = intel_ipu4_isys_req_queue,
+@@ -908,11 +914,7 @@ static int isys_register_devices(struct intel_ipu4_isys *isys)
+ #ifdef MEDIA_IOC_REQUEST_CMD
+ 	isys->media_dev.ops = &isys_mdev_ops;
+ #else /* ! MEDIA_IOC_REQUEST_CMD */
+-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+ 	isys->media_dev.link_notify = intel_ipu4_pipeline_link_notify,
+-#else
+-	isys->media_dev.link_notify = v4l2_pipeline_link_notify,
+-#endif
+ #endif /* ! MEDIA_IOC_REQUEST_CMD */
+ 	strlcpy(isys->media_dev.model,
+ 		intel_ipu4_media_ctl_dev_model(isys->adev->isp),
+-- 
+2.7.4
+
