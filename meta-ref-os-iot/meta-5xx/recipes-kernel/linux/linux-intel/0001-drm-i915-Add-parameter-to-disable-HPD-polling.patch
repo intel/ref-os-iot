@@ -1,0 +1,68 @@
+From 628489613c0e2a0e2e03a9563e5f3575a65eed31 Mon Sep 17 00:00:00 2001
+From: Jukka Laitinen <jukka.laitinen@intel.com>
+Date: Thu, 22 Jun 2017 12:07:49 +0300
+Subject: [PATCH] drm: i915: Add parameter to disable HPD polling
+
+If we don't need the HPD to work in suspend, but are more interested
+in power saving, we need a way to force disable the polling.
+
+This adds a module parameter to do so.
+
+Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+---
+ drivers/gpu/drm/i915/i915_drv.c    | 3 ++-
+ drivers/gpu/drm/i915/i915_params.c | 5 +++++
+ drivers/gpu/drm/i915/i915_params.h | 3 ++-
+ 3 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/i915/i915_drv.c b/drivers/gpu/drm/i915/i915_drv.c
+index d0dcba5..d933e88 100644
+--- a/drivers/gpu/drm/i915/i915_drv.c
++++ b/drivers/gpu/drm/i915/i915_drv.c
+@@ -2428,7 +2428,8 @@ static int intel_runtime_suspend(struct device *kdev)
+ 
+ 	assert_forcewakes_inactive(dev_priv);
+ 
+-	if (!IS_VALLEYVIEW(dev_priv) && !IS_CHERRYVIEW(dev_priv))
++	if (!IS_VALLEYVIEW(dev_priv) && !IS_CHERRYVIEW(dev_priv) &&
++	    !i915.disable_hpd_poll)
+ 		intel_hpd_poll_init(dev_priv);
+ 
+ 	DRM_DEBUG_KMS("Device suspended\n");
+diff --git a/drivers/gpu/drm/i915/i915_params.c b/drivers/gpu/drm/i915/i915_params.c
+index 0f28c5d..152ee05 100644
+--- a/drivers/gpu/drm/i915/i915_params.c
++++ b/drivers/gpu/drm/i915/i915_params.c
+@@ -65,6 +65,7 @@ struct i915_params i915 __read_mostly = {
+ 	.inject_load_failure = 0,
+ 	.enable_dpcd_backlight = false,
+ 	.enable_gvt = false,
++	.disable_hpd_poll = false,
+ };
+ 
+ module_param_named(modeset, i915.modeset, int, 0400);
+@@ -253,3 +254,7 @@ MODULE_PARM_DESC(enable_dpcd_backlight,
+ module_param_named(enable_gvt, i915.enable_gvt, bool, 0400);
+ MODULE_PARM_DESC(enable_gvt,
+ 	"Enable support for Intel GVT-g graphics virtualization host support(default:false)");
++
++module_param_named(disable_hpd_poll, i915.disable_hpd_poll, bool, 0400);
++MODULE_PARM_DESC(disable_hpd_poll,
++	"Disable HDMI HPD polling to save power. In this case the HPD may not work if the power well is disabled.");
+diff --git a/drivers/gpu/drm/i915/i915_params.h b/drivers/gpu/drm/i915/i915_params.h
+index 34148cc..786aa5f 100644
+--- a/drivers/gpu/drm/i915/i915_params.h
++++ b/drivers/gpu/drm/i915/i915_params.h
+@@ -67,7 +67,8 @@
+ 	func(bool, nuclear_pageflip); \
+ 	func(bool, enable_dp_mst); \
+ 	func(bool, enable_dpcd_backlight); \
+-	func(bool, enable_gvt)
++	func(bool, enable_gvt); \
++	func(bool, disable_hpd_poll);
+ 
+ #define MEMBER(T, member) T member
+ struct i915_params {
+-- 
+2.7.4
+

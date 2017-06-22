@@ -27,6 +27,7 @@ SRC_URI_append = " file://0002-drm-i915-Suspend-GuC-prior-to-GPU-Reset-during-GE
 SRC_URI_append = " file://0003-drm-i915-guc-enable-GuC-loading-submission-by-defaul.patch"
 SRC_URI_append = " file://0001-platform-x86-Add-Whiskey-Cove-PMIC-TMU-support.patch"
 SRC_URI_append = " file://0001-drm-i915-execlists-Reset-RING-registers-upon-resume.patch"
+SRC_URI_append = " file://0001-drm-i915-Add-parameter-to-disable-HPD-polling.patch"
 
 # Audio patches
 SRC_URI_append = " file://0001-VENDOR-ASoC-intel-skylake-Add-DSP-FW-load-for-Bxt-M.patch"
@@ -44,6 +45,7 @@ SRC_URI_append = " file://0012-ASoc-bxt-florida-Clean-up-unused-mappings-and-str
 SRC_URI_append = " file://0013-ASoc-bxt_florida-Ensure-that-codec-driver-is-loaded.patch"
 SRC_URI_append = " file://0014-mfd-arizona-Request-interrupt-gpio-for-arizona-to-fi.patch"
 SRC_URI_append = " file://0015-REVERTME-HACK-Fix-NHLT-sspsp-field-for-bxt-SSP0.patch"
+
 
 do_compile_kernelmodules_append() {
     rm -rf ${B}/drivers/net/wireless/intel/iwlwifi
