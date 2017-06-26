@@ -1,4 +1,4 @@
-From 628489613c0e2a0e2e03a9563e5f3575a65eed31 Mon Sep 17 00:00:00 2001
+From 33e482430e9b02fd4746f150f7fe113f3c8f2abb Mon Sep 17 00:00:00 2001
 From: Jukka Laitinen <jukka.laitinen@intel.com>
 Date: Thu, 22 Jun 2017 12:07:49 +0300
 Subject: [PATCH] drm: i915: Add parameter to disable HPD polling
@@ -9,6 +9,7 @@ in power saving, we need a way to force disable the polling.
 This adds a module parameter to do so.
 
 Signed-off-by: Jukka Laitinen <jukka.laitinen@intel.com>
+Signed-off-by: Tuomas Katila <tuomas.katila@intel.com>
 ---
  drivers/gpu/drm/i915/i915_drv.c    | 3 ++-
  drivers/gpu/drm/i915/i915_params.c | 5 +++++
@@ -50,7 +51,7 @@ index 0f28c5d..152ee05 100644
 +MODULE_PARM_DESC(disable_hpd_poll,
 +	"Disable HDMI HPD polling to save power. In this case the HPD may not work if the power well is disabled.");
 diff --git a/drivers/gpu/drm/i915/i915_params.h b/drivers/gpu/drm/i915/i915_params.h
-index 34148cc..786aa5f 100644
+index 34148cc..07904d0 100644
 --- a/drivers/gpu/drm/i915/i915_params.h
 +++ b/drivers/gpu/drm/i915/i915_params.h
 @@ -67,7 +67,8 @@
@@ -59,7 +60,7 @@ index 34148cc..786aa5f 100644
  	func(bool, enable_dpcd_backlight); \
 -	func(bool, enable_gvt)
 +	func(bool, enable_gvt); \
-+	func(bool, disable_hpd_poll);
++	func(bool, disable_hpd_poll)
  
  #define MEMBER(T, member) T member
  struct i915_params {
