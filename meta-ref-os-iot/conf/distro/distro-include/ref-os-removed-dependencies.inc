@@ -68,3 +68,5 @@ RDEPENDS_python-modules_remove = "python-gdbm"
 PNBLACKLIST[lzo] = "Not a whitelisted component"
 EXTRA_OEMAKE_remove_pn-squashfs-tools = "LZO_SUPPORT=1"
 DEPENDS_remove_pn-squashfs-tools = "lzo"
+
+EXTRA_IMAGEDEPENDS_remove = "ovmf"
