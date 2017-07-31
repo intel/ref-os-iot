@@ -390,3 +390,4 @@ systemd-serialgetty@core
 snapd@ref-os-iot
 squashfs-tools@core
 xfsprogs@filesystems-layer
+libgcrypt@ref-os-iot
