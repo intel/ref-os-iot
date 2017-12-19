@@ -14,7 +14,7 @@ NOTE: The method described below needs around 135GB of disk space.
 Setup Ubuntu 16.04 host for build:
 =====================================
 | $ sudo apt update
-| $ sudo apt-get install gawk wget git-core git diffstat unzip texinfo gcc-multilib build-essential chrpath socat libsdl1.2-dev xterm subversion xsltproc
+| $ sudo apt-get install bc gawk wget git-core git diffstat unzip texinfo gcc-multilib build-essential chrpath socat libsdl1.2-dev xterm subversion xsltproc
 
 Preparation:
 =======================
